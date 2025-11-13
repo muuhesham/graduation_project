@@ -28,7 +28,7 @@ const userService = {
     async isVerified(userId) {
         const user = await prismaClient.user.findFirst({
             where: {
-                id: userId,
+                userId,
                 isVerified: true
             },
         });

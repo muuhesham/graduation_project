@@ -51,7 +51,7 @@ const authService = {
 
     generateToken(user) {
         const payload = {
-            id: user.id,
+            userId: user.userId,
             name: user.name,
             email: user.email,
             role: user.role,
