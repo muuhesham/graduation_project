@@ -76,7 +76,7 @@ const authService = {
 
      generateAccessToken(user) {
         const payload = {
-            id: user.id,
+            userId: user.userId,
             name: user.name,
             email: user.email,
             role: user.role,
@@ -98,7 +98,7 @@ const authService = {
         await prismaClient.refreshToken.create({
             data: {
                 token: hashed,
-                userId: user.id,
+                userId: user.userId,
                 createdAt: new Date(),
                 expiresAt: new Date(Date.now() + (authService.REFRESH_EXPIRATION * 1000)),
             }
@@ -138,7 +138,7 @@ const authService = {
             };
         }
 
-        if (tokenRecord.user.id === user.id) {
+        if (tokenRecord.user.userId === user.userId) {
             const { cacheKey, ttl } = authService.accessTokenCache({ accessToken });
             await Promise.all([
                 cacheService.set(cacheKey, true, ttl), 
