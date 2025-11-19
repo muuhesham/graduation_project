@@ -30,4 +30,7 @@ export const REDIS_URL = process.env.REDIS_URL || 'redis://';
 export const JWT_REKEY = process.env.JWT_REKEY;
 export const FRONT_URL = process.env.FRONT_URL;
 export const NODE_ENV = process.env.NODE_ENV || 'development';
+export const STORAGE_TYPE = process.env.STORAGE_TYPE || 'local';
+export const PROTOCOL = process.env.PROTOCOL || 'http';
+
 export { BASE_PATH };

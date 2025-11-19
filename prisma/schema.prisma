@@ -14,49 +14,47 @@ datasource db {
 }
 
 model User {
-  id         String     @id @default(uuid())
-  email      String     @unique
-  password   String?
-  name       String
-  role       Role @default(ATTENDEE)
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  password           String?
+  gender             Gender   @default(male)
   phone              String?  @unique
+  role               Role     @default(user)
+  location           String?
+  languagePreference Language @default(en)
   isVerified         Boolean  @default(false)
-  idInProviderDB         String?
+  idInProviderDB     String?
   authProvider       AuthProvider @default(LOCAL)
   isCompleted        Boolean   @default(false)
-  languagePreference Language  @default(EN)
   birthDate          DateTime?
-  gender             Gender?
   governorate        GovernorateName?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  //* TODO: ADD 'deletedAt' field for soft delete
+  //deletedAt          DateTime?
 
+  //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
+  refreshToken RefreshToken[]
+  //* TODO: UPDATE 'Organizer' to 'organizer'
+  Organizer    Organizer?
   categories         AttendeeFavoriteCategory[]
-  refreshToken       RefreshToken[]
-}
-
-model Category {
-  id        String               @id @default(uuid())
-  name      String               @unique
-  attendees AttendeeFavoriteCategory[]
-}
-
-model AttendeeFavoriteCategory {
-  attendee   User  @relation(fields: [attendeeId], references: [id])
-  attendeeId String
-  category   Category  @relation(fields: [categoryId], references: [id])
-  categoryId String
-  @@id([attendeeId, categoryId])
 }
 
 enum Role {
-  ATTENDEE
-  ATTENDEEANDORGANIZER
+  admin
+  user
+  organizer
 }
 
 enum Gender {
-  MALE
-  FEMALE
+  male
+  female
+}
+
+enum Language {
+  en
+  ar
 }
 
 enum AuthProvider {
@@ -64,11 +62,6 @@ enum AuthProvider {
   FACEBOOK
   APPLE
   LOCAL
-}
-
-enum Language {
-  EN
-  AR
 }
 
 enum GovernorateName {
@@ -111,21 +104,257 @@ model Otp {
 }
 
 model ResetPasswordToken {
-  id         Int      @id @default(autoincrement())
-  email      String
-  token      String
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
+  id        Int      @id @default(autoincrement())
+  email     String
+  token     String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }
 
 model RefreshToken {
-  id        Int       @id   @default(autoincrement())
-  token     String    @unique
-  isRevoked Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
   expiresAt DateTime
 
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, token])
 }
+
+model Organizer {
+  id         String    @id @default(uuid())
+  userId     String    @unique
+  isApproved Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Event Event[]
+}
+
+model Event {
+  id          Int       @id @default(autoincrement())
+  organizerId String
+  venueId     Int?
+  categoryId  Int?
+  slug        String
+  title       String
+  bannerDisk  String    @default("local")
+  bannerPath  String
+  description String
+  type        EventType @default(ticketed)
+  mode        EventMode @default(single)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  venue       Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  eventSessions EventSession[]
+  ticketTypes   TicketType[]
+
+  @@unique([organizerId, slug])
+}
+
+model EventSession {
+  id        Int           @id @default(autoincrement())
+  eventId   Int
+  status    SessionStatus @default(active)
+  //* TODO: ADD capcaity field
+  // capacity Int
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, startDate, endDate])
+}
+
+enum SessionStatus {
+  active
+  cancelled
+}
+
+enum EventType {
+  ticketed
+  free
+}
+
+enum EventMode {
+  single
+  recurring
+}
+
+model Venue {
+  id            Int      @id @default(autoincrement())
+  googlePlaceId String?  @unique
+  latitude      Float
+  longitude     Float
+  name          String
+  address       String
+  country       String
+  state         String
+  city          String
+  zipCode       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  events        Event[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  imagePath String
+  imageDisk String   @default("local")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  attendees AttendeeFavoriteCategory[]
+  events    Event[]
+}
+
+model AttendeeFavoriteCategory {
+  categoryId Int
+  attendeeId String
+  attendee   User  @relation(fields: [attendeeId], references: [id])
+  category   Category  @relation(fields: [categoryId], references: [id])
+  @@id([attendeeId, categoryId])
+}
+
+model TicketType {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  name      String
+  price     Decimal  @db.Decimal(10, 2)
+  sold      Int      @default(0)
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([name, eventId])
+}
+
+// model InterestedEvent {
+//   userId    String
+//   eventId   Int
+//   createdAt DateTime @default(now())
+//
+//   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+//
+//   @@id([userId, eventId])
+// }
+
+//! DON'T RUN IT NOW IT'S JUST PLACEHOLDER FOR TICKET MODEL
+
+// model Ticket {
+//   id           String       @id @default(uuid())
+//   userId       String
+//   ticketTypeId Int
+//   orderItemId  Int?         @unique
+//   qrCodeId     String?
+//   status       TicketStatus @default(valid)
+//   issuedAt     DateTime     @default(now())
+//   createdAt    DateTime     @default(now())
+//   updatedAt    DateTime     @updatedAt
+//
+//   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+//   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   orderItem  OrderItem? @relation(fields: [orderItemId], references: [id])
+//   qrCodes    QrCode?    @relation(fields: [qrCodeId], references: [id])
+//
+//   @@unique([userId, ticketTypeId])
+// }
+//
+// model Order {
+//   id         String      @id @default(uuid())
+//   userId     String
+//   totalPrice Decimal     @db.Decimal(10, 2)
+//   status     OrderStatus @default(pending)
+//   createdAt  DateTime    @default(now())
+//   updatedAt  DateTime    @updatedAt
+//
+//   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   orderItems OrderItem[]
+//   payment    Payment?
+// }
+//
+// model OrderItem {
+//   id           Int      @id @default(autoincrement())
+//   orderId      String   @unique
+//   ticketTypeId Int
+//   quantity     Int
+//   unitPrice    Decimal  @db.Decimal(10, 2)
+//   createdAt    DateTime @default(now())
+//   updatedAt    DateTime @updatedAt
+//
+//   order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+//   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+//   ticketId   String?    @unique
+//   ticket     Ticket?    @relation(fields: [ticketId], references: [id])
+// }
+//
+// enum OrderStatus {
+//   pending
+//   completed
+//   cancelled
+// }
+//
+// model Payment {
+//   id            String        @id @default(uuid())
+//   orderId       String        @unique
+//   paymentMethod PaymentMethod
+//   amount        Decimal       @db.Decimal(10, 2)
+//   currency      String
+//   status        PaymentStatus @default(pending)
+//   transactionId String        @unique
+//   createdAt     DateTime      @default(now())
+//   updatedAt     DateTime      @updatedAt
+//
+//   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+// }
+//
+// enum PaymentMethod {
+//   credit_card
+//   paypal
+//   stripe
+// }
+//
+// enum PaymentStatus {
+//   pending
+//   completed
+//   failed
+//   refunded
+// }
+//
+// model QrCode {
+//   id        String   @id @default(uuid())
+//   ticketId  String   @unique
+//   codePath  String
+//   codeDisk  String   @default("local")
+//   isActive  Boolean  @default(true)
+//   status    QRStatus @default(valid)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+//
+//   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+// }
+//
+// enum TicketStatus {
+//   valid
+//   used
+//   expired
+// }
+//
+// enum QRStatus {
+//   valid
+//   used
+//   expired
+// }
