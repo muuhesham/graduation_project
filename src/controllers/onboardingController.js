@@ -23,10 +23,10 @@ class OnboardingController {
 
   getStatus = async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const id = req.user.id;
 
       const user = await prisma.user.findUnique({
-        where: { userId },
+        where: { id },
       });
 
       if (!user) {
@@ -36,26 +36,19 @@ class OnboardingController {
         return sendFail(res, { message: "User email not verified" }, 403);
       }
 
-      const attendee = await prisma.attendee.findUnique({
-        where: { userId },
-      });
-
-      if (!attendee)
-        return sendFail(res, { message: "Not signed as an attendee yet" }, 404);
-
       const missing = [];
-      if (!attendee.birthDate) missing.push("basic");
-      if (!attendee.city) missing.push("city");
+      if (!user.birthDate) missing.push("basic");
+      if (!user.governorate) missing.push("governorate");
 
       const hasPreferences = await prisma.attendeeFavoriteCategory.findFirst({
-        where: { attendeeId: userId },
+        where: { attendeeId: id },
       });
       if (!hasPreferences) missing.push("preferences");
 
       const isComplete = missing.length === 0;
       if (isComplete) {
-        await prisma.attendee.update({
-          where: { userId },
+        await prisma.user.update({
+          where: { id },
           data: { isCompleted: true },
         });
       }
@@ -68,21 +61,21 @@ class OnboardingController {
 
   updateBasic = async (req, res) => {
     try {
-      const userId = req.user.userId;
-      const attendeeBirthDate = new Date(sanitize(req.body.attendeeBirthDate));
-      const attendeeGender = sanitize(req.body.attendeeGender);
+      const { id } = req.user;
+      const birthDate = new Date(sanitize(req.body.birthDate));
+      const gender = sanitize(req.body.gender);
 
-      if (!attendeeBirthDate || !attendeeGender) {
+      if (!birthDate || !gender) {
         return sendFail(res, { message: "Missing required fields" }, 400);
       }
 
-      const attendeeAge = calculateAge(attendeeBirthDate);
+      const attendeeAge = calculateAge(birthDate);
       if (attendeeAge < 8 || attendeeAge > 110) {
         return sendFail(res, { message: "Wrong age" }, 400);
       }
 
       const user = await prisma.user.findUnique({
-        where: { userId },
+        where: { id },
       });
 
       if (!user) {
@@ -92,18 +85,11 @@ class OnboardingController {
         return sendFail(res, { message: "User email not verified" }, 403);
       }
 
-      const attendee = await prisma.attendee.upsert({
-        where: { userId },
-        update: {
-          birthDate: attendeeBirthDate,
-          gender: attendeeGender,
-          // no authProvider update here
-        },
-        create: {
-          userId,
-          birthDate: attendeeBirthDate,
-          gender: attendeeGender,
-          authProvider: "LOCAL", // only on creation
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: {
+          birthDate,
+          gender,
         },
       });
 
@@ -111,10 +97,10 @@ class OnboardingController {
         res,
         {
           message: "Basic profile info created successfully",
-          attendee: {
-            userId: attendee.userId,
-            birthDate: attendee.birthDate,
-            gender: attendee.gender,
+          user: {
+            id: updatedUser.id,
+            birthDate: updatedUser.birthDate,
+            gender: updatedUser.gender,
           },
         },
         200
@@ -126,13 +112,11 @@ class OnboardingController {
 
   updatePreferences = async (req, res) => {
     try {
-      const userId = req.user.userId;
-      const preferences = req.body.preferences?.map((p) =>
-        sanitize(p.toUpperCase())
-      );
+      const { id } = req.user;
+      const preferences = req.body.preferences?.map((preference) => sanitize(preference));
 
       const user = await prisma.user.findUnique({
-        where: { userId },
+        where: { id },
       });
 
       if (!user) {
@@ -141,15 +125,6 @@ class OnboardingController {
       if (user.isVerified === false) {
         return sendFail(res, { message: "User email not verified" }, 403);
       }
-
-      await prisma.attendee.upsert({
-        where: { userId },
-        update: {},
-        create: {
-          userId,
-          authProvider: "LOCAL",
-        },
-      });
 
       if (!preferences || preferences.length === 0) {
         return sendFail(res, { message: "No preferences provided" }, 400);
@@ -166,7 +141,7 @@ class OnboardingController {
       await Promise.all(
         categories.map((category) =>
           prisma.attendeeFavoriteCategory.create({
-            data: { attendeeId: userId, categoryId: category.id },
+            data: { attendeeId: id, categoryId: category.id },
           })
         )
       );
@@ -183,15 +158,15 @@ class OnboardingController {
 
   updateLocation = async (req, res) => {
     try {
-      const userId = req.user.userId;
-      const city = sanitize(req.body.city);
+      const { id } = req.user;
+      const governorate = sanitize(req.body.governorate);
 
-      if (!city) {
+      if (!governorate) {
         return sendFail(res, { message: "City is required" }, 400);
       }
 
       const user = await prisma.user.findUnique({
-        where: { userId },
+        where: { id },
       });
       if (!user) {
         return sendFail(res, { message: "User not found" }, 404);
@@ -199,15 +174,10 @@ class OnboardingController {
       if (user.isVerified === false) {
         return sendFail(res, { message: "User email not verified" }, 403);
       }
-      const attendee = await prisma.attendee.upsert({
-        where: { userId },
-        update: {
-          city,
-        },
-        create: {
-          userId,
-          authProvider: "LOCAL",
-          city,
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: {
+          governorate,
         },
       });
 
@@ -216,8 +186,8 @@ class OnboardingController {
         {
           message: "Location updated successfully",
           attendee: {
-            userId: attendee.userId,
-            city: attendee.city,
+            id: updatedUser.id,
+            governorate: updatedUser.governorate,
           },
         },
         200

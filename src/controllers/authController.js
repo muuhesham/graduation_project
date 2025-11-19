@@ -7,19 +7,18 @@ import {
   HOSTNAME,
   PORT,
 } from "../config/env.js";
-import { prisma } from "../config/db.js";
 import { google } from "googleapis";
 import jwt from "jsonwebtoken";
+import { AuthThirdPartyService } from "../services/thirdPartyAuthService.js";
 
 export const authController = {
   async register(req, res) {
     try {
-      const { name, email, password, role } = req.body;
+      const { name, email, password } = req.body;
       const result = await authService.register({
         name,
         email,
         password,
-        role,
       });
 
       if (result.status === "fail") {
@@ -196,60 +195,13 @@ export const authController = {
   },
 };
 
-class AuthThirdPartyController {
-  async createOrFetchUser(email, name, provider, providerId) {
-    let user = await prisma.user.findUnique({
-      where: { email },
-      include: { attendee: true },
-    });
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          name,
-          role: "ATTENDEE",
-          isVerified: true,
-          attendee: {
-            create: {
-              authProvider: provider,
-              providerId: providerId,
-            },
-          },
-        },
-        include: { attendee: true },
-      });
-    }
-    return user;
-  }
-
-  async generateJwt(user) {
-    const { accessToken, type, expiresIn } =
-      authService.generateAccessToken(user);
-    const [refreshToken] = await Promise.all([
-      authService.generateRefreshToken(user),
-      authService.sendOtpMail(user, true),
-    ]);
-
-    return {
-      data: {
-        accessToken: {
-          token: accessToken,
-          type: type,
-          expiresIn: expiresIn,
-        },
-        refreshToken: refreshToken,
-      },
-    };
-  }
-}
-
-class GoogleAuthController extends AuthThirdPartyController {
+class GoogleAuthController extends AuthThirdPartyService {
   constructor() {
     super();
     this.oauth2Client = new google.auth.OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      "http://" + HOSTNAME + ":" + PORT + CALLBACK_URL
+      "http://" + "localhost" + ":" + PORT + CALLBACK_URL
     );
   }
 

@@ -12,7 +12,7 @@ const Router = express.Router();
 
 Router.get("/status", statusLimiter, auth, onboardingController.getStatus);
 
-Router.post(
+Router.patch(
   "/basic",
   onboardingWriteLimiter,
   auth,
@@ -21,7 +21,7 @@ Router.post(
   onboardingController.updateBasic
 );
 
-Router.post(
+Router.patch(
   "/preferences",
   onboardingWriteLimiter,
   auth,
@@ -30,7 +30,7 @@ Router.post(
   onboardingController.updatePreferences
 );
 
-Router.post(
+Router.patch(
   "/location",
   onboardingWriteLimiter,
   auth,

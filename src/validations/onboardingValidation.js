@@ -2,10 +2,10 @@ import { body } from "express-validator";
 
 const onboardingValidations = {
   updateBasic: [
-    body("attendeeBirthDate")
+    body("birthDate")
       .isISO8601()
       .withMessage("Birth date must be a valid ISO date (YYYY-MM-DD)."),
-    body("attendeeGender")
+    body("gender")
       .isIn(["MALE", "FEMALE"])
       .withMessage("Gender must be MALE , or FEMALE"),
   ],
@@ -21,10 +21,38 @@ const onboardingValidations = {
       .withMessage("Each preference must be a string"),
   ],
   updateLocation: [
-    body("city")
+    body("governorate")
       .trim()
-      .isLength({ min: 2 })
-      .withMessage("City must be at least 2 characters"),
+      .isIn([
+        "CAIRO",
+        "GIZA",
+        "ALEXANDRIA",
+        "ASWAN",
+        "LUXOR",
+        "QALYUBIA",
+        "SHARQIA",
+        "GHARBIA",
+        "FAIYUM",
+        "BENI_SUEF",
+        "MINYA",
+        "ASSIUT",
+        "SOHAG",
+        "QENA",
+        "RED_SEA",
+        "SOUTH_SINAI",
+        "NORTH_SINAI",
+        "NEW_VALLEY",
+        "DAMIETTA",
+        "DAKAHLIA",
+        "PORT_SAID",
+        "SUEZ",
+        "ISMAILIA",
+        "MENOUFIA",
+        "KAFR_EL_SHEIKH",
+        "BEHEIRA",
+        "MATROUH",
+      ])
+      .withMessage("Invalid governorate value"),
   ],
 };
 
