@@ -18,11 +18,11 @@ model User {
   email      String     @unique
   password   String?
   name       String
-  role       Role
+  role       Role @default(ATTENDEE)
   phone              String?  @unique
   isVerified         Boolean  @default(false)
   idInProviderDB         String?
-  authProvider       AuthProvider
+  authProvider       AuthProvider @default(LOCAL)
   isCompleted        Boolean   @default(false)
   languagePreference Language  @default(EN)
   birthDate          DateTime?
