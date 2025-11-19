@@ -14,60 +14,35 @@ datasource db {
 }
 
 model User {
-  userId     String     @id @default(uuid())
+  id         String     @id @default(uuid())
   email      String     @unique
   password   String?
   name       String
   role       Role
   phone              String?  @unique
   isVerified         Boolean  @default(false)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  attendee   Attendee?
-  organizer  Organizer?
-  admin      Admin?
-  refreshToken       RefreshToken[]
-}
-
-model Attendee {
-  userId             String   @id
-  providerId         String?
+  idInProviderDB         String?
   authProvider       AuthProvider
   isCompleted        Boolean   @default(false)
   languagePreference Language  @default(EN)
   birthDate          DateTime?
   gender             Gender?
-  city               City?
+  governorate        GovernorateName?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
   categories         AttendeeFavoriteCategory[]
-
-  user               User     @relation(fields: [userId], references: [userId])
-}
-
-model Organizer {
-  userId       String   @id // primary key inherited
-  city         City
-  organization String
-
-  user         User     @relation(fields: [userId], references: [userId])
-}
-
-model Admin {
-  userId          String   @id // primary key inherited
-  secondPassword  String
-  secondEmail     String
-
-  user            User     @relation(fields: [userId], references: [userId])
+  refreshToken       RefreshToken[]
 }
 
 model Category {
-  id        String                     @id @default(uuid())
-  name      CategoryName               @unique
+  id        String               @id @default(uuid())
+  name      String               @unique
   attendees AttendeeFavoriteCategory[]
 }
 
 model AttendeeFavoriteCategory {
-  attendee   Attendee  @relation(fields: [attendeeId], references: [userId])
+  attendee   User  @relation(fields: [attendeeId], references: [id])
   attendeeId String
   category   Category  @relation(fields: [categoryId], references: [id])
   categoryId String
@@ -76,46 +51,12 @@ model AttendeeFavoriteCategory {
 
 enum Role {
   ATTENDEE
-  ORGANIZER
-  ADMIN
-}
-
-enum CategoryName {
-  MUSIC
-  SPORTS
-  THEATER
-  COMEDY
-  EDUCATION
-  TECHNOLOGY
-  HEALTH
-  BUSINESS
-  ART
-  TRAVEL
+  ATTENDEEANDORGANIZER
 }
 
 enum Gender {
   MALE
   FEMALE
-}
-
-enum City {
-  CAIRO
-  ALEXANDRIA
-  GIZA
-  LUXOR
-  ASWAN
-  SHARM_EL_SHEIKH
-  HURGHADA
-  TANTA
-  MANSOURA
-  PORT_SAID
-  SUEZ
-  ISMAILIA
-  ZAGAZIG
-  DAMIETTA
-  FAYOUM
-  BENI_SUEF
-  QENA
 }
 
 enum AuthProvider {
@@ -128,6 +69,36 @@ enum AuthProvider {
 enum Language {
   EN
   AR
+}
+
+enum GovernorateName {
+  CAIRO
+  GIZA
+  ALEXANDRIA
+  ASWAN
+  LUXOR
+  QALYUBIA
+  SHARQIA
+  GHARBIA
+  FAIYUM
+  BENI_SUEF
+  MINYA
+  ASSIUT
+  SOHAG
+  QENA
+  RED_SEA
+  SOUTH_SINAI
+  NORTH_SINAI
+  NEW_VALLEY
+  DAMIETTA
+  DAKAHLIA
+  PORT_SAID
+  SUEZ
+  ISMAILIA
+  MENOUFIA
+  KAFR_EL_SHEIKH
+  BEHEIRA
+  MATROUH
 }
 
 model Otp {
@@ -155,6 +126,6 @@ model RefreshToken {
   expiresAt DateTime
 
   userId    String
-  user      User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, token])
 }
