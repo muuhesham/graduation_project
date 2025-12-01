@@ -71,6 +71,18 @@ const authLimiter = rateLimiter({
     prefix: 'auth',
 });
 
+const statusLimiter = rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // allow up to 30 status checks per minute
+  message: "Too many status requests. Please slow down.",
+});
+
+const onboardingWriteLimiter = rateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // allow 10 write requests per 5 minutes
+  message: "Too many onboarding submissions. Please try again later.",
+});
+
 /**
  * Standard API rate limiter
  * 100 requests per 15 minutes
@@ -134,6 +146,8 @@ export {
     rateLimiter,
     strictLimiter,
     authLimiter,
+    statusLimiter,
+    onboardingWriteLimiter,
     apiLimiter,
     heavyLimiter,
     emailLimiter,

@@ -39,6 +39,7 @@
         "express": "^5.1.0",
         "express-rate-limit": "^8.1.0",
         "express-validator": "^7.2.1",
+        "googleapis": "^166.0.0",
         "helmet": "^8.1.0",
         "ioredis": "^5.8.2",
         "jsonwebtoken": "^9.0.2",
@@ -46,6 +47,7 @@
         "multer": "^2.0.2",
         "nodemailer": "^7.0.9",
         "rate-limit-redis": "^4.2.3",
+        "sanitize-html": "^2.17.0",
         "slugify": "^1.6.6"
     },
     "devDependencies": {
