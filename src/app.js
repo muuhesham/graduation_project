@@ -20,9 +20,11 @@ import userRoutes from './routes/user.routes.js';
 import organizerRoutes from './routes/organizer.routes.js';
 import homeRoutes from './routes/home.routes.js';
 import eventRoutes from './routes/event.routes.js';
+import onboardingRoutes from './routes/onboarding.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/onboarding', onboardingRoutes)
 app.use('/api/v1/organizer', organizerRoutes);
 app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/events', eventRoutes);

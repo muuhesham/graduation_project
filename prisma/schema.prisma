@@ -17,14 +17,18 @@ model User {
   id                 String   @id @default(uuid())
   name               String
   email              String   @unique
-  password           String
+  password           String?
   gender             Gender   @default(male)
   phone              String?  @unique
-  age                Int?
   role               Role     @default(user)
   location           String?
   languagePreference Language @default(en)
   isVerified         Boolean  @default(false)
+  idInProviderDB     String?
+  authProvider       AuthProvider @default(LOCAL)
+  isCompleted        Boolean   @default(false)
+  birthDate          DateTime?
+  governorate        GovernorateName?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   //* TODO: ADD 'deletedAt' field for soft delete
@@ -34,6 +38,7 @@ model User {
   refreshToken RefreshToken[]
   //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer    Organizer?
+  categories         AttendeeFavoriteCategory[]
 }
 
 enum Role {
@@ -50,6 +55,43 @@ enum Gender {
 enum Language {
   en
   ar
+}
+
+enum AuthProvider {
+  GOOGLE
+  FACEBOOK
+  APPLE
+  LOCAL
+}
+
+enum GovernorateName {
+  CAIRO
+  GIZA
+  ALEXANDRIA
+  ASWAN
+  LUXOR
+  QALYUBIA
+  SHARQIA
+  GHARBIA
+  FAIYUM
+  BENI_SUEF
+  MINYA
+  ASSIUT
+  SOHAG
+  QENA
+  RED_SEA
+  SOUTH_SINAI
+  NORTH_SINAI
+  NEW_VALLEY
+  DAMIETTA
+  DAKAHLIA
+  PORT_SAID
+  SUEZ
+  ISMAILIA
+  MENOUFIA
+  KAFR_EL_SHEIKH
+  BEHEIRA
+  MATROUH
 }
 
 model Otp {
@@ -173,7 +215,16 @@ model Category {
   imageDisk String   @default("local")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  attendees AttendeeFavoriteCategory[]
   events    Event[]
+}
+
+model AttendeeFavoriteCategory {
+  categoryId Int
+  attendeeId String
+  attendee   User  @relation(fields: [attendeeId], references: [id])
+  category   Category  @relation(fields: [categoryId], references: [id])
+  @@id([attendeeId, categoryId])
 }
 
 model TicketType {
