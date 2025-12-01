@@ -2,6 +2,7 @@ import express from 'express';
 const Router = express.Router();
 
 import authController from '../controllers/authController.js';
+import { googleAuthController } from "../controllers/authController.js";
 import authValidations from '../validations/authValidation.js';
 import validate from '../middlewares/validate.js';
 import auth from '../middlewares/auth.js';
@@ -22,5 +23,9 @@ Router.post('/forgot-password', requestResetLimiter, authValidations.forgetPassw
 Router.post('/reset-password', requestResetLimiter, authValidations.resetPassword, validate, authController.resetPassword);
 
 Router.post('/logout', auth, authValidations.logout, validate, authController.logout)
+
+Router.get("/google/url", authLimiter, googleAuthController.getAuthUrl);
+
+Router.get("/google/callback", googleAuthController.handleCallback);
 
 export default Router;
