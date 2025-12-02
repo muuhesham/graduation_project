@@ -10,6 +10,7 @@ import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 import ticketService from './ticketTypeService.js';
 import userService from './userService.js';
+import ticketTypeService from './ticketTypeService.js';
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
