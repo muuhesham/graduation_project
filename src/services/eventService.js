@@ -4,7 +4,12 @@ import ConflictError from '../errors/ConflictError.js';
 import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import fileService from './fileService.js';
 import venueService from './venueService.js';
-import ticketTypeService from './ticketTypeService.js';
+import orderService from './orderService.js';
+import NotFoundError from '../errors/NotFoundError.js';
+import paymentService from './paymentService.js';
+import OrderStatus from '../constants/enums/orderStatus.js';
+import ticketService from './ticketTypeService.js';
+import userService from './userService.js';
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
@@ -203,6 +208,10 @@ const eventService = {
             ...query,
         });
 
+        if (!event) {
+            return null;
+        }
+
         if (relations?.ticketTypes) {
             event.ticketTypes.map(
                 (ticketType) => (ticketType.price = parseFloat(ticketType.price))
@@ -380,7 +389,7 @@ const eventService = {
         return slugify(title, { lower: true, strict: true });
     },
 
-    async show(organizerId, slug) {
+    async show(id) {
         const relations = {
             venue: {
                 omit: venueService.DEFAULT_EXCLUDE_FIELDS,
@@ -388,9 +397,181 @@ const eventService = {
             ticketTypes: {
                 omit: ticketTypeService.DEFAULT_EXCLUDE_FIELDS,
             },
+
+            eventSessions: {
+                omit: {
+                    eventId: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            },
         };
 
-        return await eventService.findBySlug(organizerId, slug, { relations });
+        const event = await eventService.getById(id, { relations });
+        if (!event) {
+            return {
+                status: 'fail',
+                statusCode: 404,
+                data: { message: 'Event not found' },
+            };
+        }
+        return event;
+    },
+
+    async findSessionById(sessionId, { selections, relations, filters, exclude } = {}) {
+        const query = new PrismaQueryBuilder({
+            maxLimit: eventService.MAX_LIMIT,
+        })
+            .select(selections)
+            .include(relations)
+            .omit(exclude)
+            .where(filters).value;
+
+        return prismaClient.eventSession.findUnique({
+            where: { id: sessionId },
+            ...query,
+        });
+    },
+
+    async isOrganizer(id, userId) {
+        const event = await this.getById(id, {
+            relations: {
+                organizer: {
+                    select: { userId: true, id: true },
+                },
+            },
+        });
+
+        if (!event) throw new NotFoundError('Event not found');
+
+        if (!event.organizer) return false;
+
+        return event.organizer.userId === userId;
+    },
+
+    async validateAndFetchTickets(id, requestedTickets) {
+        const event = await eventService.getById(id, {
+            relations: {
+                ticketTypes: {
+                    select: {
+                        id: true,
+                        name: true,
+                        price: true,
+                        sold: true,
+                        quantity: true,
+                    },
+                },
+                organizer: {
+                    select: {
+                        id: true,
+                    },
+                },
+            },
+        });
+
+        if (!event) throw new NotFoundError('Event not found');
+
+        const dbTicketMap = new Map(event.ticketTypes.map((t) => [t.name, t]));
+        const verifiedItems = [];
+        const lineItems = [];
+        let totalPrice = 0;
+        let itemsCount = 0;
+
+        for (const reqTicket of requestedTickets) {
+            const dbTicket = dbTicketMap.get(reqTicket.name);
+
+            if (!dbTicket) throw new NotFoundError(`Ticket ${reqTicket.name} invalid`);
+
+            if (dbTicket.quantity - dbTicket.sold < reqTicket.quantity) {
+                throw new ConflictError(`Not enough stock for ${reqTicket.name}`);
+            }
+
+            totalPrice += Number(dbTicket.price) * reqTicket.quantity;
+            itemsCount += reqTicket.quantity;
+
+            lineItems.push({
+                price_data: {
+                    currency: 'usd',
+                    product_data: { name: dbTicket.name },
+                    unit_amount: Math.round(Number(dbTicket.price) * 100),
+                },
+                quantity: reqTicket.quantity,
+            });
+
+            verifiedItems.push({
+                ticketTypeId: dbTicket.id,
+                price: dbTicket.price,
+                name: dbTicket.name,
+                quantity: reqTicket.quantity,
+            });
+        }
+
+        return { event, verifiedItems, totalPrice, itemsCount, lineItems };
+    },
+
+    async checkout(id, userId, userEmail, tickets) {
+        const { event, verifiedItems, totalPrice, itemsCount, lineItems } =
+            await eventService.validateAndFetchTickets(id, tickets);
+
+        if (event.organizer.userId === userId) {
+            throw new ConflictError('Organizers cannot purchase tickets for their own events');
+        }
+
+        const { order, session } = await prismaClient.$transaction(
+            async (tx) => {
+                const order = await orderService.create(
+                    userId,
+                    totalPrice,
+                    itemsCount,
+                    totalPrice === 0 ? OrderStatus.COMPLETED : OrderStatus.PENDING,
+                    {
+                        selections: {
+                            id: true,
+                        },
+                        exclude: {
+                            updatedAt: true,
+                            userId: true,
+                        },
+                        relations: {},
+                        filter: {},
+                    },
+                    tx
+                );
+
+                const orderItems = await orderService.createOrderItemsBulk(
+                    order.id,
+                    verifiedItems,
+                    tx
+                );
+
+                let session;
+                if (totalPrice === 0) {
+                    await ticketService.issueTicketsForOrder(order, orderItems, userId, tx);
+                } else {
+                    session = await paymentService.createCheckoutSession(
+                        undefined,
+                        undefined,
+                        lineItems,
+                        userEmail,
+                        {
+                            orderId: order.id,
+                            userId,
+                        }
+                    );
+                }
+
+                return { order, session };
+            },
+            { timeout: 2000 } //* 2 Seconds timeout for transaction to throw exception
+        );
+
+        return {
+            status: 'success',
+            data: {
+                orderId: order.id,
+                stripeUrl: session?.url,
+            },
+        };
     },
 };
 
