@@ -1,4 +1,5 @@
 import { prisma as prismaClient } from './../config/db.js';
+import TicketStatus from '../constants/enums/ticketStatus.js';
 
 const ticketTypeService = {
     DEFAULT_EXCLUDE_FIELDS: {
@@ -19,7 +20,7 @@ const ticketTypeService = {
             data: ticketTypeData,
         });
     },
-    
+
     //CREATE FREE BULK TICKET
     async createFreeBulkTickets(eventId, ticketTypes, tx = prismaClient) {
         const ticketTypeData = ticketTypes.map((ticket) => ({
@@ -29,8 +30,8 @@ const ticketTypeService = {
             quantity: ticket.quantity || 100,
         }));
         return tx.ticketType.createManyAndReturn({
-            data: ticketTypeData
-        })
+            data: ticketTypeData,
+        });
     },
 
     //GET TOTAL TICKETS FOR EVENT
@@ -52,6 +53,38 @@ const ticketTypeService = {
         return tx.ticketType.deleteMany({
             where: { eventId },
         });
+    },
+
+    async issueTicketsForOrder(orderId, userId, orderItems, tx = prismaClient) {
+        const ticketsToCreate = [];
+        const updateStockPromises = [];
+
+        for (const item of orderItems) {
+            for (let i = 0; i < item.quantity; i++) {
+                ticketsToCreate.push({
+                    userId,
+                    ticketTypeId: item.ticketTypeId,
+                    orderId: orderId,
+                    orderItemId: item.id,
+                    status: TicketStatus.VALID,
+                });
+            }
+
+            const updatePromise = tx.ticketType.update({
+                where: { id: item.ticketTypeId },
+                data: { sold: { increment: item.quantity } },
+            });
+            updateStockPromises.push(updatePromise);
+        }
+
+        const [_, tickets] = await Promise.all([
+            ...updateStockPromises,
+            ticketsToCreate.length > 0
+                ? tx.ticket.createMany({ data: ticketsToCreate })
+                : Promise.resolve(),
+        ]);
+
+        return tickets;
     },
 };
 
