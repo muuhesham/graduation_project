@@ -94,6 +94,27 @@ enum GovernorateName {
   MATROUH
 }
 
+model Governorate {
+  id        Int                     @id @default(autoincrement())
+  name      GovernorateName         @unique
+  latitude  Float
+  longitude Float
+
+  relationsFrom         GovernorateRelation[] @relation("FromGovRelations")
+  relationsTo           GovernorateRelation[] @relation("ToGovRelations")
+}
+
+model GovernorateRelation {
+  fromGovernorateId Int
+  toGovernorateId   Int
+  rank              Int
+  distance          Float
+  fromGovernorate Governorate @relation("FromGovRelations", fields: [fromGovernorateId], references: [id])
+  toGovernorate   Governorate @relation("ToGovRelations", fields: [toGovernorateId], references: [id])
+
+  @@id([fromGovernorateId, toGovernorateId])
+}
+
 model Otp {
   id        Int      @id @default(autoincrement())
   email     String   @unique
