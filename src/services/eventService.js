@@ -8,8 +8,6 @@ import orderService from './orderService.js';
 import NotFoundError from '../errors/NotFoundError.js';
 import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
-import ticketService from './ticketTypeService.js';
-import userService from './userService.js';
 import ticketTypeService from './ticketTypeService.js';
 
 const eventService = {
@@ -47,6 +45,7 @@ const eventService = {
 
     MAX_LIMIT: 100,
 
+    // CREATE EVENT
     async create(
         organizerId,
         { title, description, type, mode, banner, venueId, categoryId },
@@ -101,14 +100,14 @@ const eventService = {
         };
     },
 
-    //DELETE
+    //DELETE EVENT
     async delete(eventId) {
         return prismaClient.event.delete({
             where: { id: Number(eventId) },
         });
     },
 
-    //SOFT DELETE
+    //SOFT DELETE EVENT
     async softDelete(eventId) {
         return prismaClient.event.update({
             where: { id: Number(eventId) },
@@ -116,7 +115,7 @@ const eventService = {
         });
     },
 
-    //UPDATE
+    //UPDATE EVENT
     async update(
         eventId,
         organizerId,
@@ -450,6 +449,7 @@ const eventService = {
         return event.organizer.userId === userId;
     },
 
+    // VALDIATION AND FETCH TICKETS FOR CHECKOUT
     async validateAndFetchTickets(id, requestedTickets) {
         const event = await eventService.getById(id, {
             relations: {
@@ -465,6 +465,7 @@ const eventService = {
                 organizer: {
                     select: {
                         id: true,
+                        userId: true,
                     },
                 },
             },
@@ -487,14 +488,18 @@ const eventService = {
                 throw new ConflictError(`Not enough stock for ${reqTicket.name}`);
             }
 
-            totalPrice += Number(dbTicket.price) * reqTicket.quantity;
+            if (reqTicket.quantity <= 0) {
+                throw new ConflictError(`Invalid quantity for ${reqTicket.name}`);
+            }
+
+            totalPrice += parseFloat(dbTicket.price) * reqTicket.quantity;
             itemsCount += reqTicket.quantity;
 
             lineItems.push({
                 price_data: {
                     currency: 'usd',
                     product_data: { name: dbTicket.name },
-                    unit_amount: Math.round(Number(dbTicket.price) * 100),
+                    unit_amount: Math.round(parseFloat(dbTicket.price) * 100),
                 },
                 quantity: reqTicket.quantity,
             });
@@ -510,6 +515,7 @@ const eventService = {
         return { event, verifiedItems, totalPrice, itemsCount, lineItems };
     },
 
+    // CHECKOUT PROCESS
     async checkout(id, userId, userEmail, tickets) {
         const { event, verifiedItems, totalPrice, itemsCount, lineItems } =
             await eventService.validateAndFetchTickets(id, tickets);
@@ -547,7 +553,7 @@ const eventService = {
 
                 let session;
                 if (totalPrice === 0) {
-                    await ticketService.issueTicketsForOrder(order, orderItems, userId, tx);
+                    await ticketTypeService.issueTicketsForOrder(order, orderItems, userId, tx);
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
@@ -563,7 +569,7 @@ const eventService = {
 
                 return { order, session };
             },
-            { timeout: 2000 } //* 2 Seconds timeout for transaction to throw exception
+            { timeout: 2000 }
         );
 
         return {
