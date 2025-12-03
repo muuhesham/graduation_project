@@ -8,12 +8,13 @@ const ticketTypeService = {
         updatedAt: true,
         eventId: true,
     },
-    //CREATE BULK TICKETS
+    
+    //CREATE BULK TICKETS TYPES
     async createBulkTickets(eventId, ticketTypes, tx = prismaClient) {
         const ticketTypeData = ticketTypes.map((ticket) => ({
             eventId,
             name: ticket.name,
-            price: ticket.price,
+            price: parseFloat(ticket.price),
             quantity: ticket.quantity,
         }));
         return tx.ticketType.createManyAndReturn({
@@ -21,7 +22,7 @@ const ticketTypeService = {
         });
     },
 
-    //CREATE FREE BULK TICKET
+    //CREATE FREE BULK TICKET TYPES
     async createFreeBulkTickets(eventId, ticketTypes, tx = prismaClient) {
         const ticketTypeData = ticketTypes.map((ticket) => ({
             eventId,
@@ -34,7 +35,7 @@ const ticketTypeService = {
         });
     },
 
-    //GET TOTAL TICKETS FOR EVENT
+    //GET TOTAL NUMBER TICKET TYPES FOR EVENT
     async getTotalTickets(eventId) {
         const totalTickets = await prismaClient.ticketType.aggregate({
             where: { eventId },
@@ -43,18 +44,21 @@ const ticketTypeService = {
         return totalTickets._sum.quantity || 0;
     },
 
+    // GET ALL TICKET TYPES FOR EVENT
     async getAllTicketTypes(eventId) {
         return prismaClient.ticketType.findMany({
             where: { eventId },
         });
     },
 
+    // DELETE TICKET TYPES FOR EVENT
     async deleteTickets(eventId, tx = prismaClient) {
         return tx.ticketType.deleteMany({
             where: { eventId },
         });
     },
 
+    // CREATE ACTUAL TICKETS FOR ORDER
     async issueTicketsForOrder(orderId, userId, orderItems, tx = prismaClient) {
         const ticketsToCreate = [];
         const updateStockPromises = [];
