@@ -11,7 +11,7 @@ const eventController = {
         if (!result || result.status === 'fail') {
             return sendFail(res, result.data, result.statusCode || 400);
         }
-        sendSuccess(res, { event: result }, 200);
+        return sendSuccess(res, { event: result }, 200);
     }),
 
     checkout: asyncWrapper(async (req, res) => {
@@ -21,7 +21,7 @@ const eventController = {
 
         const result = await eventService.checkout(id, userId, userEmail, tickets);
 
-        sendSuccess(res, result.data, 201);
+        return sendSuccess(res, result.data, 201);
     }),
 };
 
