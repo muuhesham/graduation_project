@@ -9,8 +9,6 @@ const Router = express.Router();
 
 Router.get('/:id', eventValidation.show, validate, eventController.show);
 
-//! express.raw();
-
 Router.post(
     '/:id/checkout',
     paymentLimiter,
