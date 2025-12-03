@@ -11,7 +11,6 @@ const orderService = {
         itemsCount: true,
         status: true,
         createdAt: true,
-        updatedAt: true,
     },
 
     DEFAULT_EXCLUDE_FIELDS: {
@@ -24,12 +23,13 @@ const orderService = {
 
     ALLOWED_RELATIONS: ['user', 'orderItems'],
 
+    // CREATE ORDER
     async create(
         userId,
         totalPrice,
         itemsCount,
         status = OrderStatus.PENDING,
-        { selections, relations, exclude, filter } = {},
+        { selections, relations, exclude, filters } = {},
         tx = prismaClient
     ) {
         const query = new PrismaQueryBuilder({
@@ -39,7 +39,7 @@ const orderService = {
             .select(selections || orderService.DEFAULT_SELECTIONS)
             .include(relations || orderService.DEFAULT_RELATIONS)
             .omit(exclude || orderService.DEFAULT_EXCLUDE_FIELDS)
-            .where(filter || {}).value;
+            .where(filters || {}).value;
 
         return tx.order.create({
             data: {
@@ -52,6 +52,7 @@ const orderService = {
         });
     },
 
+    // FIND ORDER BY ID
     async findById(id, { selections, relations, exclude, filters } = {}) {
         const query = new PrismaQueryBuilder({
             allowedRelations: orderService.ALLOWED_RELATIONS,
@@ -65,19 +66,14 @@ const orderService = {
         return prismaClient.order.findFirst(query);
     },
 
-    async updateStatus(id, status, tx = prismaClient) {
-        return tx.order.update({
-            where: { id },
-            data: { status },
-        });
-    },
-
+    // DELETE ORDER BY ID
     async delete(id, tx = prismaClient) {
         return tx.order.delete({
             where: { id },
         });
     },
 
+    // GET USER ORDERS
     async getUserOrders(
         userId,
         { selections, relations, exclude, filters, pagination, sort } = {}
@@ -96,6 +92,7 @@ const orderService = {
         return prismaClient.order.findMany(query);
     },
 
+    // UPDATE ORDER STATUS BY ORDER ID
     async updateOrderStatus(orderId, status, tx = prismaClient) {
         return tx.order.update({
             where: { id: orderId },
@@ -103,6 +100,7 @@ const orderService = {
         });
     },
 
+    // RETURN ORDER STATUS
     async status(id, userId) {
         const relations = {};
         const selections = {
@@ -116,12 +114,13 @@ const orderService = {
         });
     },
 
+    // CREATE BULK ORDER ITEMS
     async createOrderItemsBulk(id, items, tx = prismaClient) {
         return tx.orderItem.createManyAndReturn({
             data: items.map((item) => ({
                 orderId: id,
                 ticketTypeId: item.ticketTypeId,
-                price: item.price,
+                price: parseFloat(item.price),
                 quantity: item.quantity,
             })),
         });
