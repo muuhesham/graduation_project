@@ -9,13 +9,14 @@ import {
 
 import { prisma as prismaClient } from '../config/db.js';
 import AppError from '../errors/AppError.js';
-import ticketService from './ticketTypeService.js';
+import ticketTypeService from './ticketTypeService.js';
 import orderService from './orderService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 
 const paymentService = {
     stripe: new Stripe(STRIPE_SECRET_KEY),
 
+    // CREATE CHECKOUT SESSION
     async createCheckoutSession(
         paymentMethods = ['card'],
         mode = 'payment',
@@ -52,6 +53,7 @@ const paymentService = {
         });
     },
 
+    // WEBHOOK HANDLER
     async handleWebhookEvent(signature, rawBody) {
         let event;
 
@@ -73,6 +75,7 @@ const paymentService = {
         }
     },
 
+    // COMPLETED CHECKOUT HANDLER
     async handleCheckoutCompleted(session) {
         const orderId = session.metadata.orderId;
         const userId = session.metadata.userId;
@@ -85,12 +88,13 @@ const paymentService = {
 
             if (!order || order.status === OrderStatus.COMPLETED) return;
 
-            await ticketService.issueTicketsForOrder(orderId, userId, order.orderItems, tx);
+            await ticketTypeService.issueTicketsForOrder(orderId, userId, order.orderItems, tx);
 
             await orderService.updateOrderStatus(orderId, OrderStatus.COMPLETED, tx);
         });
     },
 
+    // CANCELED CHECKOUT HANDLER
     async handlePaymentFailed(session) {
         const orderId = session.metadata.orderId;
         await orderService.updateOrderStatus(orderId, OrderStatus.CANCELED);
