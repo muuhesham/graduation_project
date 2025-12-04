@@ -11,6 +11,9 @@ import parseJsonFields from '../middlewares/parseJson.js';
 
 const Router = express.Router();
 
+// CRUD OPERATIONS FOR ORGANIZER EVENTS
+
+// CREATE EVENT
 Router.post(
     '/events',
     publicLimiter,
@@ -24,6 +27,7 @@ Router.post(
     organizerController.createEvent
 );
 
+// UPDATE EVENT
 Router.put(
     '/events/:eventId',
     publicLimiter,
@@ -37,6 +41,7 @@ Router.put(
     organizerController.updateEvent
 );
 
+// DELETE EVENT
 Router.delete(
     '/events/:eventId',
     publicLimiter,
@@ -44,8 +49,8 @@ Router.delete(
     authorize.isOrganizer,
     organizerController.deleteEvent
 );
-//Router.get('/events', publicLimiter, authorize.isOrganizer, organizerController.listEvents);
-//Router.get('/events/:eventId/registrations', publicLimiter, authorize.isOrganizer, organizerController.listRegistrations);
-//Router.put('/registrations/:registrationId', publicLimiter, authorize.isOrganizer, organizerController.manageRegistration);
+
+// GET ALL EVENTS FOR ORGANIZER
+Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
 
 export default Router;
