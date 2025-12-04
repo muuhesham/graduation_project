@@ -71,6 +71,7 @@ const homeService = {
             description: true,
             bannerPath: true,
             bannerDisk: true,
+            organizerId: true,
         };
         const now = new Date();
 

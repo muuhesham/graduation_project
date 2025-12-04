@@ -83,8 +83,6 @@ const organizerValidation = {
             }),
         body('tickets.*.price').isFloat({ min: 0 }).withMessage('Price must be positive'),
         body('tickets.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-
-        body('tickets.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
         body('tickets').custom((tickets, { req }) => {
             const type = req.body.type;
             if (type === EventType.FREE) {
@@ -231,7 +229,7 @@ const organizerValidation = {
             .isString()
             .withMessage('Ticket name must be a string'),
 
-        body('tickets.*.price').optional().isFloat({ min: 0 }).withMessage('Price must be >= 0'),
+        body('tickets.*.price').optional().isFloat({ min: 0 }).withMessage('Price must be greater than or equal 0'),
 
         body('tickets.*.quantity')
             .optional()
