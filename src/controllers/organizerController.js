@@ -68,6 +68,18 @@ const organizerController = {
 
         return sendSuccess(res, result.data, 200);
     }),
+
+    listEvents: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+
+        const result = await organizerService.listEvents(userId);
+
+        if (result.status === 'fail') {
+            return sendFail(res, result.data, 400)
+        }
+
+        return sendSuccess(res, result.data, 200);
+    }),
 };
 
 export default organizerController;
