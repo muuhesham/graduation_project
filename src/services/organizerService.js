@@ -257,6 +257,47 @@ const organizerService = {
             where: { userId },
         });
     },
+
+    // GET ALL EVENTS
+    async listEvents(userId) {
+        const organizer = await organizerService.getByUserId(userId);
+
+        if(!organizer) {
+            return {
+                status: 'fail',
+                data: { error: 'Organizer not found' },
+            };
+        }
+
+        const organizerId = organizer.id;
+
+        const events = await prismaClient.event.findMany({
+            where: { organizerId },
+            select: {
+            id: true,
+            organizerId: true,
+            title: true,
+            description: true,
+            venueId: true,
+            bannerDisk: true,
+            bannerPath: true,
+            venue: {
+                select: {
+                    name: true,
+                },
+            },
+        }});
+
+        const result = await eventService.getBannerAbsUrl(events);
+
+
+        return {
+            status: 'success',
+            data: {
+                result
+            }
+        }
+    },
 };
 
 export default organizerService;
