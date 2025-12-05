@@ -40,6 +40,8 @@ model User {
   //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer    Organizer?
   categories         AttendeeFavoriteCategory[]
+  tickets       Ticket[]
+  orders        Order[]
 }
 
 enum Role {
@@ -246,17 +248,75 @@ model AttendeeFavoriteCategory {
 }
 
 model TicketType {
-  id        Int      @id @default(autoincrement())
-  eventId   Int
-  name      String
-  price     Decimal  @db.Decimal(10, 2)
-  sold      Int      @default(0)
-  quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id         Int         @id @default(autoincrement())
+  eventId    Int
+  name       String
+  price      Decimal     @db.Decimal(10, 2)
+  sold       Int         @default(0)
+  quantity   Int
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets    Ticket[]
+  orderItems OrderItem[]
 
   @@unique([name, eventId])
+}
+
+model Ticket {
+  id           String       @id @default(uuid())
+  userId       String
+  ticketTypeId Int
+  orderId      String?
+  orderItemId  String
+  status       TicketStatus @default(valid)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  order      Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+enum TicketStatus {
+  valid
+  used
+  expired
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  totalPrice Decimal     @db.Decimal(10, 2)
+  itemsCount Int
+  status     OrderStatus @default(pending)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  tickets    Ticket[]
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  ticketTypeId Int
+  price        Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  tickets    Ticket[]
+}
+
+enum OrderStatus {
+  pending
+  completed
+  cancelled
 }
 
 // model InterestedEvent {
@@ -268,61 +328,6 @@ model TicketType {
 //   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 //
 //   @@id([userId, eventId])
-// }
-
-//! DON'T RUN IT NOW IT'S JUST PLACEHOLDER FOR TICKET MODEL
-
-// model Ticket {
-//   id           String       @id @default(uuid())
-//   userId       String
-//   ticketTypeId Int
-//   orderItemId  Int?         @unique
-//   qrCodeId     String?
-//   status       TicketStatus @default(valid)
-//   issuedAt     DateTime     @default(now())
-//   createdAt    DateTime     @default(now())
-//   updatedAt    DateTime     @updatedAt
-//
-//   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-//   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   orderItem  OrderItem? @relation(fields: [orderItemId], references: [id])
-//   qrCodes    QrCode?    @relation(fields: [qrCodeId], references: [id])
-//
-//   @@unique([userId, ticketTypeId])
-// }
-//
-// model Order {
-//   id         String      @id @default(uuid())
-//   userId     String
-//   totalPrice Decimal     @db.Decimal(10, 2)
-//   status     OrderStatus @default(pending)
-//   createdAt  DateTime    @default(now())
-//   updatedAt  DateTime    @updatedAt
-//
-//   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   orderItems OrderItem[]
-//   payment    Payment?
-// }
-//
-// model OrderItem {
-//   id           Int      @id @default(autoincrement())
-//   orderId      String   @unique
-//   ticketTypeId Int
-//   quantity     Int
-//   unitPrice    Decimal  @db.Decimal(10, 2)
-//   createdAt    DateTime @default(now())
-//   updatedAt    DateTime @updatedAt
-//
-//   order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-//   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-//   ticketId   String?    @unique
-//   ticket     Ticket?    @relation(fields: [ticketId], references: [id])
-// }
-//
-// enum OrderStatus {
-//   pending
-//   completed
-//   cancelled
 // }
 //
 // model Payment {
@@ -350,8 +355,8 @@ model TicketType {
 //   completed
 //   failed
 //   refunded
-// }
-//
+//}
+
 // model QrCode {
 //   id        String   @id @default(uuid())
 //   ticketId  String   @unique
@@ -364,12 +369,7 @@ model TicketType {
 //
 //   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 // }
-//
-// enum TicketStatus {
-//   valid
-//   used
-//   expired
-// }
+
 //
 // enum QRStatus {
 //   valid
