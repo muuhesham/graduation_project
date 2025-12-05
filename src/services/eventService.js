@@ -392,6 +392,82 @@ const eventService = {
 
         return await eventService.findBySlug(organizerId, slug, { relations });
     },
+
+    async getNearbyEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        let governorateId = null;
+
+        if (userId) {
+            const user = await prismaClient.user.findUnique({
+                where: { id: userId },
+                select: { governorateId: true },
+            });
+
+            governorateId = user?.governorateId;
+        }
+
+        if (!governorateId) {
+            const cairo = await prismaClient.governorate.findUnique({
+                where: { name: 'CAIRO' },
+                select: { id: true },
+            });
+            governorateId = cairo.id;
+        }
+
+        const events = await prismaClient.event.findMany({
+            where: {
+                venue: {
+                    governorate: {
+                        relationsTo: {
+                            some: { fromGovernorateId: governorateId },
+                        },
+                    },
+                },
+            },
+            include: {
+                venue: {
+                    include: {
+                        governorate: {
+                            include: {
+                                relationsTo: {
+                                    where: { fromGovernorateId: governorateId },
+                                    select: { rank: true }, // bring rank to sort
+                                },
+                            },
+                        },
+                    },
+                },
+                ticketTypes: true,
+                organizer: true,
+                category: true,
+            },
+            orderBy: {
+                venue: {
+                    governorate: {
+                        relationsTo: {
+                            rank: 'asc',
+                        },
+                    },
+                },
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        events.forEach((event) => {
+            event.ticketTypes?.forEach((ticket) => {
+                ticket.price = parseFloat(ticket.price);
+            });
+        });
+
+        return eventService.getBannerAbsUrl(events);
+    },
+
+    async getPersonalizedEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        // if not logged in, get all events as default
+        if (!userId) {
+            return eventService.getAll({ limit, page });
+        }
+    },
 };
 
 export default eventService;

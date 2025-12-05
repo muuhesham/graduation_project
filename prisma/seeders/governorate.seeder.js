@@ -74,8 +74,8 @@ const rankMap = buildRankMap();
 const seedGovernorates = async function (prisma) {
     console.log('Seeding Governorates...');
 
-    // Insert governorates
-    for (const governorateName of governorateNames) {
+    // 1. Seed the governorate rows (no nearest list yet)
+    for (const governorateName in rankMap) {
         const data = governorateMap[governorateName];
 
         await prisma.governorate.upsert({
@@ -85,39 +85,38 @@ const seedGovernorates = async function (prisma) {
                 name: governorateName,
                 latitude: data.latitude,
                 longitude: data.longitude,
+                otherGovsIdsSorted: [],
             },
         });
     }
-    console.log('Seeding GovernorateRelation...');
 
-    for (const governorateName of governorateNames) {
-        const from = await prisma.governorate.findUnique({
-            where: { name: governorateName },
+    console.log('Seeding nearest governorates (otherGovsIdsSorted)...');
+
+    // 2. Seed the sorted nearest governorates list into JSON field
+    for (const fromName in rankMap) {
+        // Get the source governorate row
+        const fromGov = await prisma.governorate.findUnique({
+            where: { name: fromName },
         });
 
-        for (const data of rankMap[governorateName]) {
-            if (data.governorateName === governorateName) continue; // Skip self
+        // Build the ordered array of destination IDs
+        const orderedIds = [];
 
-            const to = await prisma.governorate.findUnique({
-                where: { name: data.governorateName },
+        for (const entry of rankMap[fromName]) {
+            if (entry.governorateName === fromName) continue; // skip itself
+
+            const toGov = await prisma.governorate.findUnique({
+                where: { name: entry.governorateName },
             });
 
-            await prisma.governorateRelation.upsert({
-                where: {
-                    fromGovernorateId_toGovernorateId: {
-                        fromGovernorateId: from.id,
-                        toGovernorateId: to.id,
-                    },
-                },
-                update: {},
-                create: {
-                    fromGovernorateId: from.id,
-                    toGovernorateId: to.id,
-                    rank: data.rank,
-                    distance: data.distance,
-                },
-            });
+            orderedIds.push(toGov.id);
         }
+
+        // Update the source row with the JSON array
+        await prisma.governorate.update({
+            where: { id: fromGov.id },
+            data: { otherGovsIdsSorted: orderedIds },
+        });
     }
 
     console.log('Seeding completed!');

@@ -11,7 +11,7 @@ import seedOrganizers from './seeders/organizer.seeder.js';
 async function main() {
     console.log('🚀 Starting database seed...');
     await seedGovernorates(prisma); // this must be first, and must exist before any deployments
-    const users = await seedUsers(prisma);
+    // const users = await seedUsers(prisma);
     // const categories = await seedCategories(prisma);
     // const venues = await seedVenues(prisma);
     // const organizers = await seedOrganizers(prisma, { users });

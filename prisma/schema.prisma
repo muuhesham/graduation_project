@@ -28,7 +28,8 @@ model User {
   authProvider       AuthProvider @default(LOCAL)
   isCompleted        Boolean   @default(false)
   birthDate          DateTime?
-  governorate        GovernorateName?
+  governorateId      Int?
+  governorate        Governorate? @relation(fields: [governorateId], references: [id])
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   //* TODO: ADD 'deletedAt' field for soft delete
@@ -95,25 +96,18 @@ enum GovernorateName {
 }
 
 model Governorate {
-  id        Int                     @id @default(autoincrement())
-  name      GovernorateName         @unique
+  id        Int               @id @default(autoincrement())
+  name      GovernorateName   @unique
   latitude  Float
   longitude Float
 
-  relationsFrom         GovernorateRelation[] @relation("FromGovRelations")
-  relationsTo           GovernorateRelation[] @relation("ToGovRelations")
+  // JSON array of nearest governorates IDs in order (e.g. [3, 20, 17, ...]) asc. nearest w.r.t the row's governorate
+  otherGovsIdsSorted   Json?
+
+  users     User[]
+  venues    Venue[]
 }
 
-model GovernorateRelation {
-  fromGovernorateId Int
-  toGovernorateId   Int
-  rank              Int
-  distance          Float
-  fromGovernorate Governorate @relation("FromGovRelations", fields: [fromGovernorateId], references: [id])
-  toGovernorate   Governorate @relation("ToGovRelations", fields: [toGovernorateId], references: [id])
-
-  @@id([fromGovernorateId, toGovernorateId])
-}
 
 model Otp {
   id        Int      @id @default(autoincrement())
@@ -227,6 +221,9 @@ model Venue {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   events        Event[]
+  governorateId Int
+
+  governorate   Governorate? @relation(fields: [governorateId], references: [id], onDelete: SetNull)
 }
 
 model Category {

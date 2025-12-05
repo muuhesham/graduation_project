@@ -83,8 +83,13 @@ const homeService = {
         });
     },
 
-    //TODO: Happening near you (based on user location)
-    //TODO: Just for you (based on user preferences)
+    async nearbyEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        return eventService.getNearbyEvents({ userId, limit, page });
+    },
+
+    async personalizedEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        return eventService.getPersonalizedEvents({ userId, limit, page });
+    }
 };
 
 export default homeService;
