@@ -580,6 +580,127 @@ const eventService = {
             },
         };
     },
+
+    async getNearbyEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        let governorateId = null;
+
+        if (userId) {
+            const user = await prismaClient.user.findUnique({
+                where: { id: userId },
+                select: { governorateId: true },
+            });
+
+            governorateId = user?.governorateId;
+        }
+
+        if (!governorateId) {
+            const cairo = await prismaClient.governorate.findUnique({
+                where: { name: 'CAIRO' },
+                select: { id: true },
+            });
+            governorateId = cairo.id;
+        }
+
+        const { otherGovsIdsSorted } = await prismaClient.governorate.findUnique({
+            where: { id: governorateId },
+            select: { otherGovsIdsSorted: true },
+        });
+
+        const offset = (page - 1) * limit;
+
+        const rows = await prismaClient.$queryRawUnsafe(
+            `
+        SELECT json_build_object(
+            'id', e.id,
+            'organizerId', e."organizerId",
+            'title', e.title,
+            'slug', e.slug,
+            'description', e.description,
+            'type', e.type,
+            'mode', e.mode,
+            'venueId', e."venueId",
+            'categoryId', e."categoryId",
+            'createdAt', e."createdAt",
+            'venue', to_jsonb(v),
+            'ticketTypes', COALESCE(json_agg(tt) FILTER (WHERE tt.id IS NOT NULL), '[]'::json),
+            'bannerUrl', NULL -- optional: you can compute later
+        ) AS event
+        FROM "Event" e
+        JOIN "Venue" v ON v.id = e."venueId"
+        LEFT JOIN "TicketType" tt ON tt."eventId" = e.id
+
+        WHERE v."governorateId" = ANY($1::int[])
+
+        GROUP BY e.id, v.id
+        ORDER BY array_position($1::int[], v."governorateId")
+        LIMIT $2 OFFSET $3;
+        `,
+            otherGovsIdsSorted,
+            limit,
+            offset
+        );
+
+        const events = rows.map((r) => r.event);
+
+        events.forEach((event) =>
+            event.ticketTypes?.forEach((ticket) => (ticket.price = parseFloat(ticket.price)))
+        );
+
+        return eventService.getBannerAbsUrl(events);
+    },
+
+    async getPersonalizedEvents({ userId = null, limit = 6, page = 1 } = {}) {
+        if (!userId) {
+            return eventService.getAll({ limit, page });
+        }
+
+        const favorite = await prismaClient.attendeeFavoriteCategory.findMany({
+            where: { attendeeId: userId },
+            select: { categoryId: true },
+        });
+
+        const categoryIds = favorite.map((fav) => fav.categoryId);
+
+        const events = await prismaClient.event.findMany({
+            where: {
+                categoryId: { in: categoryIds },
+                deletedAt: null,
+            },
+            include: {
+                venue: {
+                    select: {
+                        id: true,
+                        googlePlaceId: true,
+                        latitude: true,
+                        longitude: true,
+                        name: true,
+                        address: true,
+                        country: true,
+                        state: true,
+                        city: true,
+                        zipCode: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        governorateId: true,
+                    },
+                },
+                organizer: true,
+                category: true,
+                ticketTypes: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        events.forEach((event) => {
+            event.ticketTypes?.forEach((t) => {
+                t.price = parseFloat(t.price);
+            });
+        });
+
+        return eventService.getBannerAbsUrl(events);
+    },
 };
 
 export default eventService;

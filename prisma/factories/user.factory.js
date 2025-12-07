@@ -7,7 +7,6 @@ async function userFactory() {
     return {
         name: faker.person.fullName(),
         email: faker.internet.email().toLowerCase(),
-        age: faker.number.int({ min: 18, max: 80 }),
         password: await hashPassword(PASSWORD),
     };
 }

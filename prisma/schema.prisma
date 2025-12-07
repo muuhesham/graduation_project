@@ -28,7 +28,8 @@ model User {
   authProvider       AuthProvider @default(LOCAL)
   isCompleted        Boolean   @default(false)
   birthDate          DateTime?
-  governorate        GovernorateName?
+  governorateId      Int?
+  governorate        Governorate? @relation(fields: [governorateId], references: [id])
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   //* TODO: ADD 'deletedAt' field for soft delete
@@ -67,34 +68,48 @@ enum AuthProvider {
 }
 
 enum GovernorateName {
-  CAIRO
-  GIZA
-  ALEXANDRIA
   ASWAN
   LUXOR
-  QALYUBIA
-  SHARQIA
-  GHARBIA
-  FAIYUM
-  BENI_SUEF
-  MINYA
-  ASSIUT
-  SOHAG
-  QENA
+  ASYUT
   RED_SEA
-  SOUTH_SINAI
-  NORTH_SINAI
   NEW_VALLEY
-  DAMIETTA
-  DAKAHLIA
-  PORT_SAID
+  AL_MINYA
+  FAIYUM
+  CAIRO
   SUEZ
-  ISMAILIA
-  MENOUFIA
+  NORTH_SINAI
+  PORT_SAID
+  AL_QALYUBIYA
+  SOUTH_SINAI
+  BANI_SWEIF
+  SUHAJ
+  QENA
+  AL_MINUFIYA
+  AL_ISMAILIYA
+  EASTERN
+  DAMIETTA
+  AD_DAKAHLIYA
+  GHARBIA
+  THE_LAKE
+  GIZA
+  MATRUH
+  ALEXANDRIA
   KAFR_EL_SHEIKH
-  BEHEIRA
-  MATROUH
 }
+
+model Governorate {
+  id        Int               @id @default(autoincrement())
+  name      GovernorateName   @unique
+  latitude  Float
+  longitude Float
+
+  // JSON array of nearest governorates IDs in order (e.g. [3, 20, 17, ...]) asc. nearest w.r.t the row's governorate
+  otherGovsIdsSorted   Json?
+
+  users     User[]
+  venues    Venue[]
+}
+
 
 model Otp {
   id        Int      @id @default(autoincrement())
@@ -208,6 +223,9 @@ model Venue {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   events        Event[]
+  governorateId Int
+
+  governorate   Governorate? @relation(fields: [governorateId], references: [id], onDelete: SetNull)
 }
 
 model Category {

@@ -1,8 +1,14 @@
 import authService from '../services/authService.js';
 import { sendSuccess, sendFail, sendError } from '../utils/response.js';
-import { CALLBACK_URL, CLIENT_ID, CLIENT_SECRET, HOSTNAME, PORT } from '../config/env.js';
+import {
+    CALLBACK_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    HOSTNAME,
+    PORT,
+    GOOGLE_REDIRECT_URL,
+} from '../config/env.js';
 import { google } from 'googleapis';
-import jwt from 'jsonwebtoken';
 import { AuthThirdPartyService } from '../services/thirdPartyAuthService.js';
 
 const authController = {
@@ -142,7 +148,7 @@ class GoogleAuthController extends AuthThirdPartyService {
         this.oauth2Client = new google.auth.OAuth2(
             CLIENT_ID,
             CLIENT_SECRET,
-            'http://' + HOSTNAME + ':' + PORT + CALLBACK_URL
+            'http://' + 'localhost' + ':' + PORT + CALLBACK_URL
         );
     }
 
@@ -167,20 +173,21 @@ class GoogleAuthController extends AuthThirdPartyService {
 
     handleCallback = async (req, res) => {
         const code = req.query.code;
-        if (!code) {
-            return sendFail(res, { error: 'Missing code' });
-        }
+        if (!code) return sendFail(res, { error: 'Missing code' });
 
         try {
             const { tokens } = await this.oauth2Client.getToken(code);
             const { id_token } = tokens;
+            if (!id_token) return sendFail(res, { error: 'Missing id_token' });
 
-            const decoded = jwt.decode(id_token);
-            if (!decoded) return sendFail(res, { error: 'Failed to decode user info' });
+            const ticket = await this.oauth2Client.verifyIdToken({
+                idToken: id_token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
 
-            const { email, name, sub: providerId } = decoded;
+            const { email, name, sub: providerId } = ticket.getPayload();
+
             const user = await this.createOrFetchUser(email, name, 'GOOGLE', providerId);
-
             if (!user) {
                 return sendError(
                     res,
@@ -191,14 +198,16 @@ class GoogleAuthController extends AuthThirdPartyService {
                 );
             }
 
-            // what do you think of making this: super.generateJwt(user);
             const result = await this.generateJwt(user);
+            if (result.status === 'fail') return sendFail(res, result.data, 400);
 
-            if (result.status === 'fail') {
-                return sendFail(res, result.data, 400);
-            }
+            const accessToken = result.data.accessToken?.token;
+            const refreshToken = result.data.refreshToken;
+            const expiresIn = result.data.accessToken?.expiresIn;
 
-            return sendSuccess(res, result.data, 201);
+            const redirectUrl = `${GOOGLE_REDIRECT_URL}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+
+            return res.redirect(redirectUrl);
         } catch (error) {
             console.error(error);
             return sendError(res, 'Google OAuth2 authentication failed', 'OAUTH2_ERROR', null, 500);

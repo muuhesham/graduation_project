@@ -20,6 +20,7 @@ export const DATABASE_NAME = process.env.DATABASE_NAME;
 export const CLIENT_ID = process.env.CLIENT_ID;
 export const CLIENT_SECRET = process.env.CLIENT_SECRET;
 export const CALLBACK_URL = process.env.CALLBACK_URL;
+export const GOOGLE_REDIRECT_URL = process.env.GOOGLE_REDIRECT_URL;
 export const MAIL_HOST = process.env.MAIL_HOST;
 export const MAIL_PORT = process.env.MAIL_PORT;
 export const MAIL_USER = process.env.MAIL_USER;
