@@ -169,18 +169,19 @@ class OnboardingController {
                 return sendFail(res, { message: 'User email not verified' }, 403);
             }
 
-            const governorate = await prisma.governorate.findUnique({
+            const governorateId = await prisma.governorate.findUnique({
                 where: { name: governorateName },
-            });
+                select: { id: true },
+            })?.id;
 
-            if (!governorate) {
+            if (!governorateId) {
                 return sendFail(res, { message: 'Governorate not found' }, 404);
             }
 
             const updatedUser = await prisma.user.update({
                 where: { id },
                 data: {
-                    governorateId: governorate.id,
+                    governorateId,
                 },
             });
 
