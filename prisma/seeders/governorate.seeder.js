@@ -10,12 +10,10 @@ const governorateMap = Object.fromEntries(
     governorates.map((governorate) => [governorate.name, governorate])
 );
 
-// Radians converter
 const toRadian = function (degree) {
     return (degree * Math.PI) / 180;
 };
 
-// Haversine in KM
 const haversine = function (start, end) {
     const RADIUS = 6371;
     const distanceLatitude = toRadian(end.latitude - start.latitude);
@@ -33,7 +31,6 @@ const haversine = function (start, end) {
 // [ 'CAIRO', 'GIZA', ... ]
 const governorateNames = Object.keys(governorateMap);
 
-// Build ranking 1 to 26
 const buildRankMap = function () {
     const rankMap = {};
 
@@ -42,8 +39,6 @@ const buildRankMap = function () {
         const distances = [];
 
         for (const other of governorateNames) {
-            if (other === currentGovernorateName.name) continue;
-
             distances.push({
                 governorateName: other,
                 distance: haversine(currentGovernorateName, governorateMap[other]),
@@ -74,7 +69,6 @@ const rankMap = buildRankMap();
 const seedGovernorates = async function (prisma) {
     console.log('Seeding Governorates...');
 
-    // 1. Seed the governorate rows (no nearest list yet)
     for (const governorateName in rankMap) {
         const data = governorateMap[governorateName];
 
@@ -92,19 +86,14 @@ const seedGovernorates = async function (prisma) {
 
     console.log('Seeding nearest governorates (otherGovsIdsSorted)...');
 
-    // 2. Seed the sorted nearest governorates list into JSON field
     for (const fromName in rankMap) {
-        // Get the source governorate row
         const fromGov = await prisma.governorate.findUnique({
             where: { name: fromName },
         });
 
-        // Build the ordered array of destination IDs
         const orderedIds = [];
 
         for (const entry of rankMap[fromName]) {
-            if (entry.governorateName === fromName) continue; // skip itself
-
             const toGov = await prisma.governorate.findUnique({
                 where: { name: entry.governorateName },
             });
@@ -112,7 +101,6 @@ const seedGovernorates = async function (prisma) {
             orderedIds.push(toGov.id);
         }
 
-        // Update the source row with the JSON array
         await prisma.governorate.update({
             where: { id: fromGov.id },
             data: { otherGovsIdsSorted: orderedIds },

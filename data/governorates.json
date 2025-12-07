@@ -26,22 +26,22 @@
             "longitude": 32.89983
         },
         {
-            "name": "ASSIUT",
+            "name": "ASYUT",
             "latitude": 27.180134,
             "longitude": 31.189283
         },
         {
-            "name": "SOHAG",
+            "name": "SUHAJ",
             "latitude": 26.549999,
             "longitude": 31.700001
         },
         {
-            "name": "BEHEIRA",
+            "name": "THE_LAKE",
             "latitude": 31.04056,
             "longitude": 30.47
         },
         {
-            "name": "DAKAHLIA",
+            "name": "AD_DAKAHLIYA",
             "latitude": 31.037933,
             "longitude": 31.381523
         },
@@ -71,17 +71,17 @@
             "longitude": 32.639637
         },
         {
-            "name": "MATROUH",
+            "name": "MATRUH",
             "latitude": 31.354343,
             "longitude": 27.237316
         },
         {
-            "name": "MINYA",
+            "name": "AL_MINYA",
             "latitude": 28.100776,
             "longitude": 30.754954
         },
         {
-            "name": "MENOUFIA",
+            "name": "AL_MINUFIYA",
             "latitude": 30.560456,
             "longitude": 31.007948
         },
@@ -96,7 +96,7 @@
             "longitude": 33.7984
         },
         {
-            "name": "QALYUBIA",
+            "name": "AL_QALYUBIYA",
             "latitude": 30.465993,
             "longitude": 31.184831
         },
@@ -111,7 +111,7 @@
             "longitude": 33.812912
         },
         {
-            "name": "SHARQIA",
+            "name": "EASTERN",
             "latitude": 30.5877,
             "longitude": 31.502
         },
@@ -126,12 +126,12 @@
             "longitude": 32.52627
         },
         {
-            "name": "BENI_SUEF",
+            "name": "BANI_SWEIF",
             "latitude": 29.076,
             "longitude": 31.097
         },
         {
-            "name": "ISMAILIA",
+            "name": "AL_ISMAILIYA",
             "latitude": 30.60427,
             "longitude": 32.27225
         }
