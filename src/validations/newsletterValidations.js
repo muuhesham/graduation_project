@@ -1,9 +1,5 @@
 import { param, body } from 'express-validator';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import userLanguage from '../constants/enums/userLanguage.js';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const newsletterValidations = {
     subscribe: [
