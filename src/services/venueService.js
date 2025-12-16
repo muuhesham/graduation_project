@@ -27,7 +27,7 @@ const venueService = {
         const governorateId = governorate?.id;
 
         if (!governorateId) {
-            return sendFail(res, { message: 'Governorate not found' }, 404);
+            return { message: 'Governorate not found' };
         }
 
         return tx.venue.create({
@@ -59,7 +59,7 @@ const venueService = {
         const governorateId = governorate?.id;
 
         if (!governorateId) {
-            return sendFail(res, { message: 'Governorate not found' }, 404);
+            return  { message: 'Governorate not found' };
         }
 
         return tx.venue.update({
