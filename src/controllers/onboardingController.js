@@ -37,7 +37,7 @@ class OnboardingController {
 
             const missing = [];
             if (!user.birthDate) missing.push('basic');
-            if (!user.governorate) missing.push('governorate');
+            if (!user.governorateId) missing.push('governorate');
 
             const hasPreferences = await prisma.attendeeFavoriteCategory.findFirst({
                 where: { attendeeId: id },
