@@ -32,9 +32,7 @@ model User {
   governorate        Governorate? @relation(fields: [governorateId], references: [id])
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
-  //* TODO: ADD 'deletedAt' field for soft delete
-  //deletedAt          DateTime?
-
+  deletedAt          DateTime?
   //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
   refreshToken RefreshToken[]
   //* TODO: UPDATE 'Organizer' to 'organizer'
