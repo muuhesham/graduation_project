@@ -163,6 +163,14 @@ const paymentLimiter = rateLimiter({
     prefix: 'payment',
 });
 
+const profileLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: 'Too many profile updates. Please try again later.',
+    prefix: 'profile',
+});
+
+
 export {
     rateLimiter,
     strictLimiter,
@@ -178,4 +186,5 @@ export {
     refreshLimiter,
     requestResetLimiter,
     paymentLimiter,
+    profileLimiter
 };
