@@ -24,5 +24,13 @@ async function auth(req, res, next) {
     }
 }
 
+function generateToken(payload, experesIn = '15m') {
+    return jwt.sign(payload, JWT_KEY, { expiresIn: experesIn})
+}
+
+function verifyToken(token) {
+    return jwt.verify(token, JWT_KEY);
+}
 
 export default auth;
+export { generateToken, verifyToken };

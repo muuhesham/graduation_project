@@ -292,6 +292,19 @@ const authService = {
         const { cacheKey } = authService.accessTokenCache({ accessToken });
         return !(await cacheService.exists(cacheKey));
     },
+
+    // async revokeTokenForUser(userId) {
+    //     const revokedToken = prismaClient.refreshToken.updateMany({
+    //         where: { userId },
+    //         data: { isRevoked: true },
+    //     })
+    //     return revokedToken;
+    // }
+    async deleteTokensForUser(userId) {
+        await prismaClient.refreshToken.deleteMany({
+            where: { userId }
+        })
+    },
 };
 
 export default authService;
