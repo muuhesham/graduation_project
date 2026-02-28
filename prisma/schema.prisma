@@ -42,6 +42,7 @@ model User {
   categories         AttendeeFavoriteCategory[]
   tickets       Ticket[]
   orders        Order[]
+  interestedEvents InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -181,6 +182,7 @@ model Event {
 
   eventSessions EventSession[]
   ticketTypes   TicketType[]
+  interestedEvenets InterestedEvent[]
 
   @@unique([organizerId, slug])
 }
@@ -326,17 +328,17 @@ enum OrderStatus {
   cancelled
 }
 
-// model InterestedEvent {
-//   userId    String
-//   eventId   Int
-//   createdAt DateTime @default(now())
-//
-//   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-//
-//   @@id([userId, eventId])
-// }
-//
+model InterestedEvent {
+  userId    String
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
 // model Payment {
 //   id            String        @id @default(uuid())
 //   orderId       String        @unique
