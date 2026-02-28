@@ -113,6 +113,18 @@ const userService = {
         });
         return !!user;
     },
+
+    async getInterestedEvents(userId) {
+        const interestedEvents = await prismaClient.interestedEvent.findMany({
+            where: { userId },
+            include: {
+                event: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return interestedEvents;
+    },
+    
 };
 
 export default userService;

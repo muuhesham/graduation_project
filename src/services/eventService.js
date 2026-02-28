@@ -701,6 +701,50 @@ const eventService = {
 
         return eventService.getBannerAbsUrl(events);
     },
+
+    async addToInterested(userId, eventId) {
+        const existing = await prismaClient.interestedEvent.findUnique({
+            where: {
+                userId_eventId: {userId, eventId}
+            }
+        });
+
+        if(existing){
+            return {
+                status: 'fail',
+                data: { message: 'Event is already in your interested list' }
+            }
+        }
+
+        const event = await prismaClient.interestedEvent.create({
+            data: {
+                userId,
+                eventId,
+            },
+        });
+
+        return event;
+    },
+
+    async removeFromInterested(userId, eventId) {
+        const existing = await prismaClient.interestedEvent.findUnique({
+            where: { userId_eventId: {userId, eventId} }
+        })
+
+        if(!existing){
+            return {
+                status: 'fail',
+                data: { message: 'Event is not in your interested list' }
+            }
+        }
+
+        const deletedEvent = await prismaClient.interestedEvent.delete({
+            where: { userId_eventId: {userId, eventId} },
+        });
+
+        return deletedEvent;
+    },
+
 };
 
 export default eventService;
