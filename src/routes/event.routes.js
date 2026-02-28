@@ -18,4 +18,8 @@ Router.post(
     eventController.checkout
 );
 
+Router.post('/:id/interested', auth, eventController.addToInterested);
+Router.delete('/:id/interested', auth, eventController.removeFromInterested);
+
+
 export default Router;
