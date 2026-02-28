@@ -23,6 +23,33 @@ const eventController = {
 
         return sendSuccess(res, result.data, 201);
     }),
+
+    addToInterested: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const eventId = parseInt(req.params.id);
+
+        const result = await eventService.addToInterested(userId, eventId);
+
+        if(!result || result.status === 'fail') {
+            return sendFail(res, result.data, 400);
+        }
+
+        return sendSuccess(res, { message: 'Event added to your interested list' }, 200);     
+    }),
+
+    removeFromInterested: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const eventId = parseInt(req.params.id);
+
+        const result = await eventService.removeFromInterested(userId, eventId);
+
+        if(!result || result.status === 'fail') {
+            return sendFail(res, result.data, 400);
+        }
+
+        return sendSuccess(res, { message: 'Event removed from your interested list' }, 200);
+    }),
+
 };
 
 export default eventController;
