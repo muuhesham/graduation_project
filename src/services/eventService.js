@@ -553,7 +553,7 @@ const eventService = {
 
                 let session;
                 if (totalPrice === 0) {
-                    await ticketTypeService.issueTicketsForOrder(order, orderItems, userId, tx);
+                    await ticketTypeService.issueTicketsForOrder(order.id, userId, orderItems, tx);
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
