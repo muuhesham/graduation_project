@@ -13,6 +13,18 @@ const userController = {
         
         return sendSuccess(res, result.data, 200);
     }),
+
+    getUserTickets: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const tickets = await userService.getUserTickets(userId);
+
+        if(tickets.length === 0) {
+            return sendSuccess(res, { data: tickets , message: 'No tickets found for this user' }, 200);
+        }
+
+        return sendSuccess(res, tickets, 200);
+    }),
+
 };
 
 export default userController;
