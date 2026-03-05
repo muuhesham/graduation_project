@@ -1,5 +1,7 @@
 import { prisma as prismaClient } from './../config/db.js';
 import TicketStatus from '../constants/enums/ticketStatus.js';
+import { generateQrCode } from '../utils/generateQrCode.js';
+import ticketService from './ticketService.js';
 
 const ticketTypeService = {
     DEFAULT_EXCLUDE_FIELDS: {
@@ -87,6 +89,17 @@ const ticketTypeService = {
                 ? tx.ticket.createMany({ data: ticketsToCreate })
                 : Promise.resolve(),
         ]);
+
+        const ticketsCreated = await ticketService.getTicketsCreated(userId, orderItems, tx);
+
+        if (ticketsCreated.length === 0) {
+            return {
+                status: 'fail',
+                data: { error: 'No tickets were created for this order' },
+            }
+        }
+
+        await Promise.all(ticketsCreated.map((ticket) => { generateQrCode(ticket); }));
 
         return tickets;
     },
