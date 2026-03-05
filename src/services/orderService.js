@@ -1,6 +1,8 @@
 import { prisma as prismaClient } from '../config/db.js';
 import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
+import AppError from '../errors/AppError.js';
+import fileService from './fileService.js';
 
 const orderService = {
     MAX_LIMIT: 100,
@@ -125,6 +127,61 @@ const orderService = {
             })),
         });
     },
+
+    async getOrderTickets(orderId, userId) {
+        const order = await prismaClient.order.findFirst({
+            where: { userId, id: orderId, status: OrderStatus.COMPLETED },
+            select: {
+                totalPrice: true,
+                itemsCount: true,
+                status: true,
+                user: { select: { name: true, email: true } },
+                tickets: {
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        orderItem: {
+                            select: {
+                                quantity: true,
+                                ticketType: {
+                                    select: {
+                                        name: true,
+                                        price: true,
+                                        event: { select: { title: true } },
+                                    },
+                                },
+                            }
+                        },
+                        qrCode: {
+                            select: {
+                                codePath: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!order) {
+            throw new AppError('Order not found or not completed', 404);
+        }
+
+        const ticketsWithQrCodes = await Promise.all(order.tickets.map(async (ticket) => {
+            if(ticket.qrCode?.codePath) {
+                ticket.qrCode.qrAbsUrl = fileService.getAbsUrl(ticket.qrCode.codePath);
+            }
+            return ticket;
+        }));
+
+        return {
+            totalPrice: order.totalPrice,
+            itemsCount: order.itemsCount,
+            user: order.user,
+            ticketType: order.orderItems,
+            tickets: ticketsWithQrCodes,
+        }
+    },
+    
 };
 
 export default orderService;
