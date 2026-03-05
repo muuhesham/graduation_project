@@ -2,6 +2,8 @@ import { prisma as prismaClient } from '../config/db.js';
 import { hashPassword } from './../utils/hash.js';
 import userRoles from '../constants/enums/userRoles.js';
 import organizerService from './organizerService.js';
+import fileService from './fileService.js';
+import orderStatus from '../constants/enums/orderStatus.js';
 
 const userService = {
     async create(user) {
@@ -112,6 +114,56 @@ const userService = {
             },
         });
         return !!user;
+    },
+
+    async getUserTickets(userId) {
+        const tickets = await prismaClient.ticket.findMany({
+            where: {
+                userId,
+                orderItem: {
+                    order: {
+                        status: orderStatus.COMPLETED,
+                    },
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+                orderId: true,
+                ticketType: {
+                    select: {
+                        event: {
+                            select: {
+                                title: true,
+                                bannerPath: true,
+                            },
+                        },
+                    },
+                },
+                qrCode: {
+                    select: {
+                        codePath: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (!tickets || tickets.length === 0) {
+            return [];
+        }
+
+        const ticketsWithAbsQr = await Promise.all(tickets.map(async (ticket) => {
+            if(ticket.qrCode?.codePath) {
+                ticket.qrCode.qrAbsUrl = `http://localhost:8000${ticket.qrCode.codePath}`;
+            }
+            if(ticket.ticketType?.event?.bannerPath) {
+                ticket.ticketType.event.bannerAbsUrl = fileService.getAbsUrl(ticket.ticketType.event.bannerPath);
+            }
+            return ticket;
+        }));
+
+        return ticketsWithAbsQr;
     },
 };
 
