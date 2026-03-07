@@ -43,7 +43,7 @@ const orderService = {
             .omit(exclude || orderService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters || {}).value;
 
-        return tx.order.create({
+        return await tx.order.create({
             data: {
                 userId,
                 totalPrice,
@@ -123,7 +123,7 @@ const orderService = {
                 orderId: id,
                 ticketTypeId: item.ticketTypeId,
                 price: parseFloat(item.price),
-                quantity: item.quantity,
+                quantity: parseInt(item.quantity),
             })),
         });
     },

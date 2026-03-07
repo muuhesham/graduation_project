@@ -2,7 +2,6 @@ import { prisma as prismaClient } from '../config/db.js';
 import organizerService from './organizerService.js';
 
 const organizerDashboardService = {
-    
     // EVENT PIE CHART
     async getEventsData(userId) {
         const organizer = await organizerService.getByUserId(userId);
@@ -234,7 +233,9 @@ const organizerDashboardService = {
             where: {
                 organizerId,
                 eventSessions: {
-                    status: 'cancelled',
+                    some: {
+                        status: 'cancelled',
+                    },
                 },
             },
         });
