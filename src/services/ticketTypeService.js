@@ -8,18 +8,23 @@ const ticketTypeService = {
         updatedAt: true,
         eventId: true,
     },
-    
+
     //CREATE BULK TICKETS TYPES
     async createBulkTickets(eventId, ticketTypes, tx = prismaClient) {
-        const ticketTypeData = ticketTypes.map((ticket) => ({
-            eventId,
-            name: ticket.name,
-            price: parseFloat(ticket.price),
-            quantity: ticket.quantity,
-        }));
-        return tx.ticketType.createManyAndReturn({
-            data: ticketTypeData,
-        });
+        try {
+            const ticketTypeData = ticketTypes.map((ticket) => ({
+                eventId,
+                name: ticket.name,
+                price: parseFloat(ticket.price),
+                quantity: parseFloat(ticket.quantity),
+            }));
+            const result = await tx.ticketType.createMany({
+                data: ticketTypeData,
+            });
+            return result;
+        } catch (error) {
+            console.log(error);
+        }
     },
 
     //CREATE FREE BULK TICKET TYPES
@@ -28,9 +33,9 @@ const ticketTypeService = {
             eventId,
             name: ticket.name || 'Free Ticket',
             price: 0,
-            quantity: ticket.quantity || 100,
+            quantity: parseFloat(ticket.quantity) || 100,
         }));
-        return tx.ticketType.createManyAndReturn({
+        return await tx.ticketType.createMany({
             data: ticketTypeData,
         });
     },
@@ -68,15 +73,14 @@ const ticketTypeService = {
                 ticketsToCreate.push({
                     userId,
                     ticketTypeId: item.ticketTypeId,
-                    orderId: orderId,
+                    orderId: orderId.id,
                     orderItemId: item.id,
                     status: TicketStatus.VALID,
                 });
             }
-
             const updatePromise = tx.ticketType.update({
                 where: { id: item.ticketTypeId },
-                data: { sold: { increment: item.quantity } },
+                data: { sold: { increment: Number(item.quantity) } },
             });
             updateStockPromises.push(updatePromise);
         }
