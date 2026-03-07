@@ -9,6 +9,7 @@ import NotFoundError from '../errors/NotFoundError.js';
 import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 import ticketTypeService from './ticketTypeService.js';
+import { redis } from '../config/redis.js';
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
@@ -32,29 +33,43 @@ const eventService = {
         bannerDisk: true,
         bannerPath: true,
         venueId: true,
+        eventSessions: true,
         categoryId: true,
         createdAt: true,
+        hasSeatMap: true,
     },
 
     DEFAULT_RELATIONS: {
         venue: true,
         ticketTypes: true,
+        eventSessions: true,
+        eventSeatTier: true,
+        eventSeat: true,
     },
 
-    ALLOWED_RELATIONS: ['venue', 'category', 'organizer', 'eventSessions', 'ticketTypes'],
+    ALLOWED_RELATIONS: [
+        'venue',
+        'category',
+        'organizer',
+        'eventSessions',
+        'ticketTypes',
+        'eventSeatTier',
+        'eventSeat',
+    ],
 
     MAX_LIMIT: 100,
+    RESERVATION_TTL_SECONDS: 10 * 60,
 
     // CREATE EVENT
     async create(
         organizerId,
-        { title, description, type, mode, banner, venueId, categoryId },
+        { title, description, type, mode, banner, venueId, categoryId, eventType },
         tx = prismaClient,
         { selections, relations, exclude } = {}
     ) {
         const slug = eventService.generateSlug({ title });
 
-        const existingEvent = await eventService.exists(organizerId, slug);
+        const existingEvent = await eventService.exists(organizerId, slug, tx);
         if (existingEvent) {
             throw new ConflictError('Event with the same title already exists');
         }
@@ -83,6 +98,7 @@ const eventService = {
                 type,
                 venueId,
                 categoryId,
+                hasSeatMap: eventType === 'seatmap',
             },
             ...query,
         });
@@ -132,10 +148,10 @@ const eventService = {
     ) {
         const slug = eventService.generateSlug({ title });
 
-        const existingEvent = await eventService.findBySlug(organizerId, slug);
-        if (existingEvent) {
-            throw new ConflictError('Event with the same title already exists');
-        }
+        // const existingEvent = await eventService.findBySlug(organizerId, slug);
+        // if (existingEvent) {
+        //     throw new ConflictError('Event with the same title already exists');
+        // }
 
         let newBannerPath = null;
         let newBannerDisk = null;
@@ -186,10 +202,10 @@ const eventService = {
             startDate: session.startDate,
             endDate: session.endDate,
         }));
-
-        return tx.eventSession.createManyAndReturn({
+        const result = await tx.eventSession.createMany({
             data: sessionsData,
         });
+        return result;
     },
 
     async handleBanner(banner, relPath = null) {
@@ -250,6 +266,11 @@ const eventService = {
                 });
             });
         }
+        if (relations?.eventSessions) {
+            events.map((event) => {
+                event.eventSessions.map((session) => {});
+            });
+        }
         return eventService.getBannerAbsUrl(events);
     },
 
@@ -261,6 +282,7 @@ const eventService = {
             .include(relations || eventService.DEFAULT_RELATIONS)
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
+        console.log(selections, relations, filters, exclude);
 
         const event = await prismaClient.event.findFirst({
             where: { id },
@@ -365,8 +387,8 @@ const eventService = {
         return eventService.getBannerAbsUrl(events);
     },
 
-    async exists(organizerId, slug) {
-        return prismaClient.event.findFirst({
+    async exists(organizerId, slug, tx = prismaClient) {
+        return tx.event.findFirst({
             where: {
                 organizerId,
                 slug,
@@ -413,6 +435,19 @@ const eventService = {
                     updatedAt: true,
                 },
             },
+
+            eventSeatTier: {
+                omit: {
+                    id: true,
+                    eventId: true,
+                },
+            },
+            eventSeat: {
+                omit: {
+                    id: true,
+                    eventId: true,
+                },
+            },
         };
 
         const event = await eventService.getById(id, { relations });
@@ -424,6 +459,66 @@ const eventService = {
             };
         }
         return event;
+    },
+
+    async availability(eventId) {
+        // first check if the event exists and has seat map,
+        const event = await eventService.getById(eventId, {
+            relations: {
+                eventSeat: {
+                    select: {
+                        rowIndex: true,
+                        seatIndex: true,
+                        isSold: true,
+                    },
+                },
+            },
+        });
+
+        if (!event) {
+            return {
+                status: 'fail',
+                statusCode: 404,
+                data: { message: 'Event not found' },
+            };
+        }
+
+        if (!event.hasSeatMap) {
+            return {
+                status: 'fail',
+                statusCode: 400,
+                data: { message: 'Event does not support seat map' },
+            };
+        }
+        // second get seats reserved from redis and modify seats from main DB to have reserved seats also
+        const reservedSeats = await redis.keys(`reservation:event:${eventId}:seat:*`);
+        const reservedSeatSet = new Set(reservedSeats.map((key) => key.split(':').slice(-1)[0]));
+        const seats = event.eventSeat.map((seat) => {
+            const key = `${seat.rowIndex}-${seat.seatIndex}`;
+            if (seat.isSold) {
+                return {
+                    row: seat.rowIndex,
+                    number: seat.seatIndex,
+                    status: 'sold',
+                };
+            }
+            if (reservedSeatSet.has(key)) {
+                return {
+                    row: seat.rowIndex,
+                    number: seat.seatIndex,
+                    status: 'reserved',
+                };
+            }
+            return {
+                row: seat.rowIndex,
+                number: seat.seatIndex,
+                status: 'available',
+            };
+        });
+        return {
+            eventId,
+            seats,
+        };
     },
 
     async findSessionById(sessionId, { selections, relations, filters, exclude } = {}) {
@@ -458,7 +553,7 @@ const eventService = {
     },
 
     // VALDIATION AND FETCH TICKETS FOR CHECKOUT
-    async validateAndFetchTickets(id, requestedTickets) {
+    async validateAndFetchTickets(id, requestedTickets, userId) {
         const event = await eventService.getById(id, {
             relations: {
                 ticketTypes: {
@@ -476,11 +571,119 @@ const eventService = {
                         userId: true,
                     },
                 },
+                eventSeatTier: {
+                    select: {
+                        tierNumber: true,
+                        price: true,
+                        name: true,
+                    },
+                },
+                eventSeat: {
+                    select: {
+                        rowIndex: true,
+                        seatIndex: true,
+                        tierNumber: true,
+                    },
+                },
             },
         });
 
         if (!event) throw new NotFoundError('Event not found');
+        if (event.hasSeatMap) {
+            const seatMap = new Map(
+                event.eventSeat.map((seat) => [`${seat.rowIndex}-${seat.seatIndex}`, seat])
+            );
 
+            const tierMap = new Map(event.eventSeatTier.map((tier) => [tier.tierNumber, tier]));
+
+            const verifiedItems = [];
+            const lineItems = [];
+            let totalPrice = 0;
+            let itemsCount = 0;
+
+            const usedSeats = new Set();
+
+            for (const reqTicket of requestedTickets) {
+                const { row, number, tierId, tierName } = reqTicket.seatInfo;
+
+                const key = `${row}-${number}`;
+
+                //  Prevent duplicate seat in same request
+                if (usedSeats.has(key)) {
+                    throw new ConflictError('Duplicate seat selection');
+                }
+                usedSeats.add(key);
+
+                //  Check seat exists
+                const dbSeat = seatMap.get(key);
+                if (!dbSeat) {
+                    throw new NotFoundError('Seat does not exist');
+                }
+
+                //  Check seat not sold
+                if (dbSeat.isSold) {
+                    throw new ConflictError('Seat already sold');
+                }
+
+                //  Check tier matches
+                if (dbSeat.tierNumber !== Number(tierId)) {
+                    throw new ConflictError('Seat tier mismatch');
+                }
+
+                //  Get tier price
+                const dbTier = tierMap.get(Number(tierId));
+                if (!dbTier) {
+                    throw new NotFoundError('Tier not found');
+                }
+
+                // check seats reserved in redis by the same user
+                const reservationKey = `reservation:event:${id}:seat:${key}`;
+                const reservation = await redis.get(reservationKey);
+                if (reservation) {
+                    const reservationData = JSON.parse(reservation);
+                    if (reservationData.userId !== userId) {
+                        throw new ConflictError('Seat already reserved by another user');
+                    }
+                } else {
+                    // if not reserved, throw error to force frontend to reserve it first before checkout
+                    throw new ConflictError(
+                        'Seat not reserved, please reserve the seat before checkout'
+                    );
+                }
+
+                const price = parseFloat(dbTier.price);
+
+                totalPrice += price;
+                itemsCount += 1;
+
+                lineItems.push({
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: `Row ${String.fromCharCode(65 + row)}, Seat ${number + 1}`,
+                        },
+                        unit_amount: Math.round(price * 100),
+                    },
+                    quantity: 1,
+                });
+
+                verifiedItems.push({
+                    eventId: event.id,
+                    rowIndex: row,
+                    seatIndex: number,
+                    tierNumber: Number(tierId),
+                    price,
+                    ticketTypeId: Number(
+                        event.ticketTypes.find((tier) => tier.name === tierName)?.id
+                    ),
+                    name: tierName,
+                    quantity: 1,
+                });
+            }
+
+            return { event, verifiedItems, totalPrice, itemsCount, lineItems };
+        }
+        // else for general admission tickets
         const dbTicketMap = new Map(event.ticketTypes.map((t) => [t.name, t]));
         const verifiedItems = [];
         const lineItems = [];
@@ -526,8 +729,7 @@ const eventService = {
     // CHECKOUT PROCESS
     async checkout(id, userId, userEmail, tickets) {
         const { event, verifiedItems, totalPrice, itemsCount, lineItems } =
-            await eventService.validateAndFetchTickets(id, tickets);
-
+            await eventService.validateAndFetchTickets(id, tickets, userId);
         if (event.organizer.userId === userId) {
             throw new ConflictError('Organizers cannot purchase tickets for their own events');
         }
@@ -538,7 +740,7 @@ const eventService = {
                     userId,
                     totalPrice,
                     itemsCount,
-                    totalPrice === 0 ? OrderStatus.COMPLETED : OrderStatus.PENDING,
+                    parseInt(totalPrice) === 0 ? OrderStatus.COMPLETED : OrderStatus.PENDING,
                     {
                         selections: {
                             id: true,
@@ -558,10 +760,9 @@ const eventService = {
                     verifiedItems,
                     tx
                 );
-
                 let session;
                 if (totalPrice === 0) {
-                    await ticketTypeService.issueTicketsForOrder(order, orderItems, userId, tx);
+                    await ticketTypeService.issueTicketsForOrder(order, userId, orderItems, tx);
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
@@ -571,13 +772,16 @@ const eventService = {
                         {
                             orderId: order.id,
                             userId,
+                            seatMetaData: JSON.stringify(verifiedItems),
                         }
                     );
                 }
 
                 return { order, session };
             },
-            { timeout: 2000 }
+            {
+                timeout: 15000, // 15 seconds
+            }
         );
 
         return {
@@ -587,6 +791,150 @@ const eventService = {
                 stripeUrl: session?.url,
             },
         };
+    },
+
+    async reserve(eventId, userId, tickets, io) {
+        // first check if the event exists and has seat map,
+        const event = await eventService.getById(eventId, {
+            relations: {
+                eventSeat: {
+                    select: {
+                        rowIndex: true,
+                        seatIndex: true,
+                        isSold: true,
+                    },
+                },
+            },
+        });
+
+        if (!event) {
+            return {
+                status: 'fail',
+                statusCode: 404,
+                data: { message: 'Event not found' },
+            };
+        }
+
+        if (!event.hasSeatMap) {
+            return {
+                status: 'fail',
+                statusCode: 400,
+                data: { message: 'Seat reservation is only supported for seat-map events' },
+            };
+        }
+
+        const count = await redis.get(`abuse:user:${userId}`);
+        if (count && Number(count) >= 3) {
+            return {
+                status: 'fail',
+                statusCode: 403,
+                data: {
+                    message: 'Your banned due to too many unpaid reservations. Please try again later.',
+                },
+            };
+        }
+
+        // then validate the requested seats,
+        // Build lookup object
+        const seatMap = {};
+
+        for (const seat of event.eventSeat) {
+            const key = `${seat.rowIndex}-${seat.seatIndex}`;
+            seatMap[key] = seat;
+        }
+
+        let seatsRequest = {};
+        // Validate tickets
+        for (const ticket of tickets) {
+            const { row, number } = ticket.seatInfo;
+            const key = `${row}-${number}`;
+            if (seatsRequest[key]) {
+                return {
+                    status: 'fail',
+                    statusCode: 409,
+                    data: {
+                        message: `Duplicate seat selection at row ${row} and number ${number}`,
+                    },
+                };
+            }
+            seatsRequest[key] = true;
+            const dbSeat = seatMap[key];
+
+            if (!dbSeat) {
+                return {
+                    status: 'fail',
+                    statusCode: 404,
+                    data: { message: `Seat at row ${row} and number ${number} does not exist` },
+                };
+            }
+
+            if (dbSeat.isSold) {
+                return {
+                    status: 'fail',
+                    statusCode: 409,
+                    data: { message: `Seat at row ${row} and number ${number} is already sold` },
+                };
+            }
+        }
+
+        // then try to reserve them in redis with a TTL,
+        let reservedSeatsKeys = [];
+        try {
+            for (const ticket of tickets) {
+                const { row, number } = ticket.seatInfo;
+                const key = `reservation:event:${eventId}:seat:${row}-${number}`;
+                const value = JSON.stringify({
+                    userId,
+                });
+                const status = await redis.set(
+                    key,
+                    value,
+                    'EX',
+                    eventService.RESERVATION_TTL_SECONDS,
+                    'NX'
+                );
+                if (!status) {
+                    throw new Error(`Seat is already reserved`);
+                }
+                io.to(`event-${eventId}`).emit('seat:update', {
+                    row,
+                    number,
+                    status: 'reserved',
+                });
+                reservedSeatsKeys.push(key);
+            }
+
+            const userKey = `reservation:event:${eventId}`;
+            await redis.set(
+                userKey,
+                JSON.stringify({
+                    userId,
+                }),
+                'EX',
+                eventService.RESERVATION_TTL_SECONDS + 30
+            );
+
+            return {
+                status: 'success',
+                data: {},
+            };
+        } catch (error) {
+            if (reservedSeatsKeys.length > 0) {
+                await redis.del(...reservedSeatsKeys);
+            }
+            if (error.message === 'Seat is already reserved') {
+                return {
+                    status: 'fail',
+                    statusCode: 409,
+                    data: { message: error.message },
+                };
+            }
+            return {
+                status: 'fail',
+                statusCode: 500,
+                data: { message: 'Failed to reserve seats, please try again' },
+            };
+        }
     },
 
     async getNearbyEvents({ userId = null, limit = 6, page = 1 } = {}) {
@@ -618,31 +966,51 @@ const eventService = {
 
         const rows = await prismaClient.$queryRawUnsafe(
             `
-        SELECT json_build_object(
-            'id', e.id,
-            'organizerId', e."organizerId",
-            'title', e.title,
-            'slug', e.slug,
-            'description', e.description,
-            'type', e.type,
-            'mode', e.mode,
-            'venueId', e."venueId",
-            'categoryId', e."categoryId",
-            'createdAt', e."createdAt",
-            'venue', to_jsonb(v),
-            'ticketTypes', COALESCE(json_agg(tt) FILTER (WHERE tt.id IS NOT NULL), '[]'::json),
-            'bannerUrl', NULL 
-        ) AS event
-        FROM "Event" e
-        JOIN "Venue" v ON v.id = e."venueId"
-        LEFT JOIN "TicketType" tt ON tt."eventId" = e.id
+  SELECT json_build_object(
+      'id', e.id,
+      'organizerId', e."organizerId",
+      'title', e.title,
+      'slug', e.slug,
+      'description', e.description,
+      'type', e.type,
+      'mode', e.mode,
+      'venueId', e."venueId",
+      'categoryId', e."categoryId",
+      'createdAt', e."createdAt",
 
-        WHERE v."governorateId" = ANY($1::int[])
+      'venue', to_jsonb(v),
 
-        GROUP BY e.id, v.id
-        ORDER BY array_position($1::int[], v."governorateId")
-        LIMIT $2 OFFSET $3;
-        `,
+      --  ticketTypes aggregated without duplication
+      'ticketTypes', COALESCE(tt.ticket_types, '[]'::json),
+
+      --  eventSessions aggregated without duplication
+      'eventSessions', COALESCE(es.sessions, '[]'::json),
+
+      --  keep these for getBannerAbsUrl()
+      'bannerDisk', e."bannerDisk",
+      'bannerPath', e."bannerPath"
+  ) AS event
+  FROM "Event" e
+  JOIN "Venue" v ON v.id = e."venueId"
+
+  --  aggregate ticket types
+  LEFT JOIN LATERAL (
+      SELECT json_agg(tt.*) AS ticket_types
+      FROM "TicketType" tt
+      WHERE tt."eventId" = e.id
+  ) tt ON TRUE
+
+  --  aggregate event sessions
+  LEFT JOIN LATERAL (
+      SELECT json_agg(es.*) AS sessions
+      FROM "EventSession" es
+      WHERE es."eventId" = e.id
+  ) es ON TRUE
+
+  WHERE v."governorateId" = ANY($1::int[])
+  ORDER BY array_position($1::int[], v."governorateId")
+  LIMIT $2 OFFSET $3;
+  `,
             otherGovsIdsSorted,
             limit,
             offset
@@ -695,6 +1063,11 @@ const eventService = {
                 organizer: true,
                 category: true,
                 ticketTypes: true,
+
+                eventSessions: {
+                    where: { status: 'active' },
+                    orderBy: { startDate: 'asc' },
+                },
             },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
@@ -712,3 +1085,7 @@ const eventService = {
 };
 
 export default eventService;
+
+/*
+give me script written in Arabic for a video I will record for a demo for the graduation project. the video will last 3 minutes. I must open the project Fa3liat and open it as a guest and show all events sections in the home page, then try the newsletter if I don't want to create an account. then try to create an account with OTP sent to email. then get to the onboarding and add personal data. then try to reset password. then try see the personalized events and location personalization events sections. then try to buy . then try to create another account using google OAuth 2.0. and do the onboarding. then try to use upgrade to organizer.
+*/
