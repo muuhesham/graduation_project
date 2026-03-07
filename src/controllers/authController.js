@@ -148,7 +148,7 @@ class GoogleAuthController extends AuthThirdPartyService {
         this.oauth2Client = new google.auth.OAuth2(
             CLIENT_ID,
             CLIENT_SECRET,
-            'http://' + HOSTNAME + ':' + PORT + CALLBACK_URL
+            'http://' + 'localhost' + ':' + PORT + CALLBACK_URL
         );
     }
 
@@ -156,7 +156,6 @@ class GoogleAuthController extends AuthThirdPartyService {
         try {
             const url = this.oauth2Client.generateAuthUrl({
                 access_type: 'offline',
-                prompt: 'consent',
                 scope: ['profile', 'email'],
             });
             return sendSuccess(res, { url });

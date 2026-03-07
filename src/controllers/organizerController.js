@@ -7,8 +7,29 @@ const organizerController = {
         const userId = req.user.id;
         const banner = req.file;
 
-        let { title, categoryName, location, description, tickets, sessions, type, mode } =
-            req.body;
+        let {
+            title,
+            categoryName,
+            location,
+            description,
+            tickets,
+            sessions,
+            type,
+            mode,
+            eventType,
+            seatsData,
+            numberOfRows,
+            numberOfColumns,
+            priceTiers,
+        } = req.body;
+
+        if (priceTiers) {
+            priceTiers = JSON.parse(priceTiers);
+        }
+
+        if (seatsData) {
+            seatsData = JSON.parse(seatsData);
+        }
 
         const result = await organizerService.createEvent(userId, {
             title,
@@ -20,6 +41,11 @@ const organizerController = {
             sessions,
             type,
             mode,
+            eventType,
+            seatsData,
+            numberOfRows,
+            numberOfColumns,
+            priceTiers,
         });
 
         if (result.status === 'fail') {
@@ -75,7 +101,7 @@ const organizerController = {
         const result = await organizerService.listEvents(userId);
 
         if (result.status === 'fail') {
-            return sendFail(res, result.data, 400)
+            return sendFail(res, result.data, 400);
         }
 
         return sendSuccess(res, result.data, 200);

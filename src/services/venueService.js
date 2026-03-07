@@ -1,3 +1,4 @@
+import { parse } from 'dotenv';
 import { prisma as prismaClient } from '../config/db.js';
 
 const venueService = {
@@ -30,15 +31,15 @@ const venueService = {
             return { message: 'Governorate not found' };
         }
 
-        return tx.venue.create({
+        return await tx.venue.create({
             data: {
                 name,
                 address,
                 city,
                 country,
                 zipCode,
-                longitude,
-                latitude,
+                longitude: parseFloat(longitude),
+                latitude: parseFloat(latitude),
                 googlePlaceId,
                 state,
                 governorateId,
@@ -62,7 +63,7 @@ const venueService = {
             return  { message: 'Governorate not found' };
         }
 
-        return tx.venue.update({
+        return await tx.venue.update({
             where: { id: venueId },
             data: {
                 name,
@@ -70,8 +71,8 @@ const venueService = {
                 city,
                 country,
                 zipCode,
-                latitude,
-                longitude,
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude),
                 googlePlaceId,
                 state,
                 governorateId,
@@ -80,7 +81,7 @@ const venueService = {
     },
 
     async getVenues() {
-        return prismaClient.venue.findMany();
+        return await prismaClient.venue.findMany();
     },
 };
 export default venueService;
