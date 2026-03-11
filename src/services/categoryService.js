@@ -66,6 +66,32 @@ const categoryService = {
             };
         });
     },
+
+    async getPreferences({ userId, tx = prismaClient }) {
+        return await tx.category.findMany({
+            where: {
+                attendees: { some: { attendeeId: userId } },
+            },
+            select: { id: true, name: true },
+        });
+    },
+
+    async updatePreferences({ userId, categoryIds }) {
+        return await prismaClient.$transaction(async (tx) => {
+            await tx.attendeeFavoriteCategory.deleteMany({
+                where: { attendeeId: userId },
+            });
+
+            await tx.attendeeFavoriteCategory.createMany({
+                data: categoryIds.map((id) => ({
+                    attendeeId: userId,
+                    categoryId: id,
+                })),
+            });
+
+            return await this.getPreferences({userId, tx});
+        });
+    },
 };
 
 export default categoryService;
