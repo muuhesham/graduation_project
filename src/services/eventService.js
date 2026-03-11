@@ -1082,6 +1082,18 @@ const eventService = {
 
         return eventService.getBannerAbsUrl(events);
     },
+
+    async getUserAttendedEvents({userId}){
+        return await prismaClient.event.count({
+            where: {
+                ticketTypes: {
+                    some: { tickets: { some: { userId, /*status: 'valid'*/ } }
+                    }
+                }
+            }
+        });
+    },
+
 };
 
 export default eventService;
