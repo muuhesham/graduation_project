@@ -1,22 +1,24 @@
 import { prisma as prismaClient } from '../config/db.js';
+import AppError from '../errors/AppError.js';
+import { matchPassword } from '../utils/hash.js';
+import userService from './userService.js';
+import AuthProvider from '../constants/enums/authProvider.js';
 
 const profileService = {
-    async getMyProfile(userId) {
-        const user = await prismaClient.user.findFirst({
-            where: { id: userId },
-            omit: {
-                id: true,
-                password: true,
-                idInProviderDB: true,
-                governorateId: true,
-                updatedAt: true,
-                deletedAt: true,
-            },
-        });
+    async getMyProfile({userId}) {
+        const user = await userService.getUser(userId);
+
+        if (!user) {
+            throw new AppError('User not found', 404);
+        }
+        if (user.authProvider !== AuthProvider.LOCAL) {
+            throw new AppError(`Email or Password can't be changed for google login users`, 400);
+        }
+
         return user;
     },
 
-    async updateMyProfile(userId, allowedData) {
+    async updateMyProfile({userId, allowedData}) {
         const updatedUser = await prismaClient.user.update({
             where: { id: userId },
             data: allowedData,
@@ -35,68 +37,59 @@ const profileService = {
         return updatedUser;
     },
 
-    // // Hard delete
-    // async deleteMyProfile(userId) {
-    //     const deletedUser = await prismaClient.user.delete({
-    //         where: {id: userId,},
-    //     });
-    //     return deletedUser;
-    // },
+    async deleteMyProfile({userId, password}) {
+        const user = await userService.findUser(userId);
+        if (!user) {
+            throw new AppError('User not found or already deleted', 404);
+        }
 
-    // Soft delete
-    async deleteMyProfile(userId) {
-        const user = await prismaClient.user.findFirst({
-            where: { id: userId},
-        });
-        if(!user) {return null;}
-        await prismaClient.user.updateMany({
-            where: { id: userId },
-            data: { deletedAt: new Date() },
-        });
-        return user;
+        const isPasswordMatch = await matchPassword(password, user.password);
+        if (!isPasswordMatch) {
+            throw new AppError('Current password is incorrect', 400);
+        }
+
+        await userService.softDelete(userId);
     },
-    async updateEmail(userId, newEmail) {
-          if (!userId || !newEmail) {
-              throw new Error('Missing userId or newEmail for update');
-          }
+
+    async updateEmail({userId, newEmail}) {
+        if (!userId || !newEmail) {
+            throw new Error('Missing userId or newEmail for update');
+        }
         const updatedEmail = await prismaClient.user.update({
             where: { id: userId },
-            data: { email: newEmail },
+            data: { email: newEmail, isVerified: false },
             select: { email: true },
         });
+         
         return updatedEmail;
     },
-    async updatePassword(userId, newPassword) {
+
+    async updatePassword({userId, newPassword}) {
         await prismaClient.user.update({
             where: { id: userId },
             data: { password: newPassword },
         });
     },
 
-    async findCurrentEmail(email) {
-        const user = await prismaClient.user.findUnique({
-            where: { email },
-            select: { email: true },
-        });
-        return user;
+    async isPasswordValid({userId, password}) {
+        const user = await userService.findUser(userId);
+        const isPasswordMatch = matchPassword(password, user.password);
+        if (!isPasswordMatch) {
+            throw new AppError('Current password is incorrect', 400);
+        }
     },
 
-    async findEmailById(userId) {
-        const user = await prismaClient.user.findUnique({
-            where: { id: userId },
-            select: { email: true, name: true },
-        });
-        return user;
+    async checkPassword({userId, oldPassword, newPassword, confirmPassword}){
+        if(newPassword !== confirmPassword){
+            throw new AppError(`Passwords don't match`, 400);
+        }
+        const user = await userService.findUser(userId);
+         const isPasswordMatch = matchPassword(oldPassword, user.password);
+         if (!isPasswordMatch) {
+             throw new AppError('Current password is incorrect', 400);
+         }
     },
 
-    async findCurrentPassword(userId) {
-        const user = await prismaClient.user.findUnique({
-            where: { id: userId },
-            select: { password: true },
-        });
-        return user;
-    }
 };
 
 export default profileService;
-
