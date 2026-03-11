@@ -86,7 +86,7 @@ const mailService = {
                 }
             );
     },
-    async sendUpdateEmail(user, newEmail, token) {
+    async sendUpdateEmail({user, newEmail, token}) {
         const html = updateEmailTemplate({
             name: user.name,
             newEmail: newEmail,
