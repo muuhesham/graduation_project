@@ -231,7 +231,7 @@ const authService = {
         });
     },
 
-    async sendOtpMail(user, isFirstTime) {
+    async sendOtpMail({user, isFirstTime}) {
         let userData = user;
 
         if (!isFirstTime) {
@@ -293,18 +293,13 @@ const authService = {
         return !(await cacheService.exists(cacheKey));
     },
 
-    // async revokeTokenForUser(userId) {
-    //     const revokedToken = prismaClient.refreshToken.updateMany({
-    //         where: { userId },
-    //         data: { isRevoked: true },
-    //     })
-    //     return revokedToken;
-    // }
-    async deleteTokensForUser(userId) {
-        await prismaClient.refreshToken.deleteMany({
-            where: { userId }
-        })
+    async revokeAllTokensUser({userId}) {
+        await prismaClient.refreshToken.updateMany({
+            where: { userId },
+            data: { isRevoked: true },
+        });
     },
+    
 };
 
 export default authService;
