@@ -200,7 +200,7 @@ export {
     refreshLimiter,
     requestResetLimiter,
     paymentLimiter,
-    profileLimiter
+    profileLimiter,
     availabilityLimiter,
     reserveLimiter,
 };
