@@ -1,102 +1,78 @@
 import profileService from '../services/profileService.js';
 import asyncHandler from '../middlewares/asyncWrapper.js';
-import { sendSuccess, sendFail } from '../utils/response.js';
+import { sendSuccess } from '../utils/response.js';
 import { generateToken, verifyToken } from '../middlewares/auth.js';
 import mailService from '../services/mailService.js';
-import { hashPassword, matchPassword } from '../utils/hash.js';
+import { hashPassword } from '../utils/hash.js';
 import authService from '../services/authService.js';
 import cacheService from '../services/cacheService.js';
+import userService from '../services/userService.js';
+import eventService from '../services/eventService.js';
+import categoryService from '../services/categoryService.js';
 
 const profileController = {
     getMyProfile: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const userData = await profileService.getMyProfile(userId);
-
-        if (!userData) {
-            return sendFail(res, 'User not found', 404);
-        }
+        const userData = await profileService.getMyProfile({userId});
         sendSuccess(res, userData, 200);
     }),
 
     updateMyProfile: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const updatedData = req.body;
-        if(!updatedData){
-            return sendFail(res, 'No data provided for update', 400);
-        }
-        const {
-            email,
-            password,
-            role,
-            idInProviderDB,
-            authProvider,
-            governorateId,
-            updatedAt,
-            deletedAt,
-            ...allowedData
-        } = updatedData;
-
-        const updateUser = await profileService.updateMyProfile(userId, allowedData);
+        const { name, phone, gender, location, languagePreference, birthDate } = req.body;
+        const allowedData = { name, phone, gender, location, languagePreference, birthDate };
+        const updateUser = await profileService.updateMyProfile({userId, allowedData});
         sendSuccess(res, updateUser, 200);
     }),
 
     deleteMyProfile: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const deletedUser = await profileService.deleteMyProfile(userId);
-        if (!deletedUser) {
-            return sendFail(res, 'User not found or already deleted', 404);
+        const { password } = req.body;
+
+        await profileService.deleteMyProfile({userId, password});
+
+        await authService.revokeAllTokensUser({userId});
+
+        if (req.headers.authorization) {
+            const accessToken = req.headers.authorization.split(' ')[1];
+            const { cacheKey, ttl } = authService.accessTokenCache({ accessToken });
+            await cacheService.set(cacheKey, true, ttl);
         }
-        sendSuccess(res, { message: 'Profile deleted successfully' }, 200);
+
+        //logout
+        sendSuccess(res, { message: 'Profile deleted successfully. please login again.' }, 200);
     }),
 
     updateEmail: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const { newEmail, confirmEmail } = req.body;
+        const { newEmail, confirmEmail, password } = req.body;
 
-        const userData = await profileService.getMyProfile(userId);
-        if (!userData) {
-            return sendFail(res, 'User not found', 404);
-        }
+        await profileService.isPasswordValid({userId, password});
 
-        if(userData.authProvider !== 'LOCAL') {
-            return sendFail(res, `Email can't be changed for google login users`, 400);
-        }
+        await profileService.getMyProfile({userId});
 
-        const existing = await profileService.findCurrentEmail(newEmail);
-        if (existing) return sendFail(res, 'Unable to process your request', 400);
-
-        if (newEmail !== confirmEmail) {
-            return sendFail(res, `Emails don't match`, 400);
-        }
+        await userService.isEmailAvailable({newEmail, confirmEmail});
 
         const token = generateToken({ userId, newEmail }, '15m');
-
-        const user = await profileService.findEmailById(userId);
-
-        await mailService.sendUpdateEmail(user, newEmail, token);
+        console.log(token);
+        const user = await userService.findEmailById({userId});
+        await mailService.sendUpdateEmail({user, newEmail, token});
 
         sendSuccess(res, { message: 'Verification email sent successfully' }, 200);
     }),
 
     confirmEmailUpdate: asyncHandler(async (req, res) => {
         const { token } = req.query;
-
-        if (!token) {
-            return sendFail(res, 'Token is required', 400);
-        }
-
         const payload = verifyToken(token);
+        const { userId, newEmail } = payload;
 
-        if(!payload.userId || !payload.newEmail) {
-            return sendFail(res, 'Invalid token payload', 400);
-        }
-        
-        const updatedEmail = await profileService.updateEmail(payload.userId, payload.newEmail);
+        const updatedEmail = await profileService.updateEmail({userId, newEmail});
+        await authService.sendOtpMail({user: updatedEmail, isFirstTime: false})
 
         sendSuccess(
             res,
             {
-                message: 'Email updated successfully',
+                message: 'Email updated successfully. please verify your new email.',
                 email: updatedEmail.email,
             },
             200
@@ -107,32 +83,13 @@ const profileController = {
         const userId = req.user.id;
         const { oldPassword, newPassword, confirmPassword } = req.body;
 
-        const userData = await profileService.getMyProfile(userId);
-        if(userData.authProvider !== 'LOCAL') {
-             const hashedNewPassword = await hashPassword(newPassword);
-             await profileService.updatePassword(userId, hashedNewPassword);
-             return sendSuccess(
-                 res,
-                 { message: 'Password set successfully. You can now login with password.' },
-                 200
-             );
-        }
+        await profileService.getMyProfile({userId});
 
-        const currentPassword = await profileService.findCurrentPassword(userId);
-        const comparePassword = await matchPassword(oldPassword, currentPassword.password);
-
-        if (!comparePassword) {
-            return sendFail(res, 'Current password is incorrect', 400);
-        }
-
-        if (newPassword !== confirmPassword) {
-            return sendFail(res, `Passwords don't match`, 400);
-        }
+        await profileService.checkPassword({userId, oldPassword, newPassword, confirmPassword});
 
         const hashedNewPassword = await hashPassword(newPassword);
-
-        await profileService.updatePassword(userId, hashedNewPassword);
-        await authService.deleteTokensForUser(userId);
+        await profileService.updatePassword({userId, newPassword: hashedNewPassword});
+        await authService.revokeAllTokensUser({userId});
 
         if (req.headers.authorization) {
             const accessToken = req.headers.authorization.split(' ')[1];
@@ -143,6 +100,26 @@ const profileController = {
         //logout 
         sendSuccess(res, { message: 'Password updated successfully. Please login again.' }, 200);
     }),
+
+    getAttendEvents: asyncHandler(async (req, res) => {
+        const userId = req.user.id; 
+        const count = await eventService.getUserAttendedEvents({ userId });
+        sendSuccess(res, { count }, 200);
+    }),
+
+    getPreferences: asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const preferences = await categoryService.getPreferences({userId});
+        sendSuccess(res, { preferences }, 200);
+    }),
+
+    updatePreferences: asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const { categoryIds } = req.body;
+        const updatedPreferences = await categoryService.updatePreferences({ userId, categoryIds });
+        sendSuccess(res, updatedPreferences, 200);
+    }),
+
 };
 
 export default profileController;
