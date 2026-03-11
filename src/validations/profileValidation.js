@@ -1,14 +1,37 @@
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
 import { createRequire } from 'module';
-import Gender  from '../constants/enums/userGender.js';
-import userRoles  from '../constants/enums/userRoles.js';
-import Language  from '../constants/enums/userLanguage.js';
+import Gender from '../constants/enums/userGender.js';
+import Language from '../constants/enums/userLanguage.js';
+import { calculateAge } from '../utils/calculateAge.js';
 
 const require = createRequire(import.meta.url);
 const disposableDomains = require('disposable-email-domains');
 
 const profileValidations = {
     updateMyProfile: [
+        body().custom((value, { req }) => {
+            const allowedFields = [
+                'name',
+                'phone',
+                'address',
+                'gender',
+                'location',
+                'languagePreference',
+                'birthDate',
+            ];
+            const updates = Object.keys(req.body);
+            const invalidFields = updates.filter((field) => {
+                return !allowedFields.includes(field);
+            });
+
+            if (updates.length === 0) {
+                throw new Error('Please provide at least one field to update');
+            }
+            if (invalidFields.length > 0) {
+                throw new Error(`Fields [${invalidFields.join(', ')}] are not allowed`);
+            }
+            return true;
+        }),
         body('name')
             .optional()
             .trim()
@@ -36,8 +59,6 @@ const profileValidations = {
             .isIn(Object.values(Gender))
             .withMessage('Gender must be male or female'),
 
-        body('role').optional().isIn(Object.values(userRoles)).withMessage('Role is invalid'),
-
         body('location')
             .optional()
             .isString()
@@ -50,15 +71,15 @@ const profileValidations = {
             .isIn(Object.values(Language))
             .withMessage('Language is invalid'),
 
-        body('isVerified').optional().isBoolean().withMessage('isVerified must be a boolean'),
-
-        body('isCompleted').optional().isBoolean().withMessage('isCompleted must be a boolean'),
-
         body('birthDate')
             .optional()
-            .isDate()
+            .isISO8601()
             .withMessage('birthDate must be a valid date')
             .custom((value) => {
+                const age = calculateAge(value);
+                if (age < 18) {
+                    throw new Error('birthDate must be 18 years or older');
+                }
                 if (new Date(value) > new Date()) {
                     throw new Error('birthDate cannot be in the future');
                 }
@@ -116,6 +137,21 @@ const profileValidations = {
             .withMessage(
                 'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
             ),
+    ],
+    confirmEmail: [query('token').notEmpty().withMessage('Token is required')],
+    updatePreferences: [
+        body().custom((value, { req }) => {
+            if (Object.keys(req.body).length === 0) {
+                throw new Error('Please provide at least one field to update');
+            }
+            return true;
+        }),
+        body('categoryIds')
+            .exists()
+            .withMessage('categoryIds field is required')
+            .isArray({ min: 1 })
+            .withMessage('Preferences must be an array with at least one category'),
+        body('categoryIds.*').isInt().withMessage('Each category ID must be an integer'),
     ],
 };
 
