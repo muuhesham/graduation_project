@@ -92,6 +92,14 @@ const categoryService = {
             return await this.getPreferences({userId, tx});
         });
     },
+
+    async getAllCategories(){
+        return await prismaClient.category.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        })
+    },
+    
 };
 
 export default categoryService;
