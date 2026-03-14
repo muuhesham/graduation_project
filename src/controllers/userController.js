@@ -1,5 +1,5 @@
 import asyncWrapper from '../middlewares/asyncWrapper.js';
-import { sendSuccess, sendFail, sendError } from '../utils/response.js';
+import { sendSuccess, sendFail} from '../utils/response.js';
 import userService from '../services/userService.js';
 
 const userController = {
@@ -16,12 +16,7 @@ const userController = {
 
     getInterestedEvents: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
-        
-        const result = await userService.getInterestedEvents(userId);
-
-        if(result.length === 0){
-            return sendSuccess(res, {events: result, message: 'There are no interested events for this user'}, 200);
-        }
+        const result = await userService.getInterestedEvents({userId});
 
         return sendSuccess(res, { events: result }, 200);
     }),

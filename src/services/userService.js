@@ -2,6 +2,7 @@ import { prisma as prismaClient } from '../config/db.js';
 import { hashPassword } from './../utils/hash.js';
 import userRoles from '../constants/enums/userRoles.js';
 import organizerService from './organizerService.js';
+import eventService from './eventService.js';
 
 const userService = {
     async create(user) {
@@ -114,7 +115,7 @@ const userService = {
         return !!user;
     },
 
-    async getInterestedEvents(userId) {
+    async getInterestedEvents({userId}) {
         const interestedEvents = await prismaClient.interestedEvent.findMany({
             where: { userId },
             include: {
@@ -122,7 +123,11 @@ const userService = {
             },
             orderBy: { createdAt: 'desc' },
         });
-        return interestedEvents;
+
+        const events = interestedEvents.map((item) => item.event);
+        const result = await eventService.getBannerAbsUrl(events);
+
+        return result;
     },
     
 };
