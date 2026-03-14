@@ -34,6 +34,24 @@ const eventController = {
         return sendSuccess(res, result.data, 201);
     }),
 
+    addToInterested: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const eventId = req.params.id;
+
+        await eventService.addToInterested({userId, eventId});
+
+        return sendSuccess(res, { message: 'Event added to your interested list' }, 200);     
+    }),
+
+    removeFromInterested: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const eventId = req.params.id;
+
+        await eventService.removeFromInterested({userId, eventId});
+
+        return sendSuccess(res, { message: 'Event removed from your interested list' }, 200);
+    }),
+
     reserve: asyncWrapper(async (req, res) => {
         const { id: userId } = req.user;
         const { id } = req.params;

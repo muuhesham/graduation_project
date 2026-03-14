@@ -61,6 +61,24 @@ const eventValidation = {
             .isInt({ min: 0 })
             .withMessage('Seat number must be a non-negative integer'),
     ],
+
+    addToInterested: [
+        param('id')
+            .exists()
+            .withMessage('Event id must be exist')
+            .toInt(10)
+            .isInt({ gt: 0 })
+            .withMessage('Event ID must be a positive integer'),
+    ],
+    
+    removeFromInterested: [
+        param('id')
+            .exists()
+            .withMessage('Event id must be exist')
+            .toInt(10)
+            .isInt({ gt: 0 })
+            .withMessage('Event ID must be a positive integer'),
+    ],
 };
 
 export default eventValidation;
