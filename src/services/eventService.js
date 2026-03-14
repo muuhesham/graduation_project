@@ -117,19 +117,27 @@ const eventService = {
         };
     },
 
-    //DELETE EVENT
-    async delete(eventId) {
-        return prismaClient.event.delete({
-            where: { id: Number(eventId) },
-        });
-    },
+    // //HARD DELETE EVENT
+    // async delete(eventId) {
+    //     return prismaClient.event.delete({
+    //         where: { id: Number(eventId) },
+    //     });
+    // },
 
     //SOFT DELETE EVENT
     async softDelete(eventId) {
-        return prismaClient.event.update({
-            where: { id: Number(eventId) },
+        const event =  await prismaClient.event.findFirst({
+            where: { id: Number(eventId)},
+        });
+
+        if (!event) { return null; }
+
+        await prismaClient.event.updateMany({
+            where: { id: Number(eventId) , deletedAt: null},
             data: { deletedAt: new Date() },
         });
+
+        return event;
     },
 
     //UPDATE EVENT
@@ -277,7 +285,7 @@ const eventService = {
             .where(filters).value;
         console.log(selections, relations, filters, exclude);
 
-        const event = await prismaClient.event.findUnique({
+        const event = await prismaClient.event.findFirst({
             where: { id },
             ...query,
         });
@@ -1107,6 +1115,17 @@ const eventService = {
             where: { userId_eventId: { userId, eventId } },
         });
     }
+    async getUserAttendedEvents({userId}){
+        return await prismaClient.event.count({
+            where: {
+                ticketTypes: {
+                    some: { tickets: { some: { userId, /*status: 'valid'*/ } }
+                    }
+                }
+            }
+        });
+    },
+
 };
 
 export default eventService;
