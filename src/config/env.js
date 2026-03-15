@@ -39,8 +39,8 @@ export const STORAGE_TYPE = process.env.STORAGE_TYPE || 'local';
 export const PROTOCOL = process.env.PROTOCOL || 'http';
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-export const SUCCESS_URL = `${FRONT_URL}/${process.env.SUCCESS_ROUTE}`;
-export const CANCEL_URL = `${FRONT_URL}/${process.env.CANCEL_ROUTE}`;
+export const SUCCESS_URL = `${process.env.FRONT_URL}${process.env.SUCCESS_ROUTE}`;
+export const CANCEL_URL = `${process.env.FRONT_URL}${process.env.CANCEL_ROUTE}`;
 export const APP_CURRENCY = process.env.APP_CURRENCY || 'USD';
 
 export { BASE_PATH };

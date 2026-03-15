@@ -128,7 +128,7 @@ const orderService = {
         });
     },
 
-    async getOrderTickets(orderId, userId) {
+    async getOrderTickets({orderId, userId}) {
         const order = await prismaClient.order.findFirst({
             where: { userId, id: orderId, status: OrderStatus.COMPLETED },
             select: {
@@ -140,6 +140,14 @@ const orderService = {
                     orderBy: { createdAt: 'desc' },
                     select: {
                         id: true,
+                        status: true,
+                        eventSeat: {
+                            select: {
+                                rowIndex: true,
+                                seatIndex: true,
+                                tier: { select: { name: true } },
+                            },
+                        },
                         orderItem: {
                             select: {
                                 quantity: true,
@@ -147,16 +155,12 @@ const orderService = {
                                     select: {
                                         name: true,
                                         price: true,
-                                        event: { select: { title: true } },
+                                        event: { select: { title: true , organizerId:true } },
                                     },
                                 },
-                            }
-                        },
-                        qrCode: {
-                            select: {
-                                codePath: true,
                             },
                         },
+                        qrCode: { select: { codePath: true, status: true } },
                     },
                 },
             },
@@ -169,6 +173,12 @@ const orderService = {
         const ticketsWithQrCodes = await Promise.all(order.tickets.map(async (ticket) => {
             if(ticket.qrCode?.codePath) {
                 ticket.qrCode.qrAbsUrl = fileService.getAbsUrl(ticket.qrCode.codePath);
+            }
+            if (ticket.eventSeat?.rowIndex || ticket.eventSeat?.seatIndex) {
+                const rowLetter = String.fromCharCode(65 + ticket.eventSeat.rowIndex);
+                const displaySeatNumber = ticket.eventSeat.seatIndex + 1;
+                ticket.eventSeat.rowLabel = rowLetter;
+                ticket.eventSeat.seatLabel = displaySeatNumber;
             }
             return ticket;
         }));
