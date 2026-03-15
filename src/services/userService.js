@@ -2,6 +2,7 @@ import { prisma as prismaClient } from '../config/db.js';
 import { hashPassword } from './../utils/hash.js';
 import userRoles from '../constants/enums/userRoles.js';
 import organizerService from './organizerService.js';
+import eventService from './eventService.js';
 import AppError from '../errors/AppError.js';
 import { AuthProvider } from '@prisma/client';
 
@@ -137,6 +138,21 @@ const userService = {
         return !!user;
     },
 
+    async getInterestedEvents({userId}) {
+        const interestedEvents = await prismaClient.interestedEvent.findMany({
+            where: { userId },
+            include: {
+                event: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const events = interestedEvents.map((item) => item.event);
+        const result = await eventService.getBannerAbsUrl(events);
+
+        return result;
+    },
+    
     async findUser(userId) {
         const user = await prismaClient.user.findFirst({
             where: { id: userId },

@@ -42,8 +42,9 @@ model User {
   tickets            Ticket[]
   orders             Order[]
 
-  organizationOwner     Organization?  @relation("OrganizationOwner")
-  reviewedOrganizations Organization[] @relation("OrganizationReviewer")
+  organizationOwner     Organization?     @relation("OrganizationOwner")
+  reviewedOrganizations Organization[]    @relation("OrganizationReviewer")
+  interestedEvents      InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -171,26 +172,27 @@ model Organizer {
 }
 
 model Event {
-  id            Int            @id @default(autoincrement())
-  organizerId   String
-  venueId       Int?
-  categoryId    Int?
-  slug          String
-  title         String
-  bannerDisk    String         @default("local")
-  bannerPath    String
-  description   String
-  type          EventType      @default(ticketed)
-  mode          EventMode      @default(single)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  organizer     Organizer      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  venue         Venue?         @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  hasSeatMap    Boolean        @default(false)
-  eventSessions EventSession[]
-  ticketTypes   TicketType[]
+  id                Int               @id @default(autoincrement())
+  organizerId       String
+  venueId           Int?
+  categoryId        Int?
+  slug              String
+  title             String
+  bannerDisk        String            @default("local")
+  bannerPath        String
+  description       String
+  type              EventType         @default(ticketed)
+  mode              EventMode         @default(single)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  category          Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organizer         Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  venue             Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  hasSeatMap        Boolean           @default(false)
+  eventSessions     EventSession[]
+  ticketTypes       TicketType[]
+  interestedEvenets InterestedEvent[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
@@ -335,6 +337,7 @@ model Ticket {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   order      Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  qrCode     QrCode?
   eventSeat  EventSeat? @relation(fields: [eventSeatId], references: [id])
 }
 
@@ -381,17 +384,17 @@ enum OrderStatus {
   cancelled
 }
 
-// model InterestedEvent {
-//   userId    String
-//   eventId   Int
-//   createdAt DateTime @default(now())
-//
-//   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-//
-//   @@id([userId, eventId])
-// }
-//
+model InterestedEvent {
+  userId    String
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
 // model Payment {
 //   id            String        @id @default(uuid())
 //   orderId       String        @unique
@@ -419,25 +422,24 @@ enum OrderStatus {
 //   refunded
 //}
 
-// model QrCode {
-//   id        String   @id @default(uuid())
-//   ticketId  String   @unique
-//   codePath  String
-//   codeDisk  String   @default("local")
-//   isActive  Boolean  @default(true)
-//   status    QRStatus @default(valid)
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-//
-//   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-// }
+model QrCode {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique
+  codePath  String
+  codeDisk  String   @default("local")
+  isActive  Boolean  @default(true)
+  status    QRStatus @default(valid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-//
-// enum QRStatus {
-//   valid
-//   used
-//   expired
-// }
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+enum QRStatus {
+  valid
+  used
+  expired
+}
 
 model Organization {
   id                Int     @id @default(autoincrement())

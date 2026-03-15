@@ -16,4 +16,6 @@ Router.get(
     orderController.status
 );
 
+Router.get('/:id/tickets', auth, orderValidation.getOrderTickets, validate, orderController.getOrderTickets);
+
 export default Router;

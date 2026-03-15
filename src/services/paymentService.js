@@ -56,7 +56,7 @@ const paymentService = {
     async handleWebhookEvent(signature, rawBody) {
         let event;
         try {
-            event = this.stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
+            event = paymentService.stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
         } catch (err) {
             throw new AppError(`Signature verification failed: ${err.message}`);
         }
@@ -95,7 +95,7 @@ const paymentService = {
 
                 if (!order || order.status === OrderStatus.COMPLETED) return;
 
-                if (seatMetaData[0]?.seatIndex != null) {
+                if (seatMetaData && seatMetaData.length > 0 && seatMetaData[0]?.seatIndex != null) {
                     await tx.eventSeat.updateMany({
                         where: {
                             OR: seatMetaData.map((item) => ({
@@ -109,7 +109,7 @@ const paymentService = {
                         },
                     });
                 }
-                await ticketTypeService.issueTicketsForOrder(orderId, userId, order.orderItems, tx);
+                await ticketTypeService.issueTicketsForOrder(orderId, userId, order.orderItems, seatMetaData, tx);
                 await orderService.updateOrderStatus(orderId, OrderStatus.COMPLETED, tx);
             },
             {

@@ -120,7 +120,6 @@ const organizerService = {
                 data: result,
             };
         } catch (err) {
-            console.log(err);
             if (result?.event.bannerPath) {
                 await fileService.delete(result?.event.bannerPath);
             }

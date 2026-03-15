@@ -8,5 +8,12 @@ const orderValidation = {
             .isUUID()
             .withMessage('Order ID must be a valid UUID'),
     ],
+    getOrderTickets: [
+        param('id')
+            .exists()
+            .withMessage('Order ID is required')
+            .isUUID()
+            .withMessage('Order ID must be a valid UUID'),
+    ],
 };
 export default orderValidation;
