@@ -6,6 +6,6 @@ import { apiLimiter } from '../middlewares/rateLimiter.js';
 const Router = express.Router();
 
 Router.patch('/upgrade-to-organizer', apiLimiter, auth, userController.upgradeToOrganizer);
-Router.get('/tickets', auth, userController.getUserTickets);
+Router.get('/tickets', apiLimiter, auth, userController.getUserTickets);
 
 export default Router;
