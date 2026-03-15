@@ -1,5 +1,8 @@
 import { prisma as prismaClient } from './../config/db.js';
 import TicketStatus from '../constants/enums/ticketStatus.js';
+import { generateQrCode } from '../utils/generateQrCode.js';
+import ticketService from './ticketService.js';
+import AppError from '../errors/AppError.js';
 
 const ticketTypeService = {
     DEFAULT_EXCLUDE_FIELDS: {
@@ -23,7 +26,7 @@ const ticketTypeService = {
             });
             return result;
         } catch (error) {
-            console.log(error);
+            throw error;
         }
     },
 
@@ -64,25 +67,47 @@ const ticketTypeService = {
     },
 
     // CREATE ACTUAL TICKETS FOR ORDER
-    async issueTicketsForOrder(orderId, userId, orderItems, tx = prismaClient) {
+    async issueTicketsForOrder(orderId, userId, orderItems, seatMetaData = [], tx = prismaClient) {
         const ticketsToCreate = [];
         const updateStockPromises = [];
-
+        let seatPointer = 0;
+        
         for (const item of orderItems) {
             for (let i = 0; i < item.quantity; i++) {
-                ticketsToCreate.push({
+                const newTicket = {
                     userId,
                     ticketTypeId: item.ticketTypeId,
-                    orderId: orderId.id,
+                    orderId,
                     orderItemId: item.id,
                     status: TicketStatus.VALID,
-                });
+                };
+
+                if (seatMetaData && seatMetaData.length > 0 && seatMetaData[seatPointer]?.eventId) {
+                    const currentSeat = seatMetaData[seatPointer];
+                    const seat = await tx.eventSeat.findUnique({
+                        where: {
+                            eventId_rowIndex_seatIndex: {
+                                eventId: currentSeat.eventId,
+                                rowIndex: currentSeat.rowIndex,
+                                seatIndex: currentSeat.seatIndex,
+                            },
+                        },
+                    });
+
+                    if (seat) newTicket.eventSeatId = seat.id;
+                    seatPointer++;
+                }
+
+                ticketsToCreate.push(newTicket);
+
             }
+
             const updatePromise = tx.ticketType.update({
                 where: { id: item.ticketTypeId },
                 data: { sold: { increment: Number(item.quantity) } },
             });
             updateStockPromises.push(updatePromise);
+            
         }
 
         const [_, tickets] = await Promise.all([
@@ -91,6 +116,14 @@ const ticketTypeService = {
                 ? tx.ticket.createMany({ data: ticketsToCreate })
                 : Promise.resolve(),
         ]);
+
+        const ticketsCreated = await ticketService.getTicketsCreated({userId, orderItems, tx});
+
+        if (!ticketsCreated || ticketsCreated.length === 0) {
+            throw new AppError('Order processed but no tickets created');
+        }
+        
+        await Promise.all(ticketsCreated.map((ticket) => generateQrCode(ticket, tx)));
 
         return tickets;
     },

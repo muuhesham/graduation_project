@@ -283,7 +283,6 @@ const eventService = {
             .include(relations || eventService.DEFAULT_RELATIONS)
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
-        console.log(selections, relations, filters, exclude);
 
         const event = await prismaClient.event.findFirst({
             where: { id },
@@ -588,7 +587,6 @@ const eventService = {
                 },
             },
         });
-
         if (!event) throw new NotFoundError('Event not found');
         if (event.hasSeatMap) {
             const seatMap = new Map(
@@ -651,8 +649,7 @@ const eventService = {
                         'Seat not reserved, please reserve the seat before checkout'
                     );
                 }
-
-                const price = parseFloat(dbTier.price);
+                const price = event.type === 'free' ? 0 : parseFloat(dbTier.price);
 
                 totalPrice += price;
                 itemsCount += 1;
@@ -763,7 +760,7 @@ const eventService = {
                 );
                 let session;
                 if (totalPrice === 0) {
-                    await ticketTypeService.issueTicketsForOrder(order, userId, orderItems, tx);
+                    await ticketTypeService.issueTicketsForOrder(order.id, userId, orderItems, verifiedItems, tx);
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,

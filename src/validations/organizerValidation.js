@@ -35,7 +35,6 @@ const organizerValidation = {
             .trim(),
 
         body('banner').custom(async (value, { req }) => {
-            console.log("file: ",req.file,"\nbody: ",req.body)
             if (!req.file) {
                 throw new Error('Banner image is required');
             }
@@ -128,6 +127,7 @@ const organizerValidation = {
             .toLowerCase()
             .isIn(Object.values(EventType))
             .withMessage(`eventType must be ${Object.values(EventType).join(',')}`),
+
         body('mode')
             .notEmpty()
             .withMessage('mode is required')
@@ -135,6 +135,61 @@ const organizerValidation = {
             .toLowerCase()
             .isIn(Object.values(EventMode))
             .withMessage(`eventMode must be ${Object.values(EventMode).join(',')}`),
+
+        body('eventType').optional().isString(),
+
+        body(['numberOfRows', 'numberOfColumns', 'priceTiers', 'seatsData'])
+            .if(body('eventType').equals('seatmap'))
+            .notEmpty()
+            .withMessage((value, { path }) => `${path} is required when eventType is provided`),
+
+        body('numberOfRows')
+            .if(body('eventType').equals('seatmap'))
+            .isInt({ min: 1 })
+            .withMessage('numberOfRows must be at least 1'),
+
+        body('priceTiers')
+            .if(body('eventType').equals('seatmap'))
+            .notEmpty()
+            .withMessage('priceTiers is required with seatmap')
+            .custom((value, {req}) => {
+            let priceTiers = value;
+            if (typeof value === 'string') {
+                try {
+                    priceTiers = JSON.parse(value);
+                } catch (e) {
+                    throw new Error('priceTiers must be a valid JSON array');
+                }
+            }
+            if (!Array.isArray(priceTiers)) {
+                throw new Error('priceTiers must be an array');
+            }
+            const ticketTypes = req.body.tickets;
+            if (!ticketTypes || !Array.isArray(ticketTypes)) {
+                throw new Error('Ticket types are required to validate prices');
+            }
+
+            priceTiers.forEach((tier) => {
+                const matchedType = ticketTypes.find(t => t.name === tier.name);
+
+                if (!matchedType) {
+                    throw new Error(`Tier name "${tier.name}" does not match any ticket type name`);
+                }
+
+                if (parseFloat(matchedType.price) !== parseFloat(tier.price)) {
+                    throw new Error(
+                        `Price mismatch for "${tier.name}": TicketType price (${matchedType.price}) must equal Tier price (${tier.price})`
+                    );
+                }
+                });
+
+            return true;
+        }),
+        
+        body('seatsData')
+            .if(body('eventType').equals('seatmap'))
+            .notEmpty()
+            .withMessage('seatsData is required with seatmap'),
     ],
 
     updateEvent: [
@@ -177,7 +232,6 @@ const organizerValidation = {
 
         body('banner').custom(async (value, { req }) => {
             if (!req.file) {
-                console.log("file: ",req.file,"\nbody: ",req.body)
                 throw new Error('Banner image is required');
             }
 
@@ -231,7 +285,10 @@ const organizerValidation = {
             .isString()
             .withMessage('Ticket name must be a string'),
 
-        body('tickets.*.price').optional().isFloat({ min: 0 }).withMessage('Price must be greater than or equal 0'),
+        body('tickets.*.price')
+            .optional()
+            .isFloat({ min: 0 })
+            .withMessage('Price must be greater than or equal 0'),
 
         body('tickets.*.quantity')
             .optional()

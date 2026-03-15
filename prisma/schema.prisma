@@ -323,6 +323,7 @@ model Ticket {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   order      Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  qrCode     QrCode?
   eventSeat  EventSeat? @relation(fields: [eventSeatId], references: [id])
 }
 
@@ -407,22 +408,22 @@ model InterestedEvent {
 //   refunded
 //}
 
-// model QrCode {
-//   id        String   @id @default(uuid())
-//   ticketId  String   @unique
-//   codePath  String
-//   codeDisk  String   @default("local")
-//   isActive  Boolean  @default(true)
-//   status    QRStatus @default(valid)
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-//
-//   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-// }
+model QrCode {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique
+  codePath  String
+  codeDisk  String   @default("local")
+  isActive  Boolean  @default(true)
+  status    QRStatus @default(valid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-//
-// enum QRStatus {
-//   valid
-//   used
-//   expired
-// }
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+
+enum QRStatus {
+  valid
+  used
+  expired
+}

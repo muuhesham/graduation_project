@@ -19,12 +19,42 @@ const eventValidation = {
             .withMessage('Event ID must be a positive integer'),
 
         body('tickets.*.name').exists().withMessage('Ticket name is required').trim().isString(),
+
         body('tickets.*.quantity')
             .exists()
             .withMessage('Ticket quantity is required')
             .toInt(10)
             .isInt({ gt: 0 })
             .withMessage('Ticket quantity must be a positive integer'),
+
+        body('tickets.*.seatInfo')
+            .if((value, { req }) => value !== undefined || req.body.tickets[0].row !== undefined)
+            .isObject()
+            .withMessage('seatInfo must be an object'),
+
+        body('tickets.*.seatInfo.row')
+            .if(body('tickets.*.seatInfo').exists())
+            .isInt({ min: 0 })
+            .withMessage('Row index is required and must be an integer'),
+
+        body('tickets.*.seatInfo.number')
+            .if(body('tickets.*.seatInfo').exists())
+            .isInt({ min: 0 })
+            .withMessage('Seat number is required and must be an integer'),
+
+        body('tickets.*.seatInfo.tierId')
+            .if(body('tickets.*.seatInfo').exists())
+            .notEmpty()
+            .withMessage('tierId is required')
+            .isString()
+            .withMessage('tierId must be string'),
+
+        body('tickets.*.seatInfo.tierName')
+            .if(body('tickets.*.seatInfo').exists())
+            .notEmpty()
+            .withMessage('tierName is required')
+            .isString()
+            .withMessage('tierName must be string')
     ],
 
     reserve: [
