@@ -1,6 +1,7 @@
 import asyncWrapper from '../middlewares/asyncWrapper.js';
-import { sendSuccess, sendFail, sendError } from '../utils/response.js';
+import { sendSuccess, sendFail } from '../utils/response.js';
 import userService from '../services/userService.js';
+import ticketService from '../services/ticketService.js';
 
 const userController = {
     upgradeToOrganizer: asyncWrapper(async (req, res) => {
@@ -16,13 +17,9 @@ const userController = {
 
     getUserTickets: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
-        const tickets = await userService.getUserTickets(userId);
+        const tickets = await ticketService.getUserTickets({userId});
 
-        if(tickets.length === 0) {
-            return sendSuccess(res, { data: tickets , message: 'No tickets found for this user' }, 200);
-        }
-
-        return sendSuccess(res, tickets, 200);
+        return sendSuccess(res, {tickets}, 200);
     }),
 
 };
