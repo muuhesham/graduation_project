@@ -26,6 +26,9 @@ Router.post(
     eventController.checkout
 );
 
+Router.post('/:id/interested', auth, eventValidation.addToInterested, validate, eventController.addToInterested);
+Router.delete('/:id/interested', auth, eventValidation.removeFromInterested, validate, eventController.removeFromInterested);
+
 Router.post(
     '/:id/reserve',
     auth,

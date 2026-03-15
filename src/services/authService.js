@@ -231,7 +231,7 @@ const authService = {
         });
     },
 
-    async sendOtpMail(user, isFirstTime) {
+    async sendOtpMail({user, isFirstTime}) {
         let userData = user;
 
         if (!isFirstTime) {
@@ -292,6 +292,14 @@ const authService = {
         const { cacheKey } = authService.accessTokenCache({ accessToken });
         return !(await cacheService.exists(cacheKey));
     },
+
+    async revokeAllTokensUser({userId}) {
+        await prismaClient.refreshToken.updateMany({
+            where: { userId },
+            data: { isRevoked: true },
+        });
+    },
+    
 };
 
 export default authService;

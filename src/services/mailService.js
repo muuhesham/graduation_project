@@ -2,6 +2,8 @@ import otpMailTemplate from '../mails/templates/otpMail.js';
 import mailQueue from '../queues/mailQueue.js';
 import passwordResetMail from '../mails/templates/passwordResetMail.js';
 import newsletterConfirmTemplate from '../mails/templates/newsletterConfirmMail.js';
+import { FRONT_URL } from '../config/env.js';
+import updateEmailTemplate from '../mails/templates/updateEmailMail.js';
 
 const mailService = {
     async sendOtpJob(user, otp, expiresIn) {
@@ -84,6 +86,31 @@ const mailService = {
                 }
             );
     },
+    async sendUpdateEmail({user, newEmail, token}) {
+        const html = updateEmailTemplate({
+            name: user.name,
+            newEmail: newEmail,
+            confirmUrl: `${FRONT_URL}/confirm-email?token=${token}`,
+        });
+        await mailQueue.add(
+            'sendUpdateEmail',
+            {
+                to: user.email,
+                subject: 'Confirm your new email address',
+                html: html,
+                text: `You requested to change your email to ${newEmail}.\n\nPlease confirm this change by clicking the link: ${FRONT_URL}/confirm-email?token=${token}\n\nIf you didn't request this, please ignore this email.`,
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000,
+                },
+                removeOnComplete: true,
+                removeOnFail: false,
+            }
+        );
+    }
 };
 
 export default mailService;

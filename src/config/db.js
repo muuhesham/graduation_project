@@ -1,20 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import { prismaMiddleware } from '../middlewares/prisma.js';
 
-const prisma = new PrismaClient();
-
-// prisma.$use(async (params, next) => {
-//     const modelWithDeletedAt = ['Organizer', 'Event'];
-
-//     if (modelWithDeletedAt.includes(params.model)) {
-//         if (['findMany', 'findUnique', 'findFirst'].includes(params.action)) {
-//             if (!params.args) params.args = {};
-//             if (!params.args.where) params.args.where = {};
-//             params.args.where.deletedAt = null;
-//         }
-//     }
-
-//     return next(params);
-// });
+const basePrisma = new PrismaClient();
+const prisma = prismaMiddleware(basePrisma);
 
 async function connectDB() {
     try {

@@ -30,18 +30,17 @@ model User {
   birthDate          DateTime?
   governorateId      Int?
   governorate        Governorate? @relation(fields: [governorateId], references: [id])
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  //* TODO: ADD 'deletedAt' field for soft delete
-  //deletedAt          DateTime?
-
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
   //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
   refreshToken RefreshToken[]
   //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer    Organizer?
-  categories   AttendeeFavoriteCategory[]
-  tickets      Ticket[]
-  orders       Order[]
+  categories         AttendeeFavoriteCategory[]
+  tickets       Ticket[]
+  orders        Order[]
+  interestedEvents InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -180,6 +179,7 @@ model Event {
   hasSeatMap    Boolean        @default(false)
   eventSessions EventSession[]
   ticketTypes   TicketType[]
+  interestedEvenets InterestedEvent[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
@@ -370,17 +370,17 @@ enum OrderStatus {
   cancelled
 }
 
-// model InterestedEvent {
-//   userId    String
-//   eventId   Int
-//   createdAt DateTime @default(now())
-//
-//   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-//
-//   @@id([userId, eventId])
-// }
-//
+model InterestedEvent {
+  userId    String
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
 // model Payment {
 //   id            String        @id @default(uuid())
 //   orderId       String        @unique

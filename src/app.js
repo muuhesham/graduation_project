@@ -29,6 +29,8 @@ import orderRoutes from './routes/order.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import newsletterRoutes from './routes/newsletter.routes.js';
 import ticketRoutes from './routes/ticket.routes.js';
+import profileRoutes from './routes/profile.routes.js';
+import categoryRoutes from './routes/category.routes.js';
 
 //! PAYMENT ROUTES - NEEDS RAW BODY PARSING (DON'T MOVE IT AFTER express.json())
 app.use('/api/v1/payments', paymentRoutes);
@@ -45,6 +47,8 @@ app.use('/api/v1/organizer/dashboard', organizerDashboardRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
+app.use('/api/v1/profile', profileRoutes);
+app.use('/api/v1/category', categoryRoutes);
 
 //! AFTER MIDDLEWARES
 import { errorHandler } from './middlewares/errorHandler.js';

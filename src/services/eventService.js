@@ -10,6 +10,7 @@ import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
+import AppError from '../errors/AppError.js';
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
@@ -116,19 +117,27 @@ const eventService = {
         };
     },
 
-    //DELETE EVENT
-    async delete(eventId) {
-        return prismaClient.event.delete({
-            where: { id: Number(eventId) },
-        });
-    },
+    // //HARD DELETE EVENT
+    // async delete(eventId) {
+    //     return prismaClient.event.delete({
+    //         where: { id: Number(eventId) },
+    //     });
+    // },
 
     //SOFT DELETE EVENT
     async softDelete(eventId) {
-        return prismaClient.event.update({
-            where: { id: Number(eventId) },
+        const event =  await prismaClient.event.findFirst({
+            where: { id: Number(eventId)},
+        });
+
+        if (!event) { return null; }
+
+        await prismaClient.event.updateMany({
+            where: { id: Number(eventId) , deletedAt: null},
             data: { deletedAt: new Date() },
         });
+
+        return event;
     },
 
     //UPDATE EVENT
@@ -275,7 +284,7 @@ const eventService = {
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
-        const event = await prismaClient.event.findUnique({
+        const event = await prismaClient.event.findFirst({
             where: { id },
             ...query,
         });
@@ -1071,6 +1080,49 @@ const eventService = {
 
         return eventService.getBannerAbsUrl(events);
     },
+
+    async addToInterested({userId, eventId}) {
+        const existing = await eventService.isEventInterested({userId, eventId});
+
+        if(existing){
+            throw new AppError('Event is already in your interested list', 400);
+        }
+
+        const event = await prismaClient.interestedEvent.create({
+            data: { userId, eventId, },
+        });
+        return event;
+    },
+
+    async removeFromInterested({userId, eventId}) {
+        const existing = await eventService.isEventInterested({userId, eventId});
+
+        if(!existing){
+            throw new AppError('Event is not in your interested list', 404);
+        }
+
+        const deletedEvent = await prismaClient.interestedEvent.delete({
+            where: { userId_eventId: {userId, eventId} },
+        });
+        return deletedEvent;
+    },
+
+    async isEventInterested({userId, eventId}){
+        return await prismaClient.interestedEvent.findUnique({
+            where: { userId_eventId: { userId, eventId } },
+        });
+    }
+    async getUserAttendedEvents({userId}){
+        return await prismaClient.event.count({
+            where: {
+                ticketTypes: {
+                    some: { tickets: { some: { userId, /*status: 'valid'*/ } }
+                    }
+                }
+            }
+        });
+    },
+
 };
 
 export default eventService;
