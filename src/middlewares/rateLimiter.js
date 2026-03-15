@@ -7,13 +7,14 @@ import { NODE_ENV } from '../config/env.js';
 /**
  * Generic rate limiter factory
  *
- * @param {Object} options - Configuration options for the rate limiter
- * @param {number} options.windowMs - Time frame for which requests are checked/remembered (in milliseconds)
- * @param {number} options.max - Maximum number of connections allowed during the windowMs time frame
- * @param {string} [options.message] - Custom message to send when rate limit is exceeded
- * @param {string} [options.prefix] - Prefix for Redis keys to differentiate environments or use cases
- * @param {function} [options.keyGenerator] - Function to generate unique keys for each request
- * @returns {function} - Express middleware function for rate limiting
+ * @param {{
+ *  windowMs: number,
+ *  max: number,
+ *  message?: string,
+ *  prefix?: string,
+ *  keyGenerator?: (req: import('express').Request) => string,
+ * }} options - Configuration options for the rate limiter
+ * @returns {import('express').RequestHandler} Express middleware
  *
  * @example
  * // Create a rate limiter that allows 100 requests per 15 minutes

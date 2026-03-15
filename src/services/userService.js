@@ -6,7 +6,7 @@ import AppError from '../errors/AppError.js';
 import { AuthProvider } from '@prisma/client';
 
 const userService = {
-    async create(user) {
+    async create(user, tx = prismaClient) {
         const existingUser = await userService.findByEmail(user.email);
 
         if (existingUser) {
@@ -18,7 +18,7 @@ const userService = {
 
         user.password = await hashPassword(user.password);
 
-        return prismaClient.user.create({
+        return tx.user.create({
             data: user,
         });
     },
@@ -43,6 +43,27 @@ const userService = {
         return prismaClient.user.update({
             where: { email: email },
             data: { isVerified: true },
+        });
+    },
+
+    async markPhoneVerified(userId) {
+        return prismaClient.user.update({
+            where: { id: userId },
+            data: { isPhoneVerified: true },
+        });
+    },
+
+    async markPhoneVerifiedByPhone(phone) {
+        return prismaClient.user.update({
+            where: { phone },
+            data: { isPhoneVerified: true },
+        });
+    },
+
+    async updatePhone(userId, phone) {
+        return prismaClient.user.update({
+            where: { id: userId },
+            data: { phone, isPhoneVerified: false },
         });
     },
 
@@ -146,7 +167,7 @@ const userService = {
         return user;
     },
 
-    async isEmailAvailable({newEmail, confirmEmail}) {
+    async isEmailAvailable({ newEmail, confirmEmail }) {
         if (newEmail !== confirmEmail) {
             throw new AppError(`Emails don't match`, 400);
         }
@@ -161,7 +182,7 @@ const userService = {
         }
     },
 
-    async findEmailById({userId}) {
+    async findEmailById({ userId }) {
         const user = await prismaClient.user.findUnique({
             where: { id: userId },
             select: { email: true, name: true },
@@ -169,6 +190,13 @@ const userService = {
         return user;
     },
 
+    findByPhoneNumber(number) {
+        return prismaClient.user.findUnique({
+            where: {
+                phone: number,
+            },
+        });
+    },
 };
 
 export default userService;

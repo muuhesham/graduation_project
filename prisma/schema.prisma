@@ -14,32 +14,36 @@ datasource db {
 }
 
 model User {
-  id                 String       @id @default(uuid())
+  id                 String                     @id @default(uuid())
   name               String
-  email              String       @unique
+  email              String                     @unique
   password           String?
-  gender             Gender       @default(male)
-  phone              String?      @unique
-  role               Role         @default(user)
+  gender             Gender                     @default(male)
+  phone              String?                    @unique
+  role               Role                       @default(user)
   location           String?
-  languagePreference Language     @default(en)
-  isVerified         Boolean      @default(false)
+  languagePreference Language                   @default(en)
+  isVerified         Boolean                    @default(false)
+  isPhoneVerified    Boolean                    @default(false)
   idInProviderDB     String?
-  authProvider       AuthProvider @default(LOCAL)
-  isCompleted        Boolean      @default(false)
+  authProvider       AuthProvider               @default(LOCAL)
+  isCompleted        Boolean                    @default(false)
   birthDate          DateTime?
   governorateId      Int?
-  governorate        Governorate? @relation(fields: [governorateId], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  governorate        Governorate?               @relation(fields: [governorateId], references: [id])
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
   deletedAt          DateTime?
   //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
-  refreshToken RefreshToken[]
+  refreshToken       RefreshToken[]
   //* TODO: UPDATE 'Organizer' to 'organizer'
-  Organizer    Organizer?
-  categories   AttendeeFavoriteCategory[]
-  tickets      Ticket[]
-  orders       Order[]
+  Organizer          Organizer?
+  categories         AttendeeFavoriteCategory[]
+  tickets            Ticket[]
+  orders             Order[]
+
+  organizationOwner     Organization?  @relation("OrganizationOwner")
+  reviewedOrganizations Organization[] @relation("OrganizationReviewer")
 }
 
 model NewsletterSubscriber {
@@ -118,6 +122,15 @@ model Governorate {
 model Otp {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  code      String
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model PhoneOtp {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
   code      String
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -236,14 +249,15 @@ model Venue {
 }
 
 model Category {
-  id        Int                        @id @default(autoincrement())
-  name      String                     @unique
-  imagePath String
-  imageDisk String                     @default("local")
-  createdAt DateTime                   @default(now())
-  updatedAt DateTime                   @updatedAt
-  attendees AttendeeFavoriteCategory[]
-  events    Event[]
+  id            Int                        @id @default(autoincrement())
+  name          String                     @unique
+  imagePath     String
+  imageDisk     String                     @default("local")
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  attendees     AttendeeFavoriteCategory[]
+  events        Event[]
+  organizations Organization[]
 }
 
 model AttendeeFavoriteCategory {
@@ -424,3 +438,125 @@ enum OrderStatus {
 //   used
 //   expired
 // }
+
+model Organization {
+  id                Int     @id @default(autoincrement())
+  userId            String  @unique
+  name              String
+  slug              String? @unique
+  description       String?
+  website           String?
+  categoryId        Int?
+  contactPersonName String?
+
+  instagramUrl String?
+  facebookUrl  String?
+  twitterUrl   String?
+  linkedinUrl  String?
+  youtubeUrl   String?
+
+  logoDisk String?
+  logoPath String?
+
+  coverDisk String?
+  coverPath String?
+
+  address   String?
+  cityId    Int?
+  stateId   Int?
+  countryId Int?
+
+  companyType        CompanyType
+  taxId              String?
+  registrationNumber String?
+
+  suspendReason   String?
+  rejectionReason String?
+
+  verificationStatus OrganizationVerificationStatus @default(PENDING)
+  status             OrganizationStatus             @default(ACTIVE)
+
+  reviewedById String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  reviewedAt DateTime?
+  deletedAt  DateTime?
+
+  owner    User  @relation("OrganizationOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewer User? @relation("OrganizationReviewer", fields: [reviewedById], references: [id])
+
+  category Category? @relation(fields: [categoryId], references: [id])
+  city     City?     @relation(fields: [cityId], references: [id])
+  state    State?    @relation(fields: [stateId], references: [id])
+  country  Country?  @relation(fields: [countryId], references: [id])
+}
+
+enum OrganizationVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  UNDER_REVIEW
+}
+
+enum CompanyType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  LLC
+  C_CORPORATION
+  S_CORPORATION
+  PRIVATE_LIMITED_COMPANY
+  PUBLIC_LIMITED_COMPANY
+  NONPROFIT
+  COOPERATIVE
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Country {
+  id             Int     @id @default(autoincrement())
+  name           String  @unique
+  code           String  @unique
+  phoneCode      String
+  taxIdLocale    String?
+  currencyCode   String
+  currencySymbol String
+  flagEmoji      String
+  isSupported    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizations Organization[]
+  states        State[]
+
+  @@index([code])
+}
+
+model State {
+  id        Int    @id @default(autoincrement())
+  countryId Int
+  name      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country       Country        @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  organizations Organization[]
+  cities        City[]
+}
+
+model City {
+  id      Int    @id @default(autoincrement())
+  stateId Int
+  name    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  state         State          @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  organizations Organization[]
+}

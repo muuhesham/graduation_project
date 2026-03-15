@@ -10,6 +10,7 @@ import {
 } from '../config/env.js';
 import { google } from 'googleapis';
 import { AuthThirdPartyService } from '../services/thirdPartyAuthService.js';
+import AppError from '../errors/AppError.js';
 
 const authController = {
     async register(req, res) {
@@ -135,6 +136,52 @@ const authController = {
 
             return sendSuccess(res, result.data, 200);
         } catch (err) {
+            console.error(err);
+            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+        }
+    },
+
+    async registerOrganization(req, res) {
+        try {
+            const data = req.body;
+
+            await authService.registerOrganization(data);
+
+            return sendSuccess(res, {}, 201);
+        } catch (err) {
+            if (err instanceof AppError) {
+                return sendFail(res, { error: err.message }, err.statusCode || 400);
+            }
+            console.error(err);
+            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+        }
+    },
+
+    async requestPhoneOtp(req, res) {
+        try {
+            const userId = req.user?.id;
+            const { phone } = req.body;
+            await authService.requestPhoneOtp({ userId, phone });
+            return sendSuccess(res, {}, 200);
+        } catch (err) {
+            if (err instanceof AppError) {
+                return sendFail(res, { error: err.message }, err.statusCode || 400);
+            }
+            console.error(err);
+            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+        }
+    },
+
+    async verifyPhoneOtp(req, res) {
+        try {
+            const userId = req.user?.id;
+            const { phone, otp } = req.body;
+            await authService.verifyPhoneOtp({ userId, phone, otp });
+            return sendSuccess(res, {}, 200);
+        } catch (err) {
+            if (err instanceof AppError) {
+                return sendFail(res, { error: err.message }, err.statusCode || 400);
+            }
             console.error(err);
             return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
         }

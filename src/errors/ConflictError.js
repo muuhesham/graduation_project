@@ -1,7 +1,11 @@
 import AppError from './AppError.js';
-import common from '../constants/errors/common.js'; 
+import common from '../constants/errors/common.js';
 
 class ConflictError extends AppError {
+    /**
+     * @param {string} message
+     * @param {string} code
+     */
     constructor(message = common.CONFLICT, code = 'CONFLICT_ERROR') {
         super(message, 409, code);
         this.name = 'ConflictError';

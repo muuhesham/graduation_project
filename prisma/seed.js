@@ -7,6 +7,7 @@ import seedGovernorates from './seeders/governorate.seeder.js';
 import seedVenues from './seeders/venue.seeder.js';
 import seedEvents from './seeders/event.seeder.js';
 import seedOrganizers from './seeders/organizer.seeder.js';
+import seedLocations from './seeders/location.seeder.js';
 
 async function main() {
     console.log('🚀 Starting database seed...');
@@ -16,6 +17,7 @@ async function main() {
     // const venues = await seedVenues(prisma);
     // const organizers = await seedOrganizers(prisma, { users });
     // await seedEvents(prisma, { categories, venues, organizers });
+    await seedLocations(prisma);
     console.log('🌱 All seeders completed.');
 }
 

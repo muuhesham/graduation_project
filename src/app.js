@@ -30,6 +30,7 @@ import paymentRoutes from './routes/payment.routes.js';
 import newsletterRoutes from './routes/newsletter.routes.js';
 import profileRoutes from './routes/profile.routes.js';
 import categoryRoutes from './routes/category.routes.js';
+import locationRoutes from './routes/location.routes.js';
 
 //! PAYMENT ROUTES - NEEDS RAW BODY PARSING (DON'T MOVE IT AFTER express.json())
 app.use('/api/v1/payments', paymentRoutes);
@@ -47,6 +48,7 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/category', categoryRoutes);
+app.use('/api/v1/location', locationRoutes);
 
 //! AFTER MIDDLEWARES
 import { errorHandler } from './middlewares/errorHandler.js';

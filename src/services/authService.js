@@ -12,9 +12,12 @@ import userService from './userService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
 import cacheService from './cacheService.js';
+import organizationService from './organizationService.js';
 import { prisma as prismaClient } from '../config/db.js';
 import crypto from 'crypto';
 import AuthProvider from '../constants/enums/authProvider.js';
+import ConflictError from '../errors/ConflictError.js';
+import AppError from '../errors/AppError.js';
 
 const authService = {
     JWT_EXPIRATION: 15 * 60, // 15 minutes
@@ -220,6 +223,90 @@ const authService = {
         return { status: 'success', data: { message: 'Password reset successfully' } };
     },
 
+    async registerOrganization({
+        name,
+        contactName,
+        email,
+        password,
+        phone,
+        categoryId,
+        companyType,
+        registrationNumber,
+        taxId,
+        address,
+        cityId,
+        stateId,
+        countryId,
+    }) {
+        const result = await this._createOrganizationAccount({
+            name,
+            contactName,
+            email,
+            password,
+            phone,
+            categoryId,
+            companyType,
+            registrationNumber,
+            taxId,
+            address,
+            cityId,
+            stateId,
+            countryId,
+        });
+
+        await authService._sendOrganizationVerifications(result);
+
+        return result.organization;
+    },
+
+    async requestPhoneOtp({ userId, phone }) {
+        if (userId) {
+            const config = await authService._buildUserPhoneOtpConfig(userId, phone);
+            await authService._sendPhoneOtp(config);
+            return;
+        }
+
+        let config;
+        try {
+            config = await authService._buildOrganizationPhoneOtpConfig(phone);
+        } catch (err) {
+            if (err instanceof AppError && err.code === 'ORG_NOT_FOUND') return;
+            throw err;
+        }
+
+        if (!config) return;
+
+        await authService._sendPhoneOtp(config);
+    },
+
+    async verifyPhoneOtp({ userId, phone, otp }) {
+        if (userId) {
+            const user = await userService.findById(userId);
+            if (!user) {
+                throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+            }
+            if (!user?.phone) {
+                throw new AppError('No phone number found for user', 400, 'NO_PHONE');
+            }
+
+            await otpService.verifyPhoneOtp(user.phone, otp);
+            await userService.markPhoneVerified(userId);
+            return;
+        }
+
+        if (!phone) {
+            throw new AppError('Phone number is required', 400, 'NO_PHONE');
+        }
+
+        const organization = await organizationService.findByOwnerPhone(phone);
+        if (!organization) {
+            throw new AppError('Organization not found', 404, 'ORG_NOT_FOUND');
+        }
+
+        await otpService.verifyPhoneOtp(phone, otp);
+        await userService.markPhoneVerified(organization.owner.id);
+    },
+
     async createPasswordToken(email, token) {
         await prismaClient.resetPasswordToken.deleteMany({ where: { email } });
 
@@ -231,7 +318,7 @@ const authService = {
         });
     },
 
-    async sendOtpMail({user, isFirstTime}) {
+    async sendOtpMail({ user, isFirstTime }) {
         let userData = user;
 
         if (!isFirstTime) {
@@ -281,6 +368,114 @@ const authService = {
         };
     },
 
+    async _createOrganizationAccount({
+        name,
+        contactName,
+        email,
+        password,
+        phone,
+        categoryId,
+        companyType,
+        registrationNumber,
+        taxId,
+        address,
+        cityId,
+        stateId,
+        countryId,
+    }) {
+        const phoneExists = await userService.findByPhoneNumber(phone);
+        if (phoneExists) {
+            throw new ConflictError('Phone number already used');
+        }
+        return prismaClient.$transaction(async (tx) => {
+            const user = await userService.create(
+                { name: contactName || name, email, password, phone },
+                tx
+            );
+
+            if (!user || user.status === 'fail') {
+                throw new ConflictError(user?.data?.error || 'Email already used');
+            }
+
+            const organization = await organizationService.create(
+                {
+                    name,
+                    phone,
+                    userId: user.id,
+                    categoryId,
+                    companyType,
+                    registrationNumber,
+                    taxId,
+                    address,
+                    cityId,
+                    stateId,
+                    countryId,
+                },
+                tx
+            );
+
+            return { organization, user };
+        });
+    },
+
+    async _sendOrganizationVerifications({ organization, user }) {
+        await Promise.all([
+            authService.sendOtpMail(user, true),
+            otpService.requestPhoneOtp({
+                phone: user.phone,
+                templateName: 'organizationPhoneOtp',
+                variables: { organizationName: organization.name },
+                expiresInSeconds: authService.OTP_EXPIRATION,
+            }),
+        ]);
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} phone
+     * @returns {Promise<{ phone: string, templateName: string, variables: Record<string, unknown> }>}
+     */
+    async _buildUserPhoneOtpConfig(userId, phone) {
+        const user = await userService.findById(userId);
+        if (!user) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+
+        if (user.isPhoneVerified && user.phone === phone) {
+            throw new AppError('Phone already verified', 400, 'PHONE_ALREADY_VERIFIED');
+        }
+
+        if (user.phone !== phone) {
+            await userService.updatePhone(userId, phone);
+        }
+
+        return { phone, templateName: 'phoneOtp', variables: {} };
+    },
+
+    /**
+     * @param {string} phone
+     * @returns {Promise<{ phone: string, templateName: string, variables: Record<string, unknown> } | null>}
+     */
+    async _buildOrganizationPhoneOtpConfig(phone) {
+        const organization = await organizationService.findByOwnerPhone(phone);
+        if (!organization) {
+            throw new AppError('Organization not found', 404, 'ORG_NOT_FOUND');
+        }
+
+        if (organization.owner?.isPhoneVerified) return null;
+
+        return {
+            phone,
+            templateName: 'organizationPhoneOtp',
+            variables: { organizationName: organization.name },
+        };
+    },
+
+    async _sendPhoneOtp(config) {
+        await otpService.requestPhoneOtp({
+            ...config,
+            expiresInSeconds: authService.OTP_EXPIRATION,
+        });
+    },
+
     accessTokenCache({ accessToken }) {
         const decoded = jwt.decode(accessToken);
         const ttl = decoded ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 3600;
@@ -293,13 +488,12 @@ const authService = {
         return !(await cacheService.exists(cacheKey));
     },
 
-    async revokeAllTokensUser({userId}) {
+    async revokeAllTokensUser({ userId }) {
         await prismaClient.refreshToken.updateMany({
             where: { userId },
             data: { isRevoked: true },
         });
     },
-    
 };
 
 export default authService;

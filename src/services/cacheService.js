@@ -2,7 +2,7 @@ import { redis } from '../config/redis.js';
 
 const cacheService = {
     SERVICE_PREFIX: 'cache:',
-    
+
     async set(key, value, ttl = 3600) {
         key = cacheService.constructKey(key);
         const data = typeof value === 'string' ? value : JSON.stringify(value);
@@ -58,7 +58,7 @@ const cacheService = {
         for (let i = 0; i < retries; i++) {
             const result = await redis.set(lockKey, 'locked', 'NX', 'EX', ttl);
             if (result === 'OK') return true;
-            await new Promise(r => setTimeout(r, delay));
+            await new Promise((r) => setTimeout(r, delay));
         }
         return false;
     },
@@ -69,11 +69,15 @@ const cacheService = {
     },
 
     async cachedQuery(key, queryFn, ttl = 300) {
-        return this.remember(key, async () => {
-            return await queryFn();
-        }, ttl);
+        return this.remember(
+            key,
+            async () => {
+                return await queryFn();
+            },
+            ttl
+        );
     },
-    
+
     constructKey(key) {
         return `${cacheService.SERVICE_PREFIX}${key}`;
     },

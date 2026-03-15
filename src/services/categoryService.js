@@ -47,6 +47,14 @@ const categoryService = {
         return categoryService.getImageAbsUrl(categories);
     },
 
+    findById(id) {
+        return prismaClient.category.findUnique({
+            where: {
+                id,
+            },
+        });
+    },
+
     getImageAbsUrl(categories) {
         if (!categories) return null;
         if (categories && !Array.isArray(categories)) {
