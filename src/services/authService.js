@@ -36,7 +36,7 @@ const authService = {
         const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
             authService.generateRefreshToken(createdUser),
-            authService.sendOtpMail(createdUser, true),
+            authService.sendOtpMail({ createdUser, isFirstTime: true }),
         ]);
 
         return {
@@ -420,7 +420,7 @@ const authService = {
 
     async _sendOrganizationVerifications({ organization, user }) {
         await Promise.all([
-            authService.sendOtpMail(user, true),
+            authService.sendOtpMail({ user, isFirstTime: true }),
             otpService.requestPhoneOtp({
                 phone: user.phone,
                 templateName: 'organizationPhoneOtp',
