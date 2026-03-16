@@ -10,7 +10,7 @@ class SeatService {
     ) => {
         await tx.eventSeatTier.createMany({
             data: priceTiers.map((priceTier, index) => ({
-                tierNumber: priceTier.id ? parseInt(priceTier.id) : index,
+                tierNumber: priceTier.id ? parseInt(priceTier.id):index,
                 name: priceTier.name,
                 price: parseFloat(priceTier.price),
                 color: priceTier.color,

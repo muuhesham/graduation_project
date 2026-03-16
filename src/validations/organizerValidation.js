@@ -187,9 +187,43 @@ const organizerValidation = {
         }),
         
         body('seatsData')
-            .if(body('eventType').equals('seatmap'))
-            .notEmpty()
-            .withMessage('seatsData is required with seatmap'),
+        .if(body('eventType').equals('seatmap'))
+        .notEmpty()
+        .withMessage('seatsData is required with seatmap')
+        .custom((value, { req }) => {
+            let seatsData = value;
+            let priceTiers = req.body.priceTiers;
+
+            if (typeof seatsData === 'string') {
+                try { seatsData = JSON.parse(value); } 
+                catch (e) { throw new Error('seatsData must be a valid JSON array'); }
+            }
+            if (typeof priceTiers === 'string') {
+                try { priceTiers = JSON.parse(priceTiers); } catch (e) {}
+            }
+
+            if (!Array.isArray(seatsData)) throw new Error('seatsData must be an array');
+            if (!Array.isArray(priceTiers)) throw new Error('priceTiers is required to validate seats');
+
+            const validTierNumbers = priceTiers.map((tier, index) => 
+                tier.id ? parseInt(tier.id) : index
+            );
+
+            seatsData.forEach((seat, seatIdx) => {
+                if (seat.tierId !== undefined && seat.tierId !== null) {
+                    const isValid = validTierNumbers.includes(parseInt(seat.tierId));
+                    
+                    if (!isValid) {
+                        throw new Error(
+                            `Seat at index ${seatIdx} has an invalid tierNumber: ${seat.tierId}. ` +
+                            `Must be one of [${validTierNumbers.join(', ')}]`
+                        );
+                    }
+                }
+            });
+
+            return true;
+        }),
     ],
 
     updateEvent: [
