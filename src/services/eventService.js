@@ -1111,7 +1111,8 @@ const eventService = {
         return await prismaClient.interestedEvent.findUnique({
             where: { userId_eventId: { userId, eventId } },
         });
-    }
+    },
+    
     async getUserAttendedEvents({userId}){
         return await prismaClient.event.count({
             where: {
