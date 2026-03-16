@@ -152,44 +152,86 @@ const organizerValidation = {
             .if(body('eventType').equals('seatmap'))
             .notEmpty()
             .withMessage('priceTiers is required with seatmap')
-            .custom((value, {req}) => {
-            let priceTiers = value;
-            if (typeof value === 'string') {
-                try {
-                    priceTiers = JSON.parse(value);
-                } catch (e) {
-                    throw new Error('priceTiers must be a valid JSON array');
+            .custom((value, { req }) => {
+                let priceTiers = value;
+                if (typeof value === 'string') {
+                    try {
+                        priceTiers = JSON.parse(value);
+                    } catch (e) {
+                        throw new Error('priceTiers must be a valid JSON array');
+                    }
                 }
-            }
-            if (!Array.isArray(priceTiers)) {
-                throw new Error('priceTiers must be an array');
-            }
-            const ticketTypes = req.body.tickets;
-            if (!ticketTypes || !Array.isArray(ticketTypes)) {
-                throw new Error('Ticket types are required to validate prices');
-            }
-
-            priceTiers.forEach((tier) => {
-                const matchedType = ticketTypes.find(t => t.name === tier.name);
-
-                if (!matchedType) {
-                    throw new Error(`Tier name "${tier.name}" does not match any ticket type name`);
+                if (!Array.isArray(priceTiers)) {
+                    throw new Error('priceTiers must be an array');
+                }
+                const ticketTypes = req.body.tickets;
+                if (!ticketTypes || !Array.isArray(ticketTypes)) {
+                    throw new Error('Ticket types are required to validate prices');
                 }
 
-                if (parseFloat(matchedType.price) !== parseFloat(tier.price)) {
-                    throw new Error(
-                        `Price mismatch for "${tier.name}": TicketType price (${matchedType.price}) must equal Tier price (${tier.price})`
-                    );
-                }
+                priceTiers.forEach((tier) => {
+                    const matchedType = ticketTypes.find((t) => t.name === tier.name);
+
+                    if (!matchedType) {
+                        throw new Error(
+                            `Tier name "${tier.name}" does not match any ticket type name`
+                        );
+                    }
+
+                    if (parseFloat(matchedType.price) !== parseFloat(tier.price)) {
+                        throw new Error(
+                            `Price mismatch for "${tier.name}": TicketType price (${matchedType.price}) must equal Tier price (${tier.price})`
+                        );
+                    }
                 });
 
-            return true;
-        }),
-        
+                return true;
+            }),
+
         body('seatsData')
             .if(body('eventType').equals('seatmap'))
             .notEmpty()
-            .withMessage('seatsData is required with seatmap'),
+            .withMessage('seatsData is required with seatmap')
+            .custom((value, { req }) => {
+                let seatsData = value;
+                let priceTiers = req.body.priceTiers;
+
+                if (typeof seatsData === 'string') {
+                    try {
+                        seatsData = JSON.parse(value);
+                    } catch (e) {
+                        throw new Error('seatsData must be a valid JSON array');
+                    }
+                }
+                if (typeof priceTiers === 'string') {
+                    try {
+                        priceTiers = JSON.parse(priceTiers);
+                    } catch (e) {}
+                }
+
+                if (!Array.isArray(seatsData)) throw new Error('seatsData must be an array');
+                if (!Array.isArray(priceTiers))
+                    throw new Error('priceTiers is required to validate seats');
+
+                const validTierNumbers = priceTiers.map((tier, index) =>
+                    tier.id ? parseInt(tier.id) : index
+                );
+
+                seatsData.forEach((seat, seatIdx) => {
+                    if (seat.tierId !== undefined && seat.tierId !== null) {
+                        const isValid = validTierNumbers.includes(parseInt(seat.tierId));
+
+                        if (!isValid) {
+                            throw new Error(
+                                `Seat at index ${seatIdx} has an invalid tierNumber: ${seat.tierId}. ` +
+                                    `Must be one of [${validTierNumbers.join(', ')}]`
+                            );
+                        }
+                    }
+                });
+
+                return true;
+            }),
     ],
 
     updateEvent: [
