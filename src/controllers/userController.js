@@ -20,6 +20,8 @@ const userController = {
         const tickets = await ticketService.getUserTickets({userId});
 
         return sendSuccess(res, {tickets}, 200);
+    }),
+
     getInterestedEvents: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
         const result = await userService.getInterestedEvents({userId});

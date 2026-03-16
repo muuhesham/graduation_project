@@ -126,14 +126,16 @@ const eventService = {
 
     //SOFT DELETE EVENT
     async softDelete(eventId) {
-        const event =  await prismaClient.event.findFirst({
-            where: { id: Number(eventId)},
+        const event = await prismaClient.event.findFirst({
+            where: { id: Number(eventId) },
         });
 
-        if (!event) { return null; }
+        if (!event) {
+            return null;
+        }
 
         await prismaClient.event.updateMany({
-            where: { id: Number(eventId) , deletedAt: null},
+            where: { id: Number(eventId), deletedAt: null },
             data: { deletedAt: new Date() },
         });
 
@@ -760,7 +762,13 @@ const eventService = {
                 );
                 let session;
                 if (totalPrice === 0) {
-                    await ticketTypeService.issueTicketsForOrder(order.id, userId, orderItems, verifiedItems, tx);
+                    await ticketTypeService.issueTicketsForOrder(
+                        order.id,
+                        userId,
+                        orderItems,
+                        verifiedItems,
+                        tx
+                    );
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
@@ -827,7 +835,8 @@ const eventService = {
                 status: 'fail',
                 statusCode: 403,
                 data: {
-                    message: 'Your banned due to too many unpaid reservations. Please try again later.',
+                    message:
+                        'Your banned due to too many unpaid reservations. Please try again later.',
                 },
             };
         }
@@ -1081,52 +1090,47 @@ const eventService = {
         return eventService.getBannerAbsUrl(events);
     },
 
-    async addToInterested({userId, eventId}) {
-        const existing = await eventService.isEventInterested({userId, eventId});
+    async addToInterested({ userId, eventId }) {
+        const existing = await eventService.isEventInterested({ userId, eventId });
 
-        if(existing){
+        if (existing) {
             throw new AppError('Event is already in your interested list', 400);
         }
 
         const event = await prismaClient.interestedEvent.create({
-            data: { userId, eventId, },
+            data: { userId, eventId },
         });
         return event;
     },
 
-    async removeFromInterested({userId, eventId}) {
-        const existing = await eventService.isEventInterested({userId, eventId});
+    async removeFromInterested({ userId, eventId }) {
+        const existing = await eventService.isEventInterested({ userId, eventId });
 
-        if(!existing){
+        if (!existing) {
             throw new AppError('Event is not in your interested list', 404);
         }
 
         const deletedEvent = await prismaClient.interestedEvent.delete({
-            where: { userId_eventId: {userId, eventId} },
+            where: { userId_eventId: { userId, eventId } },
         });
         return deletedEvent;
     },
 
-    async isEventInterested({userId, eventId}){
+    async isEventInterested({ userId, eventId }) {
         return await prismaClient.interestedEvent.findUnique({
             where: { userId_eventId: { userId, eventId } },
         });
-    }
-    async getUserAttendedEvents({userId}){
+    },
+
+    async getUserAttendedEvents({ userId }) {
         return await prismaClient.event.count({
             where: {
                 ticketTypes: {
-                    some: { tickets: { some: { userId, /*status: 'valid'*/ } }
-                    }
-                }
-            }
+                    some: { tickets: { some: { userId /*status: 'valid'*/ } } },
+                },
+            },
         });
     },
-
 };
 
 export default eventService;
-
-/*
-give me script written in Arabic for a video I will record for a demo for the graduation project. the video will last 3 minutes. I must open the project Fa3liat and open it as a guest and show all events sections in the home page, then try the newsletter if I don't want to create an account. then try to create an account with OTP sent to email. then get to the onboarding and add personal data. then try to reset password. then try see the personalized events and location personalization events sections. then try to buy . then try to create another account using google OAuth 2.0. and do the onboarding. then try to use upgrade to organizer.
-*/
