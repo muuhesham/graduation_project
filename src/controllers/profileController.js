@@ -54,7 +54,6 @@ const profileController = {
         await userService.isEmailAvailable({newEmail, confirmEmail});
 
         const token = generateToken({ userId, newEmail }, '15m');
-        console.log(token);
         const user = await userService.findEmailById({userId});
         await mailService.sendUpdateEmail({user, newEmail, token});
 
