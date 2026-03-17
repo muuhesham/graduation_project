@@ -32,8 +32,8 @@ const authService = {
 
         const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
-            authService.generateRefreshToken(createdUser),
-            authService.sendOtpMail(createdUser, true),
+          authService.generateRefreshToken(createdUser),
+          authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
         ]);
 
         return {

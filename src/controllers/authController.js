@@ -101,7 +101,10 @@ const authController = {
         try {
             const user = req.user;
 
-            const result = await authService.sendOtpMail(user, false);
+            const result = await authService.sendOtpMail({
+              user,
+              isFirstTime: false,
+            });
 
             if (result.status === 'fail') {
                 return sendFail(res, result.data, 400);
