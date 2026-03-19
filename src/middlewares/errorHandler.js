@@ -17,12 +17,22 @@ function handleAppError(err, req, res) {
 }
 function handlePrismaError(err, req, res) {
     switch (err.code) {
-        case 'P2002':
-            return sendFail(res, { message: 'Unique constraint failed' }, 400);
+        case 'P2002': {
+            const field = err.meta?.target?.[0] || 'field';
+            const message = `${field.charAt(0).toUpperCase() + field.slice(1)} is already in use. Please try another one.`;
+            return sendFail(res, { message }, 400);
+        }
         case 'P2025':
             return sendFail(res, { message: 'Record not found' }, 404);
         case 'P2003':
-            return sendFail(res, { message: 'Foreign key constraint failed' }, 400);
+            return sendFail(
+                res,
+                {
+                    message:
+                        'The provided reference ID is invalid. Some data might have been deleted.',
+                },
+                400
+            );
         case 'P2000':
             return sendFail(res, { message: 'Value too long for the field' }, 400);
         default:
