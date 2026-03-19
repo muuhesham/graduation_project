@@ -602,6 +602,12 @@ const eventService = {
 
             const usedSeats = new Set();
 
+            requestedTickets.forEach((ticket, index) => {
+                if (!ticket.seatInfo) {
+                    throw new AppError(`Seats Info for ticket ${index + 1} can't be empty`);
+                }
+            });
+
             for (const reqTicket of requestedTickets) {
                 const { row, number, tierId, tierName } = reqTicket.seatInfo;
 
@@ -650,7 +656,7 @@ const eventService = {
                     );
                 }
                 const price = event.type === 'free' ? 0 : parseFloat(dbTier.price);
-
+                
                 totalPrice += price;
                 itemsCount += 1;
 

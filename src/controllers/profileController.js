@@ -66,7 +66,7 @@ const profileController = {
         const { userId, newEmail } = payload;
 
         const updatedEmail = await profileService.updateEmail({userId, newEmail});
-        await authService.sendOtpMail({user: updatedEmail, isFirstTime: false})
+        await authService.sendOtpMail({user: updatedEmail, isFirstTime: false});
 
         sendSuccess(
             res,
