@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import Gender from '../constants/enums/userGender.js';
 import Language from '../constants/enums/userLanguage.js';
 import { calculateAge } from '../utils/calculateAge.js';
+import GovernoratesNames from '../constants/enums/governoratesNames.js';
 
 const require = createRequire(import.meta.url);
 const disposableDomains = require('disposable-email-domains');
@@ -13,7 +14,6 @@ const profileValidations = {
             const allowedFields = [
                 'name',
                 'phone',
-                'address',
                 'gender',
                 'location',
                 'languagePreference',
@@ -32,13 +32,17 @@ const profileValidations = {
             }
             return true;
         }),
+
         body('name')
             .optional()
             .trim()
             .notEmpty()
             .withMessage('Name cannot be empty')
             .matches(/^[\p{L}\s\-]+$/u)
-            .withMessage('Name can only contain letters, spaces, and hyphens'),
+            .withMessage('Name can only contain letters, spaces, and hyphens')
+            .isLength({max: 25})
+            .withMessage('Name cannot be that long'),
+
         body('phone')
             .optional()
             .trim()
@@ -46,25 +50,19 @@ const profileValidations = {
             .withMessage('Phone number cannot be empty')
             .isMobilePhone()
             .withMessage('Invalid phone number format'),
-        body('address')
-            .optional()
-            .trim()
-            .notEmpty()
-            .withMessage('Address cannot be empty')
-            .isLength({ max: 500 })
-            .withMessage('Address cannot be that long'),
 
         body('gender')
             .optional()
             .isIn(Object.values(Gender))
             .withMessage('Gender must be male or female'),
 
+        // frontend 
         body('location')
             .optional()
-            .isString()
-            .withMessage('Location must be a string')
-            .isLength({ max: 100 })
-            .withMessage('Location too long'),
+            .toUpperCase()
+            .trim()
+            .isIn(Object.values(GovernoratesNames))
+            .withMessage('Location must be from governorates of egypt only'),
 
         body('languagePreference')
             .optional()
@@ -86,6 +84,7 @@ const profileValidations = {
                 return true;
             }),
     ],
+
     updateEmail: [
         body('newEmail')
             .trim()
@@ -102,6 +101,7 @@ const profileValidations = {
                 }
                 return true;
             }),
+
         body('confirmEmail')
             .trim()
             .notEmpty()
@@ -111,6 +111,7 @@ const profileValidations = {
             .isEmail()
             .withMessage('Invalid email format'),
     ],
+
     updatePassword: [
         body('oldPassword').trim().notEmpty().withMessage('Current password cannot be empty'),
         body('newPassword')
@@ -138,7 +139,9 @@ const profileValidations = {
                 'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
             ),
     ],
+    
     confirmEmail: [query('token').notEmpty().withMessage('Token is required')],
+
     updatePreferences: [
         body().custom((value, { req }) => {
             if (Object.keys(req.body).length === 0) {
