@@ -29,8 +29,8 @@ export class AuthThirdPartyService {
     async generateJwt(user) {
         const { accessToken, type, expiresIn } = authService.generateAccessToken(user);
         const [refreshToken] = await Promise.all([
-            authService.generateRefreshToken(user),
-            authService.sendOtpMail(user, true),
+          authService.generateRefreshToken(user),
+          authService.sendOtpMail({ user, isFirstTime:true }),
         ]);
 
         return {

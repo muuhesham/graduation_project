@@ -194,7 +194,10 @@ const userService = {
         });
 
         if (currentEmail) {
-            throw new AppError('Unable to process your request', 400);
+            throw new AppError(
+                'This email cannot be used. Please try another or log in to your existing account.',
+                400
+            );
         }
     },
 

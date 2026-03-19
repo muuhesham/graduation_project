@@ -54,7 +54,6 @@ const profileController = {
         await userService.isEmailAvailable({newEmail, confirmEmail});
 
         const token = generateToken({ userId, newEmail }, '15m');
-        console.log(token);
         const user = await userService.findEmailById({userId});
         await mailService.sendUpdateEmail({user, newEmail, token});
 
@@ -67,7 +66,7 @@ const profileController = {
         const { userId, newEmail } = payload;
 
         const updatedEmail = await profileService.updateEmail({userId, newEmail});
-        await authService.sendOtpMail({user: updatedEmail, isFirstTime: false})
+        await authService.sendOtpMail({user: updatedEmail, isFirstTime: false});
 
         sendSuccess(
             res,

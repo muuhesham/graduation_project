@@ -28,7 +28,7 @@ const eventValidation = {
             .withMessage('Ticket quantity must be a positive integer'),
 
         body('tickets.*.seatInfo')
-            .if((value, { req }) => value !== undefined || req.body.tickets[0].row !== undefined)
+            .optional({nullable: true})
             .isObject()
             .withMessage('seatInfo must be an object'),
 
