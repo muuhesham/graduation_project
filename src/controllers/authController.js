@@ -103,8 +103,8 @@ const authController = {
             const user = req.user;
 
             const result = await authService.sendOtpMail({
-              user,
-              isFirstTime: false,
+                user,
+                isFirstTime: false,
             });
 
             if (result.status === 'fail') {
@@ -144,49 +144,35 @@ const authController = {
         }
     },
 
-    async registerOrganization(req, res) {
+    async registerOrganization(req, res, next) {
         try {
             const data = req.body;
-
             await authService.registerOrganization(data);
-
             return sendSuccess(res, {}, 201);
         } catch (err) {
-            if (err instanceof AppError) {
-                return sendFail(res, { error: err.message }, err.statusCode || 400);
-            }
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return next(err);
         }
     },
 
-    async requestPhoneOtp(req, res) {
+    async requestPhoneOtp(req, res, next) {
         try {
             const userId = req.user?.id;
             const { phone } = req.body;
             await authService.requestPhoneOtp({ userId, phone });
             return sendSuccess(res, {}, 200);
         } catch (err) {
-            if (err instanceof AppError) {
-                return sendFail(res, { error: err.message }, err.statusCode || 400);
-            }
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return next(err);
         }
     },
 
-    async verifyPhoneOtp(req, res) {
+    async verifyPhoneOtp(req, res, next) {
         try {
             const userId = req.user?.id;
             const { phone, otp } = req.body;
             await authService.verifyPhoneOtp({ userId, phone, otp });
             return sendSuccess(res, {}, 200);
         } catch (err) {
-            if (err instanceof AppError) {
-                return sendFail(res, { error: err.message }, err.statusCode || 400);
-            }
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return next(err);
         }
     },
 };

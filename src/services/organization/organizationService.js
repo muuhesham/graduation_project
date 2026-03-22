@@ -1,26 +1,48 @@
 // @ts-check
 
-import { prisma as prismaClient } from '../config/db.js';
+import { prisma as prismaClient } from '../../config/db.js';
+import { Prisma } from '@prisma/client';
 
-import userService from './userService.js';
-import categoryService from './categoryService.js';
-import locationService from './locationService.js';
+import { PrismaQueryBuilder } from '../../utils/queryBulider.js';
 
-import NotFoundError from './../errors/NotFoundError.js';
-import ConflictError from './../errors/ConflictError.js';
-import AppError from './../errors/AppError.js';
+import userService from '../userService.js';
+import categoryService from '../categoryService.js';
+import locationService from '../locationService.js';
+
+import ValidationError from './../../errors/ValidationError.js';
 
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
+ *
  * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
+ *
  * @typedef {import('@prisma/client').Organization} Organization
  *
- * @typedef {typeof import('./userService.js').default} UserService
- * @typedef {typeof import('./categoryService.js').default} CategoryService
- * @typedef {typeof import('./locationService.js').default} LocationService
+ * @typedef {import('@prisma/client').CompanyType} CompanyType
  *
- * @typedef {import('./../types/dtos/organization.types.js').OrganizationServiceDeps} OrganizationServiceDeps
- * @typedef {import('./../types/dtos/organization.types.js').CreateOrganizationInput} CreateOrganizationInput
+ * @typedef {import('@prisma/client').Prisma.OrganizationSelect} OrganizationSelect
+ *
+ * @typedef {import('@prisma/client').Prisma.OrganizationInclude} OrganizationInclude
+ *
+ * @typedef {import('@prisma/client').Prisma.OrganizationWhereInput} OrganizationWhereInput
+ *
+ * @typedef {typeof import('./../userService.js').default} UserService
+ *
+ * @typedef {typeof import('./../categoryService.js').default} CategoryService
+ *
+ * @typedef {typeof import('./../locationService.js').default} LocationService
+ *
+ * @typedef {import('./../../types/common.types.js').QueryOptions<
+ *     OrganizationSelect,
+ *     OrganizationInclude,
+ *     OrganizationWhereInput
+ * >} QueryOptions
+ *
+ *
+ * @typedef {import('./../../types/dtos/organization.types.js').OrganizationServiceDeps} OrganizationServiceDeps
+ *
+ *
+ * @typedef {import('./../../types/dtos/organization.types.js').CreateOrganizationInput} CreateOrganizationInput
  */
 
 /**
@@ -43,7 +65,7 @@ import AppError from './../errors/AppError.js';
  * @property {string} userId
  * @property {string} name
  * @property {number} categoryId
- * @property {import('@prisma/client').CompanyType} companyType
+ * @property {CompanyType} companyType
  * @property {string} registrationNumber
  * @property {string} taxId
  * @property {string} address
@@ -55,17 +77,29 @@ import AppError from './../errors/AppError.js';
 class OrganizationService {
     /** @type {PrismaClient} */
     #prismaClient;
-    /** @type {UserService}*/
+
+    /** @type {UserService} */
     #userService;
     /** @type {CategoryService} */
     #categoryService;
     /** @type {LocationService} */
     #locationService;
 
-    /**
-     * @constructor
-     * @param {OrganizationServiceDeps} deps
-     */
+    /** @type {string[]} */
+    #ALLOWED_SELECTIONS =
+        Prisma.dmmf.datamodel.models
+            .find((m) => m.name === 'Organization')
+            ?.fields.filter((f) => f.kind === 'scalar')
+            .map((f) => f.name) || [];
+
+    /** @type {string[]} */
+    #ALLOWED_RELATIONS =
+        Prisma.dmmf.datamodel.models
+            .find((m) => m.name === 'Organization')
+            ?.fields.filter((f) => f.kind === 'object')
+            .map((f) => f.name) || [];
+
+    /** @param {OrganizationServiceDeps} deps */
     constructor({ prismaClient, userService, categoryService, locationService }) {
         this.#prismaClient = prismaClient;
         this.#userService = userService;
@@ -75,8 +109,10 @@ class OrganizationService {
 
     /**
      * @param {CreateOrganizationInput} input
-     * @param {PrismaClient | TransactionClient} [tx=this.#prismaClient]
+     * @param {PrismaClient | TransactionClient} [tx=this.#prismaClient] Default is
+     *   `this.#prismaClient`
      * @returns {Promise<Organization>}
+     * @throws {ValidationError}
      */
     async create(
         {
@@ -145,37 +181,43 @@ class OrganizationService {
 
     /**
      * @param {EnsureUniqueConstraintsInput} input
-     * @throws {ConflictError}
      * @returns {Promise<void>}
+     * @throws {ConflictError}
      */
     async #ensureUniqueConstraints({ name, phone, countryId }) {
         const [organizationNameExists, phoneExists, country] = await Promise.all([
-            this.#findByName(name),
+            this.findByName(name),
             this.#userService.findByPhoneNumber(phone),
             this.#locationService.findCountryById(countryId),
         ]);
 
+        const errors = [];
+
         if (organizationNameExists) {
-            throw new ConflictError('Organization name is already used');
+            errors.push({ field: 'name', message: 'Organization name is already used' });
         }
 
         if (phoneExists) {
-            throw new ConflictError('Phone number is already used');
+            errors.push({ field: 'phone', message: 'Phone number is already used' });
         }
 
         if (!country) {
-            throw new NotFoundError('Country not found');
+            errors.push({ field: 'countryId', message: 'Country not found' });
         }
 
-        if (!country.isSupported) {
-            throw new AppError('Organizations cannot be created in unsupported countries', 400);
+        if (!country?.isSupported) {
+            errors.push({ field: 'countryId', message: 'Country is not supported' });
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationError('Validation error', errors);
         }
     }
 
     /**
      * @param {EnsureReferencesExistInput} input
-     * @throws {NotFoundError}
      * @returns {Promise<void>}
+     * @throws {NotFoundError}
      */
     async #ensureReferencesExist({ categoryId, cityId, stateId, countryId }) {
         const [category, city, state, country] = await Promise.all([
@@ -185,34 +227,40 @@ class OrganizationService {
             this.#locationService.findCountryById(countryId),
         ]);
 
+        const errors = [];
         if (!category) {
-            throw new NotFoundError('Category not found');
+            errors.push({ field: 'categoryId', message: 'Category not found' });
         }
 
         if (!city) {
-            throw new NotFoundError('City not found');
+            errors.push({ field: 'cityId', message: 'City not found' });
         }
 
         if (!state) {
-            throw new NotFoundError('State not found');
+            errors.push({ field: 'stateId', message: 'State not found' });
         }
 
         if (!country) {
-            throw new NotFoundError('Country not found');
+            errors.push({ field: 'countryId', message: 'Country not found' });
         }
 
-        if (state.countryId !== countryId) {
-            throw new NotFoundError('State not found');
+        if (state?.countryId !== countryId) {
+            errors.push({ field: 'stateId', message: 'State not found in the specified country' });
         }
 
-        if (city.stateId !== stateId) {
-            throw new NotFoundError('City not found');
+        if (city?.stateId !== stateId) {
+            errors.push({ field: 'cityId', message: 'City not found in the specified state' });
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationError('Validation error', errors);
         }
     }
 
     /**
      * @param {CreateOrganizationRecordInput} data
-     * @param {PrismaClient | TransactionClient} [tx=this.#prismaClient]
+     * @param {PrismaClient | TransactionClient} [tx=this.#prismaClient] Default is
+     *   `this.#prismaClient`
      * @returns {Promise<Organization>}
      */
     #createOrganization(data, tx = this.#prismaClient) {
@@ -242,12 +290,36 @@ class OrganizationService {
 
     /**
      * @param {string} name
+     * @param {QueryOptions} [options]
      * @returns {Promise<Organization | null>}
      */
-    #findByName(name) {
-        return this.#prismaClient.organization.findFirst({
-            where: { name },
-        });
+    findByName(name, options = {}) {
+        const queryBuilder = new PrismaQueryBuilder({
+            allowedRelations: this.#ALLOWED_RELATIONS,
+            allowedSelections: this.#ALLOWED_SELECTIONS,
+        })
+            .include(options.include)
+            .select(options.select)
+            .where({ ...options.filter, name });
+
+        return this.#prismaClient.organization.findFirst(queryBuilder.value);
+    }
+
+    /**
+     * @param {number} id
+     * @param {QueryOptions} [options]
+     * @returns {Promise<Organization | null>}
+     */
+    findById(id, options = {}) {
+        const queryBuilder = new PrismaQueryBuilder({
+            allowedRelations: this.#ALLOWED_RELATIONS,
+            allowedSelections: this.#ALLOWED_SELECTIONS,
+        })
+            .include(options.include)
+            .select(options.select)
+            .where({ ...options.filter, id });
+
+        return this.#prismaClient.organization.findUnique(queryBuilder.value);
     }
 }
 

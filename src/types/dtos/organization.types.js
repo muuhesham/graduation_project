@@ -2,6 +2,8 @@
 
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
+ *
+ * @typedef {import('@prisma/client').CompanyType} CompanyType
  */
 
 /**
@@ -18,7 +20,7 @@
  * @property {string} name
  * @property {string} phone
  * @property {number} categoryId
- * @property {import('@prisma/client').CompanyType} companyType
+ * @property {CompanyType} companyType
  * @property {string} registrationNumber
  * @property {string} taxId
  * @property {string} address
@@ -26,4 +28,5 @@
  * @property {number} stateId
  * @property {number} countryId
  */
+
 export {};

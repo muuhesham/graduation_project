@@ -13,7 +13,13 @@ function errorHandler(err, req, res, next) {
 
 function handleAppError(err, req, res) {
     const statusCode = err.statusCode || 500;
-    return sendError(res, err.message, err.code, null, statusCode);
+    return sendError(
+        res,
+        err.message,
+        err.code,
+        err.errors ? { errors: err.errors } : null,
+        statusCode
+    );
 }
 function handlePrismaError(err, req, res) {
     switch (err.code) {

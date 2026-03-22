@@ -12,7 +12,7 @@ import userService from './userService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
 import cacheService from './cacheService.js';
-import organizationService from './organizationService.js';
+import organizationService from './organization/organizationService.js';
 import { prisma as prismaClient } from '../config/db.js';
 import crypto from 'crypto';
 import AuthProvider from '../constants/enums/authProvider.js';
@@ -259,6 +259,65 @@ const authService = {
         return result.organization;
     },
 
+    async _createOrganizationAccount({
+        name,
+        contactName,
+        email,
+        password,
+        phone,
+        categoryId,
+        companyType,
+        registrationNumber,
+        taxId,
+        address,
+        cityId,
+        stateId,
+        countryId,
+    }) {
+        const phoneExists = await userService.findByPhoneNumber(phone);
+        if (phoneExists) {
+            throw new ConflictError('Phone number already used');
+        }
+        return prismaClient.$transaction(async (tx) => {
+            const user = await userService.create(
+                { name: contactName || name, email, password, phone },
+                tx
+            );
+
+            if (!user || user.status === 'fail') {
+                throw new ConflictError(user?.data?.error || 'Email already used');
+            }
+
+            const organization = await organizationService.create(
+                {
+                    name,
+                    phone,
+                    userId: user.id,
+                    categoryId,
+                    companyType,
+                    registrationNumber,
+                    taxId,
+                    address,
+                    cityId,
+                    stateId,
+                    countryId,
+                },
+                tx
+            );
+
+            return { organization, user };
+        });
+    },
+
+    _sendOrganizationVerifications({ organization, user }) {
+        return otpService.requestPhoneOtp({
+            phone: user.phone,
+            templateName: 'organizationPhoneOtp',
+            variables: { organizationName: organization.name },
+            expiresInSeconds: authService.OTP_EXPIRATION,
+        });
+    },
+
     async requestPhoneOtp({ userId, phone }) {
         if (userId) {
             const config = await authService._buildUserPhoneOtpConfig(userId, phone);
@@ -368,72 +427,14 @@ const authService = {
         };
     },
 
-    async _createOrganizationAccount({
-        name,
-        contactName,
-        email,
-        password,
-        phone,
-        categoryId,
-        companyType,
-        registrationNumber,
-        taxId,
-        address,
-        cityId,
-        stateId,
-        countryId,
-    }) {
-        const phoneExists = await userService.findByPhoneNumber(phone);
-        if (phoneExists) {
-            throw new ConflictError('Phone number already used');
-        }
-        return prismaClient.$transaction(async (tx) => {
-            const user = await userService.create(
-                { name: contactName || name, email, password, phone },
-                tx
-            );
-
-            if (!user || user.status === 'fail') {
-                throw new ConflictError(user?.data?.error || 'Email already used');
-            }
-
-            const organization = await organizationService.create(
-                {
-                    name,
-                    phone,
-                    userId: user.id,
-                    categoryId,
-                    companyType,
-                    registrationNumber,
-                    taxId,
-                    address,
-                    cityId,
-                    stateId,
-                    countryId,
-                },
-                tx
-            );
-
-            return { organization, user };
-        });
-    },
-
-    async _sendOrganizationVerifications({ organization, user }) {
-        await Promise.all([
-            authService.sendOtpMail({ user, isFirstTime: true }),
-            otpService.requestPhoneOtp({
-                phone: user.phone,
-                templateName: 'organizationPhoneOtp',
-                variables: { organizationName: organization.name },
-                expiresInSeconds: authService.OTP_EXPIRATION,
-            }),
-        ]);
-    },
-
     /**
      * @param {string} userId
      * @param {string} phone
-     * @returns {Promise<{ phone: string, templateName: string, variables: Record<string, unknown> }>}
+     * @returns {Promise<{
+     *     phone: string;
+     *     templateName: string;
+     *     variables: Record<string, unknown>;
+     * }>}
      */
     async _buildUserPhoneOtpConfig(userId, phone) {
         const user = await userService.findById(userId);
@@ -452,7 +453,11 @@ const authService = {
 
     /**
      * @param {string} phone
-     * @returns {Promise<{ phone: string, templateName: string, variables: Record<string, unknown> } | null>}
+     * @returns {Promise<{
+     *     phone: string;
+     *     templateName: string;
+     *     variables: Record<string, unknown>;
+     * } | null>}
      */
     async _buildOrganizationPhoneOtpConfig(phone) {
         const organization = await organizationService.findByOwnerPhone(phone);
