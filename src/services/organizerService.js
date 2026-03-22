@@ -138,7 +138,6 @@ const organizerService = {
                 data: result,
             };
         } catch (err) {
-            console.log(err);
             if (result?.event.bannerPath) {
                 await fileService.delete(result?.event.bannerPath);
             }
@@ -303,13 +302,6 @@ const organizerService = {
             };
         }
 
-        if (event.deletedAt) {
-            return {
-                status: 'fail',
-                data: { error: 'Event already deleted' },
-            };
-        }
-
         // check if the event related to tickets -> can't delete else -> soft delete or hard delete
 
         let result;
@@ -341,7 +333,7 @@ const organizerService = {
     },
 
     async getByUserId(userId) {
-        return prismaClient.organizer.findUnique({
+        return prismaClient.organizer.findFirst({
             where: { userId },
         });
     },

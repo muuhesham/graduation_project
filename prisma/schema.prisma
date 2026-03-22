@@ -30,18 +30,17 @@ model User {
   birthDate          DateTime?
   governorateId      Int?
   governorate        Governorate? @relation(fields: [governorateId], references: [id])
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  //* TODO: ADD 'deletedAt' field for soft delete
-  //deletedAt          DateTime?
-
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
   //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
   refreshToken RefreshToken[]
   //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer    Organizer?
-  categories   AttendeeFavoriteCategory[]
-  tickets      Ticket[]
-  orders       Order[]
+  categories         AttendeeFavoriteCategory[]
+  tickets       Ticket[]
+  orders        Order[]
+  interestedEvents InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -181,6 +180,8 @@ model Event {
   eventSessions EventSession[]
   ticketTypes   TicketType[]
   eventRules    EventRule[]
+  interestedEvenets InterestedEvent[]
+
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
   eventTags     EventTag[]
@@ -348,6 +349,7 @@ model Ticket {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   order      Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  qrCode     QrCode?
   eventSeat  EventSeat? @relation(fields: [eventSeatId], references: [id])
 }
 
@@ -394,17 +396,17 @@ enum OrderStatus {
   cancelled
 }
 
-// model InterestedEvent {
-//   userId    String
-//   eventId   Int
-//   createdAt DateTime @default(now())
-//
-//   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-//
-//   @@id([userId, eventId])
-// }
-//
+model InterestedEvent {
+  userId    String
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
 // model Payment {
 //   id            String        @id @default(uuid())
 //   orderId       String        @unique
@@ -432,22 +434,22 @@ enum OrderStatus {
 //   refunded
 //}
 
-// model QrCode {
-//   id        String   @id @default(uuid())
-//   ticketId  String   @unique
-//   codePath  String
-//   codeDisk  String   @default("local")
-//   isActive  Boolean  @default(true)
-//   status    QRStatus @default(valid)
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-//
-//   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-// }
+model QrCode {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique
+  codePath  String
+  codeDisk  String   @default("local")
+  isActive  Boolean  @default(true)
+  status    QRStatus @default(valid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-//
-// enum QRStatus {
-//   valid
-//   used
-//   expired
-// }
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+
+enum QRStatus {
+  valid
+  used
+  expired
+}

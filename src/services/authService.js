@@ -32,8 +32,8 @@ const authService = {
 
         const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
-            authService.generateRefreshToken(createdUser),
-            authService.sendOtpMail(createdUser, true),
+          authService.generateRefreshToken(createdUser),
+          authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
         ]);
 
         return {
@@ -231,7 +231,7 @@ const authService = {
         });
     },
 
-    async sendOtpMail(user, isFirstTime) {
+    async sendOtpMail({user, isFirstTime}) {
         let userData = user;
 
         if (!isFirstTime) {
@@ -292,6 +292,14 @@ const authService = {
         const { cacheKey } = authService.accessTokenCache({ accessToken });
         return !(await cacheService.exists(cacheKey));
     },
+
+    async revokeAllTokensUser({userId}) {
+        await prismaClient.refreshToken.updateMany({
+            where: { userId },
+            data: { isRevoked: true },
+        });
+    },
+    
 };
 
 export default authService;

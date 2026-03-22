@@ -2,6 +2,9 @@ import { prisma as prismaClient } from '../config/db.js';
 import { hashPassword } from './../utils/hash.js';
 import userRoles from '../constants/enums/userRoles.js';
 import organizerService from './organizerService.js';
+import eventService from './eventService.js';
+import AppError from '../errors/AppError.js';
+import { AuthProvider } from '@prisma/client';
 
 const userService = {
     async create(user) {
@@ -113,6 +116,78 @@ const userService = {
         });
         return !!user;
     },
+
+    async getInterestedEvents({userId}) {
+        const interestedEvents = await prismaClient.interestedEvent.findMany({
+            where: { userId },
+            include: {
+                event: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const events = interestedEvents.map((item) => item.event);
+        const result = await eventService.getBannerAbsUrl(events);
+
+        return result;
+    },
+    
+    async findUser(userId) {
+        const user = await prismaClient.user.findFirst({
+            where: { id: userId },
+        });
+        return user;
+    },
+
+    async softDelete(userId) {
+        await prismaClient.user.updateMany({
+            where: { id: userId },
+            data: { deletedAt: new Date() },
+        });
+    },
+
+    async getUser(userId) {
+        const user = await prismaClient.user.findFirst({
+            where: { id: userId },
+            omit: {
+                id: true,
+                password: true,
+                idInProviderDB: true,
+                governorateId: true,
+                updatedAt: true,
+                deletedAt: true,
+                isVerified: true,
+            },
+        });
+        return user;
+    },
+
+    async isEmailAvailable({newEmail, confirmEmail}) {
+        if (newEmail !== confirmEmail) {
+            throw new AppError(`Emails don't match`, 400);
+        }
+
+        const currentEmail = await prismaClient.user.findUnique({
+            where: { email: newEmail },
+            select: { email: true },
+        });
+
+        if (currentEmail) {
+            throw new AppError(
+                'This email cannot be used. Please try another or log in to your existing account.',
+                400
+            );
+        }
+    },
+
+    async findEmailById({userId}) {
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+            select: { email: true, name: true },
+        });
+        return user;
+    },
+
 };
 
 export default userService;

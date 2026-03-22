@@ -9,8 +9,8 @@ class SeatService {
         tx = PrismaClient
     ) => {
         await tx.eventSeatTier.createMany({
-            data: priceTiers.map((priceTier) => ({
-                tierNumber: priceTier.id ? parseInt(priceTier.id) : 0,
+            data: priceTiers.map((priceTier, index) => ({
+                tierNumber: priceTier.id ? parseInt(priceTier.id) : index,
                 name: priceTier.name,
                 price: parseFloat(priceTier.price),
                 color: priceTier.color,
