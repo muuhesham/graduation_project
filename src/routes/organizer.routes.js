@@ -21,7 +21,7 @@ Router.post(
     assertMultipart,
     authorize.isOrganizer,
     upload.single('banner'),
-    parseJsonFields(['location', 'tickets', 'sessions']),
+    parseJsonFields(['location', 'tickets', 'sessions', 'eventRules', 'tags']),
     organizerValidation.createEvent,
     validate,
     organizerController.createEvent
@@ -35,7 +35,7 @@ Router.put(
     authorize.isOrganizer,
     assertMultipart,
     upload.single('banner'),
-    parseJsonFields(['location', 'tickets', 'sessions']),
+    parseJsonFields(['location', 'tickets', 'sessions', 'eventRules', 'tags']),
     organizerValidation.updateEvent,
     validate,
     organizerController.updateEvent
