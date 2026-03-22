@@ -1,8 +1,12 @@
 import { body, param } from 'express-validator';
+import { Filter } from 'bad-words';
 import SessionStatus from '../constants/enums/sessionStatus.js';
 import EventMode from '../constants/enums/eventMode.js';
 import EventType from '../constants/enums/eventType.js';
 import fileService from '../services/fileService.js';
+import validate from '../middlewares/validate.js';
+
+const filter = new Filter();
 
 const organizerValidation = {
     createEvent: [
@@ -35,7 +39,7 @@ const organizerValidation = {
             .trim(),
 
         body('banner').custom(async (value, { req }) => {
-            console.log("file: ",req.file,"\nbody: ",req.body)
+            console.log('file: ', req.file, '\nbody: ', req.body);
             if (!req.file) {
                 throw new Error('Banner image is required');
             }
@@ -135,6 +139,74 @@ const organizerValidation = {
             .toLowerCase()
             .isIn(Object.values(EventMode))
             .withMessage(`eventMode must be ${Object.values(EventMode).join(',')}`),
+
+        body('eventRules')
+            .optional()
+            .isArray({ min: 1, max: 10 })
+            .withMessage('Event rules must be an array with 1 to 10 rules')
+            .custom((rules) => {
+                if (!rules) return true;
+                const ruleSet = new Set(rules.map((r) => r.rule.trim().toLowerCase()));
+                if (ruleSet.size !== rules.length) {
+                    throw new Error('Duplicate event rules or restrictions are not allowed');
+                }
+                return true;
+            }),
+
+        body('eventRules.*.rule')
+            .if(body('eventRules').exists())
+            .trim()
+            .notEmpty()
+            .withMessage('Event rule cannot be empty')
+            .matches(/^[a-zA-Z0-9\s.,!?'"-():;]+$/)
+            .withMessage('Event rules can only contain letters, numbers, and basic punctuation')
+            .isLength({ min: 10, max: 70 })
+            .withMessage('Each event rule must be at least 10 characters long')
+            .custom((rule) => {
+                if (!rule) return true;
+
+                const isForbidden = filter.isProfane(rule);
+
+                if (isForbidden) {
+                    throw new Error(
+                        'This rule contains inappropriate language and cannot be published.'
+                    );
+                }
+
+                if (/(.)\1{3,}/.test(rule)) {
+                    throw new Error('Rule contains repetitive characters');
+                }
+
+                return true;
+            }),
+
+        body('tags')
+            .optional()
+            .isArray({ min: 1, max: 10 })
+            .withMessage('Tags must be an array with 1 to 10 tags'),
+
+        body('tags.*')
+            .if(body('tags').exists())
+            .trim()
+            .notEmpty()
+            .withMessage('Tag name cannot be empty')
+            .isString()
+            .withMessage('Tag name must be a string')
+            .matches(/^[a-zA-Z0-9#_-\s]+$/)
+            .withMessage('Tags can only contain letters, spaces, and basic characters')
+            .isLength({ min: 2, max: 30 })
+            .withMessage('Each tag must be between 2 and 30 characters long')
+            .custom((tag) => {
+                if (!tag) return true;
+                const isForbidden = filter.isProfane(tag);
+
+                if (isForbidden) {
+                    throw new Error(
+                        'This tag contains inappropriate language and cannot be published.'
+                    );
+                }
+                return true;
+            }),
     ],
 
     updateEvent: [
@@ -177,7 +249,7 @@ const organizerValidation = {
 
         body('banner').custom(async (value, { req }) => {
             if (!req.file) {
-                console.log("file: ",req.file,"\nbody: ",req.body)
+                console.log('file: ', req.file, '\nbody: ', req.body);
                 throw new Error('Banner image is required');
             }
 
@@ -231,12 +303,79 @@ const organizerValidation = {
             .isString()
             .withMessage('Ticket name must be a string'),
 
-        body('tickets.*.price').optional().isFloat({ min: 0 }).withMessage('Price must be greater than or equal 0'),
+        body('tickets.*.price')
+            .optional()
+            .isFloat({ min: 0 })
+            .withMessage('Price must be greater than or equal 0'),
 
         body('tickets.*.quantity')
             .optional()
             .isInt({ min: 1 })
             .withMessage('Quantity must be at least 1'),
+
+        body('eventRules')
+            .optional()
+            .isArray({ min: 0, max: 10 })
+            .withMessage('Event rules must be an array with 1 to 10 rules')
+            .custom((rules) => {
+                if (!rules) return true;
+                const ruleSet = new Set(rules.map((r) => r.rule.trim().toLowerCase()));
+                if (ruleSet.size !== rules.length) {
+                    throw new Error('Duplicate event rules or restrictions are not allowed');
+                }
+                return true;
+            }),
+
+        body('eventRules.*.rule')
+            .if(body('eventRules').exists())
+            .trim()
+            .matches(/^[a-zA-Z0-9\s.,!?'"-():;]+$/)
+            .withMessage('Event rules can only contain letters, numbers, and basic punctuation')
+            .isLength({ min: 10, max: 70 })
+            .withMessage('Each event rule must be at least 10 characters long')
+            .custom((rule) => {
+                if (!rule) return true;
+
+                const isForbidden = filter.isProfane(rule);
+
+                if (isForbidden) {
+                    throw new Error(
+                        'This rule contains inappropriate language and cannot be published.'
+                    );
+                }
+
+                if (/(.)\1{3,}/.test(rule)) {
+                    throw new Error('Rule contains repetitive characters');
+                }
+
+                return true;
+            }),
+
+        body('tags')
+            .optional()
+            .isArray({ min: 0, max: 10 })
+            .withMessage('Tags must be an array with 1 to 10 tags'),
+
+        body('tags.*')
+            .if(body('tags').exists())
+            .trim()
+            .isString()
+            .withMessage('Tag name must be a string')
+            .matches(/^[a-zA-Z0-9#_-\s]+$/)
+            .withMessage('Tags can only contain letters, spaces, and basic characters')
+            .isLength({ min: 2, max: 30 })
+            .withMessage('Each tag must be between 2 and 30 characters long')
+            .custom((tag) => {
+                if (!tag) return true;
+                const isForbidden = filter.isProfane(tag);
+
+                if (isForbidden) {
+                    throw new Error(
+                        'This tag contains inappropriate language and cannot be published.'
+                    );
+                }
+                return true;
+            }),
     ],
 };
 
