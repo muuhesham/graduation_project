@@ -45,6 +45,12 @@ const eventService = {
         eventSessions: true,
         eventSeatTier: true,
         eventSeat: true,
+        eventRules: {
+            select: { rule: true }
+        },
+        eventTags: {
+            include: {tag: {select: {name: true}}}
+        }
     },
 
     ALLOWED_RELATIONS: [
@@ -55,6 +61,8 @@ const eventService = {
         'ticketTypes',
         'eventSeatTier',
         'eventSeat',
+        'eventTags',
+        'eventRules',
     ],
 
     MAX_LIMIT: 100,
@@ -138,12 +146,15 @@ const eventService = {
         { title, description, banner, mode, type, categoryId, venueId },
         tx = prismaClient
     ) {
-        const slug = eventService.generateSlug({ title });
-
-        // const existingEvent = await eventService.findBySlug(organizerId, slug);
-        // if (existingEvent) {
-        //     throw new ConflictError('Event with the same title already exists');
-        // }
+        let slug = undefined;
+        if(title){
+            const slug = eventService.generateSlug({ title });
+    
+            const existingEvent = await eventService.findBySlug(organizerId, slug);
+            if (existingEvent) {
+                throw new ConflictError('Event with the same title already exists');
+            }
+        }
 
         let newBannerPath = null;
         let newBannerDisk = null;
@@ -172,9 +183,22 @@ const eventService = {
                 ...(newBannerDisk && { bannerDisk: newBannerDisk }),
                 ...(newBannerPath && { bannerPath: newBannerPath }),
             },
+            include: {
+                eventRules: {
+                    select: { rule: true },
+                },
+                eventTags: {
+                    include: { tag: { select: { name: true } } },
+                },
+            },
         });
 
-        const { bannerDisk, bannerPath, ...updatedEventData } = updatedEvent;
+        const { bannerDisk, bannerPath, eventRules, eventTags, ...updatedEventData } = updatedEvent;
+
+        const formattedRules = eventRules?.map((rule) => rule.rule) || [];
+        const formattedTags = eventTags?.map((tag) => tag.tag.name) || [];
+        updatedEventData.tags = formattedTags;
+        updatedEventData.rules = formattedRules;
 
         return {
             ...updatedEventData,
@@ -440,6 +464,12 @@ const eventService = {
                     eventId: true,
                 },
             },
+            eventRules: {
+                select: { rule: true },
+            },
+            eventTags: {
+                select: { tag: { select: { name: true } } },
+            },
         };
 
         const event = await eventService.getById(id, { relations });
@@ -450,7 +480,13 @@ const eventService = {
                 data: { message: 'Event not found' },
             };
         }
-        return event;
+        const { eventRules, eventTags, ...eventData } = event;
+
+        return {
+            ...eventData,
+            rules: eventRules?.map((r) => r.rule) || [],
+            tags: eventTags?.map((t) => t.tag.name) || [],
+        };
     },
 
     async availability(eventId) {
@@ -821,7 +857,8 @@ const eventService = {
                 status: 'fail',
                 statusCode: 403,
                 data: {
-                    message: 'Your banned due to too many unpaid reservations. Please try again later.',
+                    message:
+                        'Your banned due to too many unpaid reservations. Please try again later.',
                 },
             };
         }
@@ -1074,10 +1111,97 @@ const eventService = {
 
         return eventService.getBannerAbsUrl(events);
     },
+
+    async createEventRules(eventId, rules, tx = prismaClient) {
+        const createdRules = await Promise.all(
+            rules.map((rule) =>
+                tx.eventRule.create({
+                    data: {
+                        rule: rule.rule,
+                        eventId,
+                    },
+                })
+            )
+        );
+        return createdRules;
+    },
+
+    async updateEventRules(eventId, newRules, tx = prismaClient) {
+        await tx.eventRule.deleteMany({ where: { eventId } });
+
+        if (!newRules.length) return [];
+
+        return await Promise.all(
+            newRules.map((rule) =>
+                tx.eventRule.create({
+                    data: {
+                        rule: rule.rule,
+                        eventId,
+                    },
+            })),
+        );
+    },
+
+    async createEventTags(eventId, tags, tx = prismaClient) {
+        const tagRecords = await Promise.all(
+            tags.map((tag) =>
+                tx.tag.upsert({
+                    where: { name: tag.toLowerCase() },
+                    update: {},
+                    create: { name: tag.toLowerCase() },
+            })),
+        );
+
+        await tx.eventTag.createMany({
+            data: tagRecords.map((tagRecord) => ({
+                eventId,
+                tagId: tagRecord.id,
+            })),
+            skipDuplicates: true,
+        });
+
+        return tagRecords;
+    },
+    
+    async updateEventTags(eventId, tags, tx = prismaClient) {
+        await tx.eventTag.deleteMany({ where: { eventId } });
+
+        if(!tags.length) return [];
+
+        const tagRecords = await Promise.all(
+            tags.map((tag) => {
+                return tx.tag.upsert({
+                    where: { name: tag.toLowerCase() },
+                    update: {},
+                    create: { name: tag.toLowerCase() },
+            })}),
+        );
+
+       await tx.eventTag.createMany({
+            data: tagRecords.map((tagRecord) => ({
+                    eventId,
+                    tagId: tagRecord.id,
+                })),
+            skipDuplicates: true,
+        });
+
+        return tagRecords;
+    },
+
+    async getAllTags(search) {
+        const tags = await prismaClient.tag.findMany({
+            where: {
+                name: {
+                    contains: search.toLowerCase()
+                }
+            },
+            select: { name: true },
+            orderBy: { name: 'asc'},
+            take: 15,
+        });
+        return tags;
+    },
+
 };
 
 export default eventService;
-
-/*
-give me script written in Arabic for a video I will record for a demo for the graduation project. the video will last 3 minutes. I must open the project Fa3liat and open it as a guest and show all events sections in the home page, then try the newsletter if I don't want to create an account. then try to create an account with OTP sent to email. then get to the onboarding and add personal data. then try to reset password. then try see the personalized events and location personalization events sections. then try to buy . then try to create another account using google OAuth 2.0. and do the onboarding. then try to use upgrade to organizer.
-*/
