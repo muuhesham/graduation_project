@@ -21,6 +21,8 @@ const organizerController = {
             numberOfRows,
             numberOfColumns,
             priceTiers,
+            eventRules,
+            tags,
         } = req.body;
 
         if (priceTiers) {
@@ -46,6 +48,8 @@ const organizerController = {
             numberOfRows,
             numberOfColumns,
             priceTiers,
+            eventRules,
+            tags,
         });
 
         if (result.status === 'fail') {
@@ -73,7 +77,7 @@ const organizerController = {
         const userId = req.user.id;
         const banner = req.file;
 
-        const { title, categoryName, location, description, tickets, sessions, type, mode } =
+        const { title, categoryName, location, description, tickets, sessions, type, mode, eventRules, tags } =
             req.body;
 
         const result = await organizerService.updateEvent(userId, eventId, {
@@ -86,6 +90,8 @@ const organizerController = {
             sessions,
             type,
             mode,
+            eventRules,
+            tags,
         });
 
         if (result.status === 'fail') {
