@@ -36,6 +36,8 @@ const organizerService = {
             numberOfRows,
             numberOfColumns,
             priceTiers,
+            eventRules,
+            tags,
         }
     ) {
         const [organizer, category] = await Promise.all([
@@ -108,8 +110,24 @@ const organizerService = {
                         );
                         await seatService.createEventSeats(seatsData, event.id, tx);
                     }
+                    
+                    let rulesData = [];
+                    let tagsData = [];
+                    if (eventRules && eventRules.length > 0) {
+                        rulesData = await eventService.createEventRules(event.id, eventRules, tx);
+                    }
 
-                    return { event, ticketTypes, venue, eventSessions };
+                    if(tags && tags.length > 0) {
+                        tagsData = await eventService.createEventTags(event.id, tags, tx);
+                    }
+
+                    const eventResponse = {
+                        ...event,
+                        rules: rulesData.map((r)=> r.rule), 
+                        tags: tagsData.map((t)=> t.name),
+                    };
+
+                    return { event: eventResponse, ticketTypes, venue, eventSessions};
                 },
                 {
                     timeout: 50000,
@@ -131,7 +149,7 @@ const organizerService = {
     async updateEvent(
         userId,
         eventId,
-        { title, categoryName, description, banner, tickets, sessions, type, mode, location }
+        { title, categoryName, description, banner, tickets, sessions, type, mode, location, eventRules, tags }
     ) {
         const [organizer, event, category] = await Promise.all([
             organizerService.getByUserId(userId),
@@ -198,7 +216,28 @@ const organizerService = {
                     //     }
                     // }
 
-                    return { updatedEvent };
+                    let rulesData = updatedEvent.rules || [];
+                    let tagsData = updatedEvent.tags || [];
+                    if(eventRules !== undefined) {
+                        rulesData = await eventService.updateEventRules(eventId, eventRules, tx);
+                    }
+
+                    if(tags !== undefined) {
+                        tagsData = await eventService.updateEventTags(eventId, tags, tx);
+                    }
+
+                    const eventResponse = {
+                        ...updatedEvent,
+                        rules: rulesData.map((r) => r.rule || r),
+                        tags: tagsData.map((t) => {
+                            if (t.name) return t.name;
+                            if (t.tag && t.tag.name) return t.tag.name; 
+                            if (typeof t === 'string') return t;
+                            return null; 
+                        }).filter(Boolean)
+                    };
+
+                    return { updatedEvent: eventResponse };
                 },
                 {
                     timeout: 15000, // 15 seconds

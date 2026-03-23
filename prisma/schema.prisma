@@ -179,10 +179,12 @@ model Event {
   hasSeatMap    Boolean        @default(false)
   eventSessions EventSession[]
   ticketTypes   TicketType[]
+  eventRules    EventRule[]
   interestedEvenets InterestedEvent[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
+  eventTags     EventTag[]
 
   @@unique([organizerId, slug])
 }
@@ -216,6 +218,30 @@ enum EventType {
 enum EventMode {
   single
   recurring
+}
+
+model EventRule {
+  id      Int    @id @default(autoincrement())
+  eventId Int
+  rule    String
+
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  eventTags EventTag[]
+}
+
+model EventTag {
+  eventId Int
+  tagId   Int
+
+  event Event @relation(fields: [eventId], references: [id])
+  tag   Tag   @relation(fields: [tagId], references: [id])
+  @@id([eventId, tagId])
 }
 
 model Venue {

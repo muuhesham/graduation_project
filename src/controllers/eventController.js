@@ -64,6 +64,13 @@ const eventController = {
         }
         return sendSuccess(res, result.data, 201);
     }),
+
+    getAllTags: asyncWrapper(async (req, res) => {
+        const search = req.query.search || '';
+        const tags = await eventService.getAllTags(search);
+        return sendSuccess(res, { tags }, 200);
+    }),
+    
 };
 
 export default eventController;
