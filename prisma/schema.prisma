@@ -58,6 +58,7 @@ enum Role {
   admin
   user
   organizer
+  organization
 }
 
 enum Gender {

@@ -18,6 +18,7 @@ import crypto from 'crypto';
 import AuthProvider from '../constants/enums/authProvider.js';
 import ConflictError from '../errors/ConflictError.js';
 import AppError from '../errors/AppError.js';
+import { Role } from '@prisma/client';
 
 const authService = {
     JWT_EXPIRATION: 15 * 60, // 15 minutes
@@ -280,7 +281,7 @@ const authService = {
         }
         return prismaClient.$transaction(async (tx) => {
             const user = await userService.create(
-                { name: contactName || name, email, password, phone },
+                { name: contactName || name, email, password, phone, role: Role.organization },
                 tx
             );
 
