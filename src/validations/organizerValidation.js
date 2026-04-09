@@ -204,8 +204,9 @@ const organizerValidation = {
                     throw new Error(
                         'This tag contains inappropriate language and cannot be published.'
                     );
-                 return ture;
-             }),
+             }
+             return true;
+            }),
 
         body('eventType').optional().isString(),
 
