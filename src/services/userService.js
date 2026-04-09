@@ -5,6 +5,7 @@ import organizerService from './organizerService.js';
 import eventService from './eventService.js';
 import AppError from '../errors/AppError.js';
 import { AuthProvider } from '@prisma/client';
+import { tr } from '@faker-js/faker';
 
 const userService = {
     async create(user) {
@@ -121,12 +122,22 @@ const userService = {
         const interestedEvents = await prismaClient.interestedEvent.findMany({
             where: { userId },
             include: {
-                event: true,
+                event: {
+                    include: {
+                        venue: true,
+                        ticketTypes: true,
+                        eventSessions: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        const events = interestedEvents.map((item) => item.event);
+        const events = interestedEvents.map((item) => {
+            const event = item.event;
+            event.isInterested = true;
+            return event;
+        });
         const result = await eventService.getBannerAbsUrl(events);
 
         return result;

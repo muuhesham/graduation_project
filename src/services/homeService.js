@@ -2,11 +2,11 @@ import eventService from './eventService.js';
 import categoryService from './categoryService.js';
 
 const homeService = {
-    async latestEvents({ limit = 6, page = 1 } = {}) {
-        return await eventService.getLatest({ limit, page });
+    async latestEvents({userId = null, limit = 6, page = 1 } = {}) {
+        return await eventService.getLatest({ userId, limit, page });
     },
 
-    async newEventsThisWeek({ limit = 6, page = 1 } = {}) {
+    async newEventsThisWeek({ userId = null, limit = 6, page = 1 } = {}) {
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -26,12 +26,14 @@ const homeService = {
                     createdAt: true,
                 },
             },
+            interestedEvents: {},
         };
 
         return eventService.getCreatedBetween(oneWeekAgo, new Date(), {
             limit,
             page,
             relations,
+            userId,
         });
     },
 
@@ -39,7 +41,7 @@ const homeService = {
         return categoryService.getAll({ limit, page });
     },
 
-    async pastEventsAndHighlights({ limit = 6, page = 1 } = {}) {
+    async pastEventsAndHighlights({userId = null, limit = 6, page = 1 } = {}) {
         const orderBy = [
             {
                 createdAt: 'desc',
@@ -62,6 +64,7 @@ const homeService = {
                     createdAt: true,
                 },
             },
+            interestedEvents: {},
         };
 
         const selections = {
@@ -83,6 +86,7 @@ const homeService = {
             page,
             orderBy,
             selections,
+            userId,
         });
     },
 
