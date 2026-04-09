@@ -180,8 +180,7 @@ model Event {
   eventSessions EventSession[]
   ticketTypes   TicketType[]
   eventRules    EventRule[]
-  interestedEvenets InterestedEvent[]
-
+  interestedEvents InterestedEvent[]
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
   eventTags     EventTag[]
