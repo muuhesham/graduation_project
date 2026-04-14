@@ -5,13 +5,13 @@ import optionalAuth from '../middlewares/optionalAuth.js';
 
 const Router = express.Router();
 
-Router.get('/latest-events', publicLimiter, homeController.latestEvents);
+Router.get('/latest-events', publicLimiter, optionalAuth, homeController.latestEvents);
 
-Router.get('/new-events-this-week', publicLimiter, homeController.newEventsThisWeek);
+Router.get('/new-events-this-week', publicLimiter, optionalAuth, homeController.newEventsThisWeek);
 
 Router.get('/categories', publicLimiter, homeController.allCategories);
 
-Router.get('/past-events', publicLimiter, homeController.pastEventsAndHighlights);
+Router.get('/past-events', publicLimiter, optionalAuth, homeController.pastEventsAndHighlights);
 
 Router.get('/nearby-events', publicLimiter, optionalAuth, homeController.nearbyEvents);
 

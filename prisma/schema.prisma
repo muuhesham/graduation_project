@@ -269,28 +269,28 @@ model Company {
 }
 
 model Event {
-  id                Int               @id @default(autoincrement())
-  organizerId       String
-  venueId           Int?
-  categoryId        Int?
-  slug              String
-  title             String
-  bannerDisk        String            @default("local")
-  bannerPath        String
-  description       String
-  type              EventType         @default(ticketed)
-  mode              EventMode         @default(single)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  deletedAt         DateTime?
-  category          Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  organizer         Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  venue             Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  hasSeatMap        Boolean           @default(false)
-  eventSessions     EventSession[]
-  ticketTypes       TicketType[]
-  eventRules        EventRule[]
-  interestedEvenets InterestedEvent[]
+  id               Int               @id @default(autoincrement())
+  organizerId      String
+  venueId          Int?
+  categoryId       Int?
+  slug             String
+  title            String
+  bannerDisk       String            @default("local")
+  bannerPath       String
+  description      String
+  type             EventType         @default(ticketed)
+  mode             EventMode         @default(single)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organizer        Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  venue            Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  hasSeatMap       Boolean           @default(false)
+  eventSessions    EventSession[]
+  ticketTypes      TicketType[]
+  eventRules       EventRule[]
+  interestedEvents InterestedEvent[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]

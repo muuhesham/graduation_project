@@ -52,6 +52,7 @@ const eventService = {
         eventTags: {
             include: { tag: { select: { name: true } } },
         },
+        interestedEvents: true,
     },
 
     ALLOWED_RELATIONS: [
@@ -64,6 +65,7 @@ const eventService = {
         'eventSeat',
         'eventTags',
         'eventRules',
+        'interestedEvents',
     ],
 
     MAX_LIMIT: 100,
@@ -284,6 +286,14 @@ const eventService = {
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
+        // if (query.select && query.select.interestedEvents) {
+        //     query.select.interestedEvents = {
+        //         where: {
+        //             userId: userId || ' ',
+        //         },
+        //     };
+        // }
+
         const events = await prismaClient.event.findMany(query);
 
         if (relations?.ticketTypes) {
@@ -298,6 +308,12 @@ const eventService = {
                 event.eventSessions.map((session) => {});
             });
         }
+
+        events.forEach((event) => {
+            event.isInterested = false;
+            delete event.interestedEvents;
+        });
+
         return eventService.getBannerAbsUrl(events);
     },
 
@@ -322,7 +338,16 @@ const eventService = {
         return null;
     },
 
-    async getLatest({ selections, relations, orderBy, filters, exclude, limit, page } = {}) {
+    async getLatest({
+        selections,
+        relations,
+        orderBy,
+        filters,
+        exclude,
+        limit,
+        page,
+        userId,
+    } = {}) {
         const query = new PrismaQueryBuilder({
             maxLimit: eventService.MAX_LIMIT,
             allowedRelations: eventService.ALLOWED_RELATIONS,
@@ -334,6 +359,14 @@ const eventService = {
             .where(filters)
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS).value;
 
+        if (query.select && query.select.interestedEvents) {
+            query.select.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        }
+
         const events = await prismaClient.event.findMany(query);
         if (relations?.ticketTypes) {
             events.map((event) => {
@@ -342,13 +375,19 @@ const eventService = {
                 });
             });
         }
+
+        events.forEach((event) => {
+            event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            delete event.interestedEvents;
+        });
+
         return eventService.getBannerAbsUrl(events);
     },
 
     async getBySessionBetween(
         startDate,
         endDate,
-        { selections, relations, orderBy, filters, exclude, limit, page } = {}
+        { selections, relations, orderBy, filters, exclude, limit, page, userId } = {}
     ) {
         const query = new PrismaQueryBuilder({
             maxLimit: eventService.MAX_LIMIT,
@@ -369,6 +408,14 @@ const eventService = {
             })
             .sort(orderBy).value;
 
+        if (query.include.interestedEvents) {
+            query.include.interestedEvents = {
+                where: {
+                    userId: userId || -1,
+                },
+            };
+        }
+
         const events = await prismaClient.event.findMany(query);
         if (relations?.ticketTypes) {
             events.map((event) => {
@@ -377,13 +424,19 @@ const eventService = {
                 });
             });
         }
+
+        events.forEach((event) => {
+            event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            delete event.interestedEvents;
+        });
+
         return eventService.getBannerAbsUrl(events);
     },
 
     async getCreatedBetween(
         startDate,
         endDate,
-        { selections, relations, orderBy, filters, exclude, page, limit } = {}
+        { selections, relations, orderBy, filters, exclude, page, limit, userId } = {}
     ) {
         const query = new PrismaQueryBuilder({
             maxLimit: eventService.MAX_LIMIT,
@@ -401,6 +454,13 @@ const eventService = {
                 ...filters,
             })
             .sort(orderBy).value;
+        console.log(query);
+
+        if (query.select.interestedEvents) {
+            query.select.interestedEvents = {
+                where: { userId: userId || ' ' },
+            };
+        }
 
         const events = await prismaClient.event.findMany(query);
         if (relations?.ticketTypes) {
@@ -410,6 +470,11 @@ const eventService = {
                 });
             });
         }
+        events.forEach((event) => {
+            event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            delete event.interestedEvents;
+        });
+
         return eventService.getBannerAbsUrl(events);
     },
 
@@ -1066,10 +1131,20 @@ const eventService = {
         );
 
         const events = rows.map((r) => r.event);
+        const eventIds = events.map((e) => e.id);
 
-        events.forEach((event) =>
-            event.ticketTypes?.forEach((ticket) => (ticket.price = parseFloat(ticket.price)))
-        );
+        const myInterests = userId
+            ? await prismaClient.interestedEvent.findMany({
+                  where: { userId, eventId: { in: eventIds } },
+                  select: { eventId: true },
+              })
+            : [];
+        const interestedIds = myInterests.map((i) => i.eventId);
+
+        events.forEach((event) => {
+            event.ticketTypes?.forEach((ticket) => (ticket.price = parseFloat(ticket.price)));
+            event.isInterested = interestedIds.includes(event.id);
+        });
 
         return eventService.getBannerAbsUrl(events);
     },
@@ -1112,7 +1187,6 @@ const eventService = {
                 organizer: true,
                 category: true,
                 ticketTypes: true,
-
                 eventSessions: {
                     where: { status: 'active' },
                     orderBy: { startDate: 'asc' },
@@ -1123,13 +1197,28 @@ const eventService = {
             take: limit,
         });
 
-        events.forEach((event) => {
-            event.ticketTypes?.forEach((t) => {
-                t.price = parseFloat(t.price);
-            });
+        const userInterests = await prismaClient.interestedEvent.findMany({
+            where: { userId },
+            select: { eventId: true },
+        });
+        const interestedIds = userInterests.map((i) => i.eventId);
+
+        const formattedEvents = events.map((e) => {
+            const event = JSON.parse(JSON.stringify(e));
+
+            if (event.ticketTypes) {
+                event.ticketTypes.forEach((t) => {
+                    t.price = parseFloat(t.price);
+                });
+            }
+
+            event.isInterested = interestedIds.includes(event.id);
+            delete event.interestedEvents;
+
+            return event;
         });
 
-        return eventService.getBannerAbsUrl(events);
+        return eventService.getBannerAbsUrl(formattedEvents);
     },
 
     async addToInterested({ userId, eventId }) {

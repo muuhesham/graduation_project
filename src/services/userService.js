@@ -162,12 +162,22 @@ const userService = {
         const interestedEvents = await prismaClient.interestedEvent.findMany({
             where: { userId },
             include: {
-                event: true,
+                event: {
+                    include: {
+                        venue: true,
+                        ticketTypes: true,
+                        eventSessions: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        const events = interestedEvents.map((item) => item.event);
+        const events = interestedEvents.map((item) => {
+            const event = item.event;
+            event.isInterested = true;
+            return event;
+        });
         const result = await eventService.getBannerAbsUrl(events);
 
         return result;

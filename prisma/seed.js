@@ -16,7 +16,7 @@ async function main() {
     await seedLocations(prisma);
     await seedTags(prisma);
     // const users = await seedUsers(prisma);
-    const categories = await seedCategories(prisma);
+    await seedCategories(prisma);
     // const venues = await seedVenues(prisma);
     // const organizers = await seedOrganizers(prisma, { users });
     // await seedEvents(prisma, { categories, venues, organizers });
