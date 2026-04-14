@@ -1,4 +1,3 @@
-//@ts-check
 import { prisma as prismaClient } from '../config/db.js';
 
 import { hashPassword } from './../utils/hash.js';
