@@ -102,8 +102,8 @@ const authController = {
             const user = req.user;
 
             const result = await authService.sendOtpMail({
-              user,
-              isFirstTime: false,
+                user,
+                isFirstTime: false,
             });
 
             if (result.status === 'fail') {
@@ -140,6 +140,28 @@ const authController = {
         } catch (err) {
             console.error(err);
             return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+        }
+    },
+
+    async requestPhoneOtp(req, res, next) {
+        try {
+            const userId = req.user?.id;
+            const { phone } = req.body;
+            await authService.requestPhoneOtp({ userId, phone });
+            return sendSuccess(res, {}, 200);
+        } catch (err) {
+            return next(err);
+        }
+    },
+
+    async verifyPhoneOtp(req, res, next) {
+        try {
+            const userId = req.user?.id;
+            const { phone, otp } = req.body;
+            await authService.verifyPhoneOtp({ userId, phone, otp });
+            return sendSuccess(res, {}, 200);
+        } catch (err) {
+            return next(err);
         }
     },
 };

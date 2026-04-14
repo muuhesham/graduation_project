@@ -47,11 +47,11 @@ const eventService = {
         eventSeatTier: true,
         eventSeat: true,
         eventRules: {
-            select: { rule: true }
+            select: { rule: true },
         },
         eventTags: {
-            include: {tag: {select: {name: true}}}
-        }
+            include: { tag: { select: { name: true } } },
+        },
     },
 
     ALLOWED_RELATIONS: [
@@ -134,14 +134,16 @@ const eventService = {
 
     //SOFT DELETE EVENT
     async softDelete(eventId) {
-        const event =  await prismaClient.event.findFirst({
-            where: { id: Number(eventId)},
+        const event = await prismaClient.event.findFirst({
+            where: { id: Number(eventId) },
         });
 
-        if (!event) { return null; }
+        if (!event) {
+            return null;
+        }
 
         await prismaClient.event.updateMany({
-            where: { id: Number(eventId) , deletedAt: null},
+            where: { id: Number(eventId), deletedAt: null },
             data: { deletedAt: new Date() },
         });
 
@@ -156,9 +158,9 @@ const eventService = {
         tx = prismaClient
     ) {
         let slug = undefined;
-        if(title){
+        if (title) {
             const slug = eventService.generateSlug({ title });
-    
+
             const existingEvent = await eventService.findBySlug(organizerId, slug);
             if (existingEvent) {
                 throw new ConflictError('Event with the same title already exists');
@@ -692,7 +694,7 @@ const eventService = {
                     );
                 }
                 const price = event.type === 'free' ? 0 : parseFloat(dbTier.price);
-                
+
                 totalPrice += price;
                 itemsCount += 1;
 
@@ -802,7 +804,13 @@ const eventService = {
                 );
                 let session;
                 if (totalPrice === 0) {
-                    await ticketTypeService.issueTicketsForOrder(order.id, userId, orderItems, verifiedItems, tx);
+                    await ticketTypeService.issueTicketsForOrder(
+                        order.id,
+                        userId,
+                        orderItems,
+                        verifiedItems,
+                        tx
+                    );
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
@@ -1124,50 +1132,47 @@ const eventService = {
         return eventService.getBannerAbsUrl(events);
     },
 
-    async addToInterested({userId, eventId}) {
-        const existing = await eventService.isEventInterested({userId, eventId});
+    async addToInterested({ userId, eventId }) {
+        const existing = await eventService.isEventInterested({ userId, eventId });
 
-        if(existing){
+        if (existing) {
             throw new AppError('Event is already in your interested list', 400);
         }
 
         const event = await prismaClient.interestedEvent.create({
-            data: { userId, eventId, },
+            data: { userId, eventId },
         });
         return event;
     },
 
-    async removeFromInterested({userId, eventId}) {
-        const existing = await eventService.isEventInterested({userId, eventId});
+    async removeFromInterested({ userId, eventId }) {
+        const existing = await eventService.isEventInterested({ userId, eventId });
 
-        if(!existing){
+        if (!existing) {
             throw new AppError('Event is not in your interested list', 404);
         }
 
         const deletedEvent = await prismaClient.interestedEvent.delete({
-            where: { userId_eventId: {userId, eventId} },
+            where: { userId_eventId: { userId, eventId } },
         });
         return deletedEvent;
     },
 
-    async isEventInterested({userId, eventId}){
+    async isEventInterested({ userId, eventId }) {
         return await prismaClient.interestedEvent.findUnique({
             where: { userId_eventId: { userId, eventId } },
         });
     },
-    
-    async getUserAttendedEvents({userId}){
+
+    async getUserAttendedEvents({ userId }) {
         return await prismaClient.event.count({
             where: {
                 ticketTypes: {
-                    some: { tickets: { some: { userId, /*status: 'valid'*/ } }
-                    }
-                }
-            }
+                    some: { tickets: { some: { userId /*status: 'valid'*/ } } },
+                },
+            },
         });
     },
-
-},
 
     async createEventRules(eventId, rules, tx = prismaClient) {
         const createdRules = await Promise.all(
@@ -1195,7 +1200,8 @@ const eventService = {
                         rule: rule.rule,
                         eventId,
                     },
-            })),
+                })
+            )
         );
     },
 
@@ -1206,7 +1212,8 @@ const eventService = {
                     where: { name: tag.toLowerCase() },
                     update: {},
                     create: { name: tag.toLowerCase() },
-            })),
+                })
+            )
         );
 
         await tx.eventTag.createMany({
@@ -1219,11 +1226,11 @@ const eventService = {
 
         return tagRecords;
     },
-    
+
     async updateEventTags(eventId, tags, tx = prismaClient) {
         await tx.eventTag.deleteMany({ where: { eventId } });
 
-        if(!tags.length) return [];
+        if (!tags.length) return [];
 
         const tagRecords = await Promise.all(
             tags.map((tag) => {
@@ -1231,14 +1238,15 @@ const eventService = {
                     where: { name: tag.toLowerCase() },
                     update: {},
                     create: { name: tag.toLowerCase() },
-            })}),
+                });
+            })
         );
 
-       await tx.eventTag.createMany({
+        await tx.eventTag.createMany({
             data: tagRecords.map((tagRecord) => ({
-                    eventId,
-                    tagId: tagRecord.id,
-                })),
+                eventId,
+                tagId: tagRecord.id,
+            })),
             skipDuplicates: true,
         });
 
@@ -1249,16 +1257,15 @@ const eventService = {
         const tags = await prismaClient.tag.findMany({
             where: {
                 name: {
-                    contains: search.toLowerCase()
-                }
+                    contains: search.toLowerCase(),
+                },
             },
             select: { name: true },
-            orderBy: { name: 'asc'},
+            orderBy: { name: 'asc' },
             take: 15,
         });
         return tags;
     },
-
 };
 
 export default eventService;

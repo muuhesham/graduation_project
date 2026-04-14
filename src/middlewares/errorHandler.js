@@ -1,3 +1,5 @@
+import { NODE_ENV } from './../config/env.js';
+
 import { sendFail, sendError } from '../utils/response.js';
 
 function errorHandler(err, req, res, next) {
@@ -8,13 +10,20 @@ function errorHandler(err, req, res, next) {
     if (err.isOperational) {
         return handleAppError(err, req, res);
     }
-    next(err);
+
+    if (NODE_ENV !== 'production') {
+        return next(err);
+    }
+
+    return sendError(res, 'An unexpected error occurred', 'INTERNAL_ERROR', null, 500);
 }
 
 function handleAppError(err, req, res) {
     const statusCode = err.statusCode || 500;
-    return sendError(res, err.message, err.code, null, statusCode);
+    const details = err.details || null;
+    return sendFail(res, details, statusCode, err.code);
 }
+
 function handlePrismaError(err, req, res) {
     switch (err.code) {
         case 'P2002': {

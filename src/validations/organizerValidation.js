@@ -199,13 +199,13 @@ const organizerValidation = {
             .custom((tag) => {
                 if (!tag) return true;
                 const isForbidden = filter.isProfane(tag);
-
                 if (isForbidden) {
                     throw new Error(
                         'This tag contains inappropriate language and cannot be published.'
                     );
-                 return ture;
-             }),
+                }
+                return true;
+            }),
 
         body('eventType').optional().isString(),
 
