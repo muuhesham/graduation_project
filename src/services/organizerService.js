@@ -1,21 +1,236 @@
 import { prisma as prismaClient } from '../config/db.js';
+
+import EventType from '../constants/enums/eventType.js';
+
+import OrganizerErrors from './../constants/messages/errors/organizer.js';
+
+import { pluck } from './../helpers/pluck.js';
+
 import eventService from './eventService.js';
 import ticketTypeService from './ticketTypeService.js';
 import venueService from './venueService.js';
 import fileService from './fileService.js';
-import EventType from '../constants/enums/eventType.js';
 import categoryService from '../services/categoryService.js';
 import seatService from './seatService.js';
+import locationService from './locationService.js';
+import mailService from './mailService.js';
+import otpService from './otpService.js';
+
+import AppError from '../errors/AppError.js';
+import NotFoundError from './../errors/NotFoundError.js';
+import ConflictError from './../errors/ConflictError.js';
+
+import organizerPolicy from './../policies/OrganizerPolicy.js';
+
+import OrganizerFactory from './../factories/OrganizerFactory.js';
+
+/**
+ * @typedef {import('@prisma/client').PrismaClient} PrismaClient
+ *
+ * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
+ *
+ * @typedef {import('./../types/models').Organizer} Organizer
+ *
+ * @typedef {import('./../types/models').Business} Business
+ *
+ * @typedef {import('./../types/models').Company} Company
+ *
+ * @typedef {import('./../types/models').Hobbyist} Hobbyist
+ */
+
+/** @typedef {import('./../types/dtos/organizer.dto.js').OrganizerCreateDTO} OrganizerCreateDTO */
 
 const organizerService = {
+    /**
+     * @private
+     * @type {locationService}
+     */
+    locationService: locationService,
+
+    /**
+     * @private
+     * @typedef {import('./../policies/OrganizerPolicy.js').default} OrganizerPolicy
+     */
+    organizerPolicy: organizerPolicy,
+
+    /**
+     * @private
+     * @type {string[]}
+     */
+    allowedFields: [
+        'type',
+        'organizerType',
+        'name',
+        'description',
+        'website',
+        'contactPersonName',
+        'contactEmail',
+        'contactPhone',
+        'instagramUrl',
+        'facebookUrl',
+        'twitterUrl',
+        'linkedinUrl',
+        'youtubeUrl',
+        'logoDisk',
+        'logoPath',
+        'coverDisk',
+        'coverPath',
+        'profilePhotoDisk',
+        'profilePhotoPath',
+        'nationalId',
+        'ownerName',
+        'commercialRegistration',
+        'taxId',
+        'registrationNumber',
+        'officialEmailDomain',
+        'officialDocumentsDisk',
+        'officialDocumentsPath',
+        'address',
+        'cityId',
+        'stateId',
+        'countryId',
+        'isApproved',
+        'verificationStatus',
+        'status',
+        'suspendReason',
+        'rejectionReason',
+        'reviewedById',
+        'reviewedAt',
+    ],
+
+    /**
+     * @private
+     * @type {string[]}
+     */
+    organizerCreateFields: [
+        'type',
+        'name',
+        'description',
+        'contactName',
+        'contactEmail',
+        'contactPhone',
+        'websiteUrl',
+        'instagramUrl',
+        'facebookUrl',
+        'twitterUrl',
+        'linkedinUrl',
+        'youtubeUrl',
+        'logoDisk',
+        'logoPath',
+        'coverDisk',
+        'coverPath',
+        'address',
+        'cityId',
+        'stateId',
+        'countryId',
+        'verificationStatus',
+        'status',
+        'suspendReason',
+        'rejectionReason',
+        'reviewedBy',
+        'reviewedAt',
+    ],
+
     // CREATE
-    async create(userId, { isApproved = false }, tx = prismaClient) {
-        return tx.organizer.create({
-            data: {
-                userId,
-                isApproved,
-            },
+    /**
+     * @param {string} userId
+     * @param {OrganizerCreateDTO} dto
+     * @param {PrismaClient | TransactionClient} [tx=prismaClient] Default is `prismaClient`
+     * @returns {Promise<Organizer>}
+     */
+    async create(userId, dto, tx = prismaClient) {
+        const validated = /** @type {OrganizerCreateDTO} */ (pluck(dto, this.allowedFields));
+        const normalizedOrganizerData = {
+            ...validated,
+            contactName: validated.contactPersonName,
+            websiteUrl: validated.website,
+            reviewedBy: validated.reviewedBy,
+        };
+        const organizerCreateData = pluck(normalizedOrganizerData, this.organizerCreateFields);
+
+        await Promise.all([
+            this.ensureUniqueConstraints(userId, validated),
+            this.ensureReferenceConstraints(userId, validated),
+        ]);
+
+        const organizer = await tx.organizer.create({
+            data: { ...organizerCreateData, userId },
         });
+        await OrganizerFactory.createInstance(validated.type).create(
+            organizer.id,
+            { ...validated, organizerId: organizer.id },
+            tx
+        );
+
+        return organizer;
+    },
+
+    /**
+     * @private
+     * @param {string} userId
+     * @param {OrganizerCreateDTO} organizerData
+     */
+    async ensureReferenceConstraints(userId, organizerData) {
+        const countryId = /** @type {number} */ (organizerData.countryId);
+        const stateId = /** @type {number} */ (organizerData.stateId);
+        const cityId = /** @type {number} */ (organizerData.cityId);
+
+        const [country, state, city] = await Promise.all([
+            this.locationService.findCountryById(countryId),
+            this.locationService.findStateById(stateId),
+            this.locationService.findCityById(cityId),
+        ]);
+
+        const errors = [];
+        if (!country) {
+            errors.push({ field: 'countryId', message: 'Referenced country does not exist' });
+        }
+        if (!state) {
+            errors.push({ field: 'stateId', message: 'Referenced state does not exist' });
+        }
+        if (!city) {
+            errors.push({ field: 'cityId', message: 'Referenced city does not exist' });
+        }
+        if (errors.length > 0) {
+            throw new ConflictError(
+                OrganizerErrors.ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION.message,
+                OrganizerErrors.ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION.code,
+                errors
+            );
+        }
+    },
+
+    /**
+     * @private
+     * @param {string} userId
+     * @param {OrganizerCreateDTO} organizerData
+     */
+    async ensureUniqueConstraints(userId, organizerData) {
+        const [existsByEmail, existsByPhone] = await Promise.all([
+            this.findByContactEmail(organizerData.contactEmail),
+            this.findByContactPhone(organizerData.contactPhone),
+        ]);
+
+        const errors = [];
+        if (existsByEmail) {
+            errors.push({
+                field: 'contactEmail',
+                message: 'Contact email is already in use by another organizer',
+            });
+        }
+        if (existsByPhone) {
+            errors.push({
+                field: 'contactPhone',
+                message: 'Contact phone is already in use by another organizer',
+            });
+        }
+        if (errors.length > 0) {
+            throw new ConflictError(
+                OrganizerErrors.ORGANIZER_ALREADY_EXISTS.message,
+                OrganizerErrors.ORGANIZER_ALREADY_EXISTS.code,
+                errors
+            );
+        }
     },
 
     // CREATE EVENT
@@ -110,24 +325,24 @@ const organizerService = {
                         );
                         await seatService.createEventSeats(seatsData, event.id, tx);
                     }
-                    
+
                     let rulesData = [];
                     let tagsData = [];
                     if (eventRules && eventRules.length > 0) {
                         rulesData = await eventService.createEventRules(event.id, eventRules, tx);
                     }
 
-                    if(tags && tags.length > 0) {
+                    if (tags && tags.length > 0) {
                         tagsData = await eventService.createEventTags(event.id, tags, tx);
                     }
 
                     const eventResponse = {
                         ...event,
-                        rules: rulesData.map((r)=> r.rule), 
-                        tags: tagsData.map((t)=> t.name),
+                        rules: rulesData.map((r) => r.rule),
+                        tags: tagsData.map((t) => t.name),
                     };
 
-                    return { event: eventResponse, ticketTypes, venue, eventSessions};
+                    return { event: eventResponse, ticketTypes, venue, eventSessions };
                 },
                 {
                     timeout: 50000,
@@ -149,7 +364,19 @@ const organizerService = {
     async updateEvent(
         userId,
         eventId,
-        { title, categoryName, description, banner, tickets, sessions, type, mode, location, eventRules, tags }
+        {
+            title,
+            categoryName,
+            description,
+            banner,
+            tickets,
+            sessions,
+            type,
+            mode,
+            location,
+            eventRules,
+            tags,
+        }
     ) {
         const [organizer, event, category] = await Promise.all([
             organizerService.getByUserId(userId),
@@ -218,23 +445,25 @@ const organizerService = {
 
                     let rulesData = updatedEvent.rules || [];
                     let tagsData = updatedEvent.tags || [];
-                    if(eventRules !== undefined) {
+                    if (eventRules !== undefined) {
                         rulesData = await eventService.updateEventRules(eventId, eventRules, tx);
                     }
 
-                    if(tags !== undefined) {
+                    if (tags !== undefined) {
                         tagsData = await eventService.updateEventTags(eventId, tags, tx);
                     }
 
                     const eventResponse = {
                         ...updatedEvent,
                         rules: rulesData.map((r) => r.rule || r),
-                        tags: tagsData.map((t) => {
-                            if (t.name) return t.name;
-                            if (t.tag && t.tag.name) return t.tag.name; 
-                            if (typeof t === 'string') return t;
-                            return null; 
-                        }).filter(Boolean)
+                        tags: tagsData
+                            .map((t) => {
+                                if (t.name) return t.name;
+                                if (t.tag && t.tag.name) return t.tag.name;
+                                if (typeof t === 'string') return t;
+                                return null;
+                            })
+                            .filter(Boolean),
                     };
 
                     return { updatedEvent: eventResponse };
@@ -335,6 +564,12 @@ const organizerService = {
     async getByUserId(userId) {
         return prismaClient.organizer.findFirst({
             where: { userId },
+            include: {
+                hobbyist: true,
+                business: true,
+                company: true,
+                user: true,
+            },
         });
     },
 
@@ -377,6 +612,153 @@ const organizerService = {
                 result,
             },
         };
+    },
+
+    /**
+     * @private
+     * @param {Organizer} organizer
+     * @param {string} contactEmail
+     * @returns {Promise<void>}
+     */
+    async sendOrganizerContactEmailOtp(organizer, contactEmail) {
+        const normalizedContactEmail = contactEmail.trim().toLowerCase();
+        const otp = otpService.generateOtp();
+
+        await Promise.all([
+            mailService.sendOtpJob(
+                {
+                    name: organizer.name || organizer.user?.name || 'there',
+                    email: normalizedContactEmail,
+                },
+                otp,
+                otpService.OTP_EXPIRATION
+            ),
+            otpService.storeOrUpdateOtp(normalizedContactEmail, otp, otpService.OTP_EXPIRATION),
+        ]);
+    },
+
+    /**
+     * @private
+     * @param {Organizer} organizer
+     * @returns {string}
+     */
+    getVerifiedOrganizerContactEmail(organizer) {
+        const organizerContactEmail = organizer.contactEmail?.trim().toLowerCase();
+
+        if (!organizerContactEmail) {
+            throw new AppError('Contact email is required', 400, 'CONTACT_EMAIL_REQUIRED');
+        }
+
+        return organizerContactEmail;
+    },
+
+    /**
+     * @param {string} userId
+     */
+    async requestOrganizerContactEmailVerification(userId) {
+        const organizer = await this.getByUserId(userId);
+
+        if (!organizer) {
+            throw new NotFoundError(
+                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
+                OrganizerErrors.ORGANIZER_NOT_FOUND.code
+            );
+        }
+
+        if (organizer.isContactEmailVerified) {
+            throw new AppError(
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
+                400,
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
+            );
+        }
+
+        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
+
+        await this.sendOrganizerContactEmailOtp(organizer, contactEmail);
+    },
+
+    /**
+     * @param {string} userId
+     * @returns {Promise<void>}
+     */
+    async resendOrganizerContactEmailVerification(userId) {
+        const organizer = await this.getByUserId(userId);
+
+        if (!organizer) {
+            throw new NotFoundError(
+                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
+                OrganizerErrors.ORGANIZER_NOT_FOUND.code
+            );
+        }
+
+        if (organizer.isContactEmailVerified) {
+            throw new AppError(
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
+                400,
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
+            );
+        }
+
+        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
+
+        await this.sendOrganizerContactEmailOtp(organizer, contactEmail);
+    },
+
+    /**
+     * @param {string} userId
+     * @param {object} input
+     * @param {string} input.otp
+     */
+    async verifyOrganizerContactEmail(userId, input) {
+        const organizer = await this.getByUserId(userId);
+
+        if (!organizer) {
+            throw new NotFoundError(
+                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
+                OrganizerErrors.ORGANIZER_NOT_FOUND.code
+            );
+        }
+
+        if (organizer.isContactEmailVerified) {
+            throw new AppError(
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
+                400,
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
+            );
+        }
+
+        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
+
+        await otpService.verifyEmailOtp(contactEmail, input?.otp);
+
+        await prismaClient.organizer.update({
+            where: { id: organizer.id },
+            data: { isContactEmailVerified: true },
+        });
+    },
+
+    /**
+     * @param {string} email
+     * @return {Promise<Organizer | null>}
+     */
+    findByContactEmail(email) {
+        if (!email) return Promise.resolve(null);
+
+        return prismaClient.organizer.findFirst({
+            where: { contactEmail: email },
+        });
+    },
+    /**
+     * @param {string} phone
+     * @return {Promise<Organizer | null>}
+     */
+    findByContactPhone(phone) {
+        if (!phone) return Promise.resolve(null);
+
+        return prismaClient.organizer.findFirst({
+            where: { contactPhone: phone },
+        });
     },
 };
 

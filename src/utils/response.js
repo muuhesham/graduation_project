@@ -4,8 +4,8 @@ function sendSuccess(res, data, status = 200) {
     return res.status(status).json(jsend.success(data));
 }
 
-function sendFail(res, data, status = 400) {
-    return res.status(status).json(jsend.fail(data));
+function sendFail(res, data, status = 400, code = null) {
+    return res.status(status).json(jsend.fail(data, code));
 }
 
 function sendError(res, message, code = null, data = null, status = 500) {

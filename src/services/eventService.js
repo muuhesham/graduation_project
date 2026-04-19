@@ -286,13 +286,13 @@ const eventService = {
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
-            // if (query.select && query.select.interestedEvents) {
-            //     query.select.interestedEvents = {
-            //         where: {
-            //             userId: userId || ' ',
-            //         },
-            //     };
-            // }
+        // if (query.select && query.select.interestedEvents) {
+        //     query.select.interestedEvents = {
+        //         where: {
+        //             userId: userId || ' ',
+        //         },
+        //     };
+        // }
 
         const events = await prismaClient.event.findMany(query);
 
@@ -338,7 +338,16 @@ const eventService = {
         return null;
     },
 
-    async getLatest({ selections, relations, orderBy, filters, exclude, limit, page, userId } = {}) {
+    async getLatest({
+        selections,
+        relations,
+        orderBy,
+        filters,
+        exclude,
+        limit,
+        page,
+        userId,
+    } = {}) {
         const query = new PrismaQueryBuilder({
             maxLimit: eventService.MAX_LIMIT,
             allowedRelations: eventService.ALLOWED_RELATIONS,
@@ -350,12 +359,12 @@ const eventService = {
             .where(filters)
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS).value;
 
-        if(query.select && query.select.interestedEvents) {
+        if (query.select && query.select.interestedEvents) {
             query.select.interestedEvents = {
                 where: {
-                    userId: userId || " ",
-                }
-            }
+                    userId: userId || ' ',
+                },
+            };
         }
 
         const events = await prismaClient.event.findMany(query);
@@ -449,7 +458,7 @@ const eventService = {
 
         if (query.select.interestedEvents) {
             query.select.interestedEvents = {
-                where: { userId: userId || " " },
+                where: { userId: userId || ' ' },
             };
         }
 
@@ -1124,10 +1133,12 @@ const eventService = {
         const events = rows.map((r) => r.event);
         const eventIds = events.map((e) => e.id);
 
-        const myInterests = userId ? await prismaClient.interestedEvent.findMany({
-            where: { userId, eventId: { in: eventIds } },
-            select: { eventId: true },
-        }) : [];
+        const myInterests = userId
+            ? await prismaClient.interestedEvent.findMany({
+                  where: { userId, eventId: { in: eventIds } },
+                  select: { eventId: true },
+              })
+            : [];
         const interestedIds = myInterests.map((i) => i.eventId);
 
         events.forEach((event) => {
@@ -1192,7 +1203,7 @@ const eventService = {
         });
         const interestedIds = userInterests.map((i) => i.eventId);
 
-        const formattedEvents = events.map((e) => {         
+        const formattedEvents = events.map((e) => {
             const event = JSON.parse(JSON.stringify(e));
 
             if (event.ticketTypes) {
@@ -1206,7 +1217,6 @@ const eventService = {
 
             return event;
         });
-
 
         return eventService.getBannerAbsUrl(formattedEvents);
     },

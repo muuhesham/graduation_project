@@ -8,10 +8,12 @@ import seedVenues from './seeders/venue.seeder.js';
 import seedEvents from './seeders/event.seeder.js';
 import seedOrganizers from './seeders/organizer.seeder.js';
 import seedTags from './seeders/tag.seeder.js';
+import seedLocations from './seeders/location.seeder.js';
 
 async function main() {
     console.log('🚀 Starting database seed...');
     await seedGovernorates(prisma); // this must be first, and must exist before any deployments
+    await seedLocations(prisma);
     await seedTags(prisma);
     // const users = await seedUsers(prisma);
     await seedCategories(prisma);
