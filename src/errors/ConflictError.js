@@ -1,11 +1,19 @@
-import AppError from './AppError.js';
-import common from '../constants/errors/common.js'; 
+//@ts-check
 
-class ConflictError extends AppError {
-    constructor(message = common.CONFLICT, code = 'CONFLICT_ERROR') {
-        super(message, 409, code);
-        this.name = 'ConflictError';
+import AppError from './AppError.js';
+import CommonErrors from './../constants/messages/errors/common.js';
+
+export default class ConflictError extends AppError {
+    /**
+     * @param {string} [message]
+     * @param {string} [code]
+     * @param {object | object[] | null} [details]
+     */
+    constructor(
+        message = CommonErrors.CONFLICT.message,
+        code = CommonErrors.CONFLICT.code,
+        details = null
+    ) {
+        super(message, 409, code, details);
     }
 }
-
-export default ConflictError;

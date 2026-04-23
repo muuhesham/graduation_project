@@ -17,6 +17,7 @@ export const HOSTNAME = process.env.HOSTNAME;
 export const JWT_KEY = process.env.JWT_KEY;
 export const PORT = process.env.PORT || 8000;
 export const DATABASE_NAME = process.env.DATABASE_NAME;
+export const SMS_PROVIDER = process.env.SMS_PROVIDER || 'mock';
 export const CLIENT_ID = process.env.CLIENT_ID;
 export const CLIENT_SECRET = process.env.CLIENT_SECRET;
 export const CALLBACK_URL = process.env.CALLBACK_URL;
@@ -27,7 +28,8 @@ export const MAIL_USER = process.env.MAIL_USER;
 export const MAIL_PASS = process.env.MAIL_PASS;
 export const MAIL_FROM = process.env.MAIL_FROM;
 export const NEWSLETTER_CONFIRMATION_SUCCESS_URL = process.env.NEWSLETTER_CONFIRMATION_SUCCESS_URL;
-export const NEWSLETTER_CONFIRMATION_ALREADY_SUBSCRIBED_URL = process.env.NEWSLETTER_CONFIRMATION_ALREADY_SUBSCRIBED_URL;   
+export const NEWSLETTER_CONFIRMATION_ALREADY_SUBSCRIBED_URL =
+    process.env.NEWSLETTER_CONFIRMATION_ALREADY_SUBSCRIBED_URL;
 export const NEWSLETTER_CONFIRMATION_FAILURE_URL = process.env.NEWSLETTER_CONFIRMATION_FAILURE_URL;
 export const NEWSLETTER_JWT_KEY = process.env.NEWSLETTER_JWT_KEY;
 export const NEWSLETTER_JWT_EXPIRY = process.env.NEWSLETTER_JWT_EXPIRY;
@@ -42,5 +44,9 @@ export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 export const SUCCESS_URL = `${process.env.FRONT_URL}${process.env.SUCCESS_ROUTE}`;
 export const CANCEL_URL = `${process.env.FRONT_URL}${process.env.CANCEL_ROUTE}`;
 export const APP_CURRENCY = process.env.APP_CURRENCY || 'USD';
+
+export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+export const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
 export { BASE_PATH };

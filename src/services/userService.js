@@ -1,13 +1,37 @@
 import { prisma as prismaClient } from '../config/db.js';
+
 import { hashPassword } from './../utils/hash.js';
+
 import userRoles from '../constants/enums/userRoles.js';
-import organizerService from './organizerService.js';
+
 import eventService from './eventService.js';
+import organizerService from './organizerService.js';
+
+import userPolicy from './../policies/UserPolicy.js';
+
 import AppError from '../errors/AppError.js';
-import { AuthProvider } from '@prisma/client';
+
+
+/**
+ * @typedef {import('@prisma/client').PrismaClient} PrismaClient
+ *
+ * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
+ *
+ * @typedef {import('./../types/models').Organizer} Organizer
+ *
+ * @typedef {import('./../policies/UserPolicy.js').default} UserPolicy
+ */
+
+/** @typedef {import('./../types/dtos').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO */
 
 const userService = {
-    async create(user) {
+    /**
+     * @private
+     * @type {UserPolicy}
+     */
+    userPolicy: userPolicy,
+
+    async create(user, tx = prismaClient) {
         const existingUser = await userService.findByEmail(user.email);
 
         if (existingUser) {
@@ -19,7 +43,7 @@ const userService = {
 
         user.password = await hashPassword(user.password);
 
-        return prismaClient.user.create({
+        return tx.user.create({
             data: user,
         });
     },
@@ -47,6 +71,27 @@ const userService = {
         });
     },
 
+    async markPhoneVerified(userId) {
+        return prismaClient.user.update({
+            where: { id: userId },
+            data: { isPhoneVerified: true },
+        });
+    },
+
+    async markPhoneVerifiedByPhone(phone) {
+        return prismaClient.user.update({
+            where: { phone },
+            data: { isPhoneVerified: true },
+        });
+    },
+
+    async updatePhone(userId, phone) {
+        return prismaClient.user.update({
+            where: { id: userId },
+            data: { phone, isPhoneVerified: false },
+        });
+    },
+
     async updatePassword(email, password) {
         return prismaClient.user.update({
             where: { email: email },
@@ -54,37 +99,33 @@ const userService = {
         });
     },
 
-    async upgradeToOrganizer(userId) {
+    /**
+     * @param {string} userId
+     * @param {UpgradeToOrganizerDTO} organizerData
+     * @returns {Promise<Organizer>}
+     */
+    async upgradeToOrganizer(userId, organizerData) {
         const user = await userService.findById(userId);
-        if (!user) {
-            return {
-                status: 'fail',
-                data: { error: 'User not found' },
-            };
-        }
+        this.userPolicy.canUpgrade(user);
 
-        if (!user.isVerified) {
-            return {
-                status: 'fail',
-                data: { error: 'User email is not verified' },
-            };
-        }
+        return prismaClient.$transaction(
+            /** @param {TransactionClient} tx */
+            async (tx) => {
+                await userService.updateRole(userId, userRoles.ORGANIZER, tx);
+                const organizer = await organizerService.create(
+                    userId,
+                    {
+                        ...organizerData,
+                        type: /** @type {import('@prisma/client').OrganizerType} */ (
+                            organizerData.organizerType
+                        ),
+                    },
+                    tx
+                );
 
-        if (user.role === userRoles.ORGANIZER) {
-            return {
-                status: 'fail',
-                data: { error: 'User is already an organizer' },
-            };
-        }
-
-        return prismaClient.$transaction(async (tx) => {
-            await organizerService.create(userId, { isApproved: true }, tx);
-            await userService.updateRole(userId, userRoles.ORGANIZER, tx);
-            return {
-                status: 'success',
-                data: { message: 'User upgraded to organizer successfully' },
-            };
-        });
+                return organizer;
+            }
+        );
     },
 
     async findById(userId) {
@@ -117,7 +158,7 @@ const userService = {
         return !!user;
     },
 
-    async getInterestedEvents({userId}) {
+    async getInterestedEvents({ userId }) {
         const interestedEvents = await prismaClient.interestedEvent.findMany({
             where: { userId },
             include: {
@@ -141,7 +182,7 @@ const userService = {
 
         return result;
     },
-    
+
     async findUser(userId) {
         const user = await prismaClient.user.findFirst({
             where: { id: userId },
@@ -172,9 +213,9 @@ const userService = {
         return user;
     },
 
-    async isEmailAvailable({newEmail, confirmEmail}) {
+    async isEmailAvailable({ newEmail, confirmEmail }) {
         if (newEmail !== confirmEmail) {
-            throw new AppError(`Emails don't match`, 400);
+            throw new AppError(`Emails don't match`, 400, 'EMAILS_MISMATCH');
         }
 
         const currentEmail = await prismaClient.user.findUnique({
@@ -185,12 +226,13 @@ const userService = {
         if (currentEmail) {
             throw new AppError(
                 'This email cannot be used. Please try another or log in to your existing account.',
-                400
+                400,
+                'EMAIL_NOT_AVAILABLE'
             );
         }
     },
 
-    async findEmailById({userId}) {
+    async findEmailById({ userId }) {
         const user = await prismaClient.user.findUnique({
             where: { id: userId },
             select: { email: true, name: true },
@@ -206,6 +248,13 @@ const userService = {
         return user?.wallet || 0;
     },
     
+    findByPhoneNumber(number) {
+        return prismaClient.user.findUnique({
+            where: {
+                phone: number,
+            },
+        });
+    },
 };
 
 export default userService;

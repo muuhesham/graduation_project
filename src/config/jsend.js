@@ -1,16 +1,20 @@
 const jsend = {
-    success(data = null) {
+    success(data = null, code = null, message = null) {
         return {
             status: 'success',
-            data,
+            ...(data && { data }),
+            ...(code && { code }),
+            ...(message && { message }),
         };
     },
 
-    fail(data = null) {
-        return {
+    fail(data = null, code = null) {
+        const response = {
             status: 'fail',
-            data,
         };
+        if (code) response.code = code;
+        if (data) response.data = data;
+        return response;
     },
 
     error(message = 'Internal Server Error', code = null, data = null) {

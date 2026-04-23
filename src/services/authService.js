@@ -15,6 +15,7 @@ import cacheService from './cacheService.js';
 import { prisma as prismaClient } from '../config/db.js';
 import crypto from 'crypto';
 import AuthProvider from '../constants/enums/authProvider.js';
+import AppError from '../errors/AppError.js';
 
 const authService = {
     JWT_EXPIRATION: 15 * 60, // 15 minutes
@@ -32,8 +33,8 @@ const authService = {
 
         const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
-          authService.generateRefreshToken(createdUser),
-          authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
+            authService.generateRefreshToken(createdUser),
+            authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
         ]);
 
         return {
@@ -220,6 +221,33 @@ const authService = {
         return { status: 'success', data: { message: 'Password reset successfully' } };
     },
 
+    async requestPhoneOtp({ userId, phone }) {
+        if (!userId) {
+            throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+        }
+
+        const config = await authService._buildUserPhoneOtpConfig(userId, phone);
+        await authService._sendPhoneOtp(config);
+    },
+
+    async verifyPhoneOtp({ userId, phone, otp }) {
+        if (userId) {
+            const user = await userService.findById(userId);
+            if (!user) {
+                throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+            }
+            if (!user?.phone) {
+                throw new AppError('No phone number found for user', 400, 'NO_PHONE');
+            }
+
+            await otpService.verifyPhoneOtp(user.phone, otp);
+            await userService.markPhoneVerified(userId);
+            return;
+        }
+
+        throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+    },
+
     async createPasswordToken(email, token) {
         await prismaClient.resetPasswordToken.deleteMany({ where: { email } });
 
@@ -231,7 +259,7 @@ const authService = {
         });
     },
 
-    async sendOtpMail({user, isFirstTime}) {
+    async sendOtpMail({ user, isFirstTime }) {
         let userData = user;
 
         if (!isFirstTime) {
@@ -281,6 +309,37 @@ const authService = {
         };
     },
 
+    /**
+     * @param {string} userId
+     * @param {string} phone
+     * @returns {Promise<{
+     *     phone: string;
+     *     templateName: string;
+     *     variables: Record<string, unknown>;
+     * }>}
+     */
+    async _buildUserPhoneOtpConfig(userId, phone) {
+        const user = await userService.findById(userId);
+        if (!user) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+
+        if (user.isPhoneVerified && user.phone === phone) {
+            throw new AppError('Phone already verified', 400, 'PHONE_ALREADY_VERIFIED');
+        }
+
+        if (user.phone !== phone) {
+            await userService.updatePhone(userId, phone);
+        }
+
+        return { phone, templateName: 'phoneOtp', variables: {} };
+    },
+
+    async _sendPhoneOtp(config) {
+        await otpService.requestPhoneOtp({
+            ...config,
+            expiresInSeconds: authService.OTP_EXPIRATION,
+        });
+    },
+
     accessTokenCache({ accessToken }) {
         const decoded = jwt.decode(accessToken);
         const ttl = decoded ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 3600;
@@ -293,13 +352,12 @@ const authService = {
         return !(await cacheService.exists(cacheKey));
     },
 
-    async revokeAllTokensUser({userId}) {
+    async revokeAllTokensUser({ userId }) {
         await prismaClient.refreshToken.updateMany({
             where: { userId },
             data: { isRevoked: true },
         });
     },
-    
 };
 
 export default authService;
