@@ -5,7 +5,6 @@ import organizerService from './organizerService.js';
 import eventService from './eventService.js';
 import AppError from '../errors/AppError.js';
 import { AuthProvider } from '@prisma/client';
-import { tr } from '@faker-js/faker';
 
 const userService = {
     async create(user) {
@@ -199,6 +198,14 @@ const userService = {
         return user;
     },
 
+    async checkWallet({userId}) {
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+            select: { wallet: true },
+        });
+        return user?.wallet || 0;
+    },
+    
 };
 
 export default userService;

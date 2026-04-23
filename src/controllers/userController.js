@@ -2,6 +2,7 @@ import asyncWrapper from '../middlewares/asyncWrapper.js';
 import { sendSuccess, sendFail} from '../utils/response.js';
 import userService from '../services/userService.js';
 import ticketService from '../services/ticketService.js';
+import { check } from 'express-validator';
 
 const userController = {
     upgradeToOrganizer: asyncWrapper(async (req, res) => {
@@ -27,6 +28,13 @@ const userController = {
         const result = await userService.getInterestedEvents({userId});
 
         return sendSuccess(res, { events: result }, 200);
+    }),
+
+    checkWallet: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const result = await userService.checkWallet({userId});
+
+        return sendSuccess(res, { balance: result }, 200);
     }),
 
 };
