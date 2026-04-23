@@ -54,5 +54,6 @@ Router.patch(
 
 Router.get('/tickets', apiLimiterHandler, auth, userController.getUserTickets);
 Router.get('/interested-events', auth, userController.getInterestedEvents);
+Router.get('/wallet', apiLimiter, auth, userController.checkWallet);
 
 export default Router;

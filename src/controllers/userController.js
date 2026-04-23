@@ -85,6 +85,13 @@ const userController = {
         }
     ),
 
+    checkWallet: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const result = await userService.checkWallet({userId});
+
+        return sendSuccess(res, { balance: result }, 200);
+    }),
+
     verifyOrganizerContactEmail: asyncWrapper(
         /**
          * @param {VerifyOrganizerContactEmailRequest} req

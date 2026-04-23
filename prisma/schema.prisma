@@ -29,6 +29,10 @@ model User {
   isCompleted        Boolean                    @default(false)
   birthDate          DateTime?
   governorateId      Int?
+  wallet             Decimal      @db.Decimal(10, 2) @default(0)
+  governorate        Governorate? @relation(fields: [governorateId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
   governorate        Governorate?               @relation(fields: [governorateId], references: [id])
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
@@ -295,6 +299,7 @@ model Event {
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
   eventTags     EventTag[]
+  coupons       Coupon[]
 
   @@unique([organizerId, slug])
 }
@@ -505,6 +510,7 @@ enum OrderStatus {
   pending
   completed
   cancelled
+  refunded
 }
 
 model InterestedEvent {
@@ -564,6 +570,15 @@ enum QRStatus {
   expired
 }
 
+model Coupon {
+  id              Int   @id @default(autoincrement())
+  code            String   @unique
+  stripePromoId   String  
+  eventId         Int?
+  event           Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+}
+ 
 model Country {
   id             Int     @id @default(autoincrement())
   name           String  @unique

@@ -34,6 +34,7 @@ const paymentService = {
             cancel_url: CANCEL_URL,
             customer_email: customerEmail,
             metadata,
+            allow_promotion_codes: true,
         });
     },
     async retrieveSession(sessionId) {
@@ -56,7 +57,11 @@ const paymentService = {
     async handleWebhookEvent(signature, rawBody) {
         let event;
         try {
-            event = paymentService.stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
+            event = paymentService.stripe.webhooks.constructEvent(
+                rawBody,
+                signature,
+                STRIPE_WEBHOOK_SECRET
+            );
         } catch (err) {
             throw new AppError(`Signature verification failed: ${err.message}`);
         }
@@ -77,6 +82,7 @@ const paymentService = {
     async handleCheckoutCompleted(session) {
         const orderId = session.metadata.orderId;
         const userId = session.metadata.userId;
+        const finalAmountPaid = session.amount_total / 100;
         const seatMetaData = JSON.parse(session.metadata.seatMetaData || '[]');
         const reservedSeatKeys = seatMetaData
             .filter(
@@ -95,6 +101,13 @@ const paymentService = {
 
                 if (!order || order.status === OrderStatus.COMPLETED) return;
 
+                await tx.order.update({
+                    where: { id: orderId },
+                    data: {
+                        totalPrice: finalAmountPaid,
+                    },
+                });
+
                 if (seatMetaData && seatMetaData.length > 0 && seatMetaData[0]?.seatIndex != null) {
                     await tx.eventSeat.updateMany({
                         where: {
@@ -109,7 +122,13 @@ const paymentService = {
                         },
                     });
                 }
-                await ticketTypeService.issueTicketsForOrder(orderId, userId, order.orderItems, seatMetaData, tx);
+                await ticketTypeService.issueTicketsForOrder(
+                    orderId,
+                    userId,
+                    order.orderItems,
+                    seatMetaData,
+                    tx
+                );
                 await orderService.updateOrderStatus(orderId, OrderStatus.COMPLETED, tx);
             },
             {
