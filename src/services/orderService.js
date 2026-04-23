@@ -3,6 +3,7 @@ import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 import AppError from '../errors/AppError.js';
 import fileService from './fileService.js';
+import TicketStatus from '../constants/enums/ticketStatus.js';
 
 const orderService = {
     MAX_LIMIT: 100,
@@ -192,6 +193,35 @@ const orderService = {
         }
     },
     
+    async refundOrders({ eventId, tx}){
+        const orders = await tx.order.findMany({
+            where: {
+                status: OrderStatus.COMPLETED,
+                orderItems: {
+                    some: {ticketType: { eventId }}
+                }
+        }});
+
+        if(orders.length === 0) return;
+
+        const refundOrders = orders.flatMap(order => [
+            tx.user.update({
+                where: {id: order.userId},
+                data: {wallet: {increment: order.totalPrice}}
+            }),
+            tx.order.update({
+                where: {id: order.id},
+                data: {status: OrderStatus.REFUNDED}
+            }),
+            tx.ticket.updateMany({
+                where: {orderId: order.id},
+                data: {status: TicketStatus.EXPIRED}
+            }),
+        ]);
+        
+        await Promise.all(refundOrders);
+    },
+
 };
 
 export default orderService;
