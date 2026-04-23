@@ -6,6 +6,7 @@ import fileService from './fileService.js';
 import EventType from '../constants/enums/eventType.js';
 import categoryService from '../services/categoryService.js';
 import seatService from './seatService.js';
+import SessionStatus from '../constants/enums/sessionStatus.js';
 
 const organizerService = {
     // CREATE
@@ -378,6 +379,26 @@ const organizerService = {
             },
         };
     },
+
+    async cancelEvent({userId, eventId, tx}){
+        const organizer = await organizerService.getByUserId(userId);
+        if (!organizer) {
+            throw new AppError('Organizer not found');
+        }
+        await tx.event.update({
+            where: {id: eventId, organizerId: organizer.id},
+            data: {
+                deletedAt: new Date(),
+                eventSessions: {
+                    updateMany: {
+                        where: {},
+                        data: {status: SessionStatus.CANCELLED}
+                    }
+                }
+            }
+        });
+    },
+
 };
 
 export default organizerService;
