@@ -4,7 +4,6 @@ import SessionStatus from '../constants/enums/sessionStatus.js';
 import EventMode from '../constants/enums/eventMode.js';
 import EventType from '../constants/enums/eventType.js';
 import fileService from '../services/fileService.js';
-import validate from '../middlewares/validate.js';
 
 const filter = new Filter();
 
@@ -472,6 +471,24 @@ const organizerValidation = {
                 return true;
             }),
     ],
+
+    deleteEvent: [
+        param('eventId')
+            .exists()
+            .toInt()
+            .withMessage('EventID is required')
+            .isInt({ gt: 0 })
+            .withMessage('EventId must be a postive number'),
+    ],
+
+    cancelEvent: [
+        param('eventId')
+            .exists()
+            .toInt()
+            .withMessage('EventID is required')
+            .isInt({ gt: 0 })
+            .withMessage('EventId must be a postive number'),
+    ]
 };
 
 export default organizerValidation;

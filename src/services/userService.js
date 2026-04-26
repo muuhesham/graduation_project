@@ -16,6 +16,7 @@ import NotFoundError from './../errors/NotFoundError.js';
 
 import UserErrors from './../constants/messages/errors/user.js';
 
+
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
  *
@@ -280,6 +281,14 @@ const userService = {
         return user;
     },
 
+    async checkWallet({userId}) {
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+            select: { wallet: true },
+        });
+        return user?.wallet || 0;
+    },
+    
     findByPhoneNumber(number) {
         return prismaClient.user.findUnique({
             where: {

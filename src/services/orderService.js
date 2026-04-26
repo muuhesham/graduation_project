@@ -4,6 +4,7 @@ import OrderStatus from '../constants/enums/orderStatus.js';
 import AppError from '../errors/AppError.js';
 import fileService from './fileService.js';
 import orderItemService from './orderItemService.js';
+import TicketStatus from '../constants/enums/ticketStatus.js';
 
 import { orderRepository } from './../repositories/index.js';
 
@@ -33,7 +34,7 @@ const orderService = {
         userId,
         totalPrice,
         itemsCount,
-        status = OrderStatus.PENDING,
+        status = OrderStatus.pending,
         { selections, relations, exclude, filters } = {},
         tx = prismaClient
     ) {
@@ -253,6 +254,35 @@ const orderService = {
                 payoutId: payoutId,
             },
         }, tx);
+    },
+
+    async refundOrders({ eventId, tx }){
+        const orders = await tx.order.findMany({
+            where: {
+                status: OrderStatus.completed,
+                orderItems: {
+                    some: { ticketType: { eventId } }
+                }
+        }});
+
+        if(orders.length === 0) return;
+
+        const refundOrders = orders.flatMap(order => [
+            tx.user.update({
+                where: {id: order.userId},
+                data: {wallet: {increment: order.totalPrice}}
+            }),
+            tx.order.update({
+                where: {id: order.id},
+                data: {status: OrderStatus.refunded}
+            }),
+            tx.ticket.updateMany({
+                where: {orderId: order.id},
+                data: {status: TicketStatus.EXPIRED}
+            }),
+        ]);
+        
+        await Promise.all(refundOrders);
     },
 };
 

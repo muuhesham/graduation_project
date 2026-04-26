@@ -1,6 +1,8 @@
 import asyncWrapper from '../middlewares/asyncWrapper.js';
 import { sendSuccess, sendFail } from '../utils/response.js';
 import organizerService from '../services/organizerService.js';
+import orderService from '../services/orderService.js';
+import { prisma as prismaClient } from '../config/db.js';
 
 const organizerController = {
     createEvent: asyncWrapper(async (req, res) => {
@@ -112,6 +114,19 @@ const organizerController = {
 
         return sendSuccess(res, result.data, 200);
     }),
+
+    cancelEvent: asyncWrapper(async (req,res) => {
+        const userId = req.user.id;
+        const {eventId} = req.params;
+
+        await prismaClient.$transaction(async (tx) => {
+            await organizerService.cancelEvent({userId, eventId, tx});
+            await orderService.refundOrders({eventId, tx});
+        });
+
+        return sendSuccess(res, { message: 'Event cancelled & refunds processed successfully.' }, 200);
+    }),
+
 };
 
 export default organizerController;

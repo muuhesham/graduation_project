@@ -47,10 +47,14 @@ Router.delete(
     publicLimiter,
     auth,
     authorize.isOrganizer,
+    organizerValidation.deleteEvent,
+    validate,
     organizerController.deleteEvent
 );
 
 // GET ALL EVENTS FOR ORGANIZER
 Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
+
+Router.patch('/events/:eventId', auth, authorize.isOrganizer, organizerValidation.cancelEvent, validate, organizerController.cancelEvent);
 
 export default Router;

@@ -12,6 +12,7 @@ import venueService from './venueService.js';
 import fileService from './fileService.js';
 import categoryService from '../services/categoryService.js';
 import seatService from './seatService.js';
+import SessionStatus from '../constants/enums/sessionStatus.js';
 import locationService from './locationService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
@@ -615,6 +616,25 @@ const organizerService = {
                 result,
             },
         };
+    },
+
+    async cancelEvent({userId, eventId, tx}){
+        const organizer = await organizerService.getByUserId(userId);
+        if (!organizer) {
+            throw new AppError('Organizer not found');
+        }
+        await tx.event.update({
+            where: {id: eventId, organizerId: organizer.id},
+            data: {
+                deletedAt: new Date(),
+                eventSessions: {
+                    updateMany: {
+                        where: {},
+                        data: {status: SessionStatus.CANCELLED}
+                    }
+                }
+            }
+        });
     },
 
     /**
