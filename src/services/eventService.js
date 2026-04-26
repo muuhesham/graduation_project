@@ -11,6 +11,21 @@ import OrderStatus from '../constants/enums/orderStatus.js';
 import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
+
+import { eventRepository } from './../repositories/index.js';
+
+import EventErrors from './../constants/messages/errors/event.js';
+
+/**
+ * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
+ * @typedef {import('@prisma/client').Prisma.EventDefaultArgs} EventDefaultArgs
+ * @typedef {import('./../types/models/event.model.js').Event} EventModel
+ * @typedef {import('./../types/models/event.model.js').EventWhere} EventWhere
+ * @typedef {import('./../types/shared/common.types.js').RepositoryReadOptions<EventWhere, EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']>} EventListOptions
+ * @typedef {import('./../types/shared/common.types.js').RepositoryProjection<EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']> & { selections?: EventDefaultArgs['select'], relations?: EventDefaultArgs['include'], exclude?: EventDefaultArgs['omit'] }} EventProjectionInput
+ * @typedef {EventProjectionInput & { filters?: EventWhere }} EventFindByIdOptions
+ */
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
@@ -127,28 +142,50 @@ const eventService = {
         };
     },
 
-    // //HARD DELETE EVENT
-    // async delete(eventId) {
-    //     return prismaClient.event.delete({
-    //         where: { id: Number(eventId) },
-    //     });
-    // },
+    /**
+     * @param {number} id
+     * @param {EventProjectionInput} [projection]
+     * @returns {Promise<EventModel | null>}
+     */
+    async findById(id, projection = {}) {
+        return eventRepository.findById(id, projection);
+    },
+
+    /**
+     * @param {number} id
+     * @param {EventProjectionInput} [projection]
+     * @returns {Promise<EventModel | null>}
+     */
+    async findByIdIncludingDeleted(id, projection = {}) {
+        return eventRepository.findByIdIncludingDeleted(id, projection);
+    },
+
+    /**
+     * @param {number} eventId
+     * @returns {Promise<EventModel | null>}
+     */
+    async delete(eventId) {
+        return this.softDelete(eventId);
+    },
 
     //SOFT DELETE EVENT
+    /**
+     * @param {number} eventId
+     * @returns {Promise<EventModel | null>}
+     */
     async softDelete(eventId) {
-        const event = await prismaClient.event.findFirst({
-            where: { id: Number(eventId) },
-        });
-
+        const event = await eventRepository.findById(Number(eventId));
         if (!event) {
             return null;
         }
 
-        await prismaClient.event.updateMany({
-            where: { id: Number(eventId), deletedAt: null },
-            data: { deletedAt: new Date() },
-        });
+        const deletedAt = new Date();
+        const result = await eventRepository.softDeleteById(Number(eventId));
+        if (!result) {
+            return null;
+        }
 
+        event.deletedAt = deletedAt;
         return event;
     },
 
@@ -237,6 +274,81 @@ const eventService = {
         return result;
     },
 
+    async ticketsSoldByEvent(eventId) {
+        return orderService.ticketsSoldByEvent(eventId);
+    },
+
+    async revenueByEvent(eventId) {
+        return orderService.revenueByEvent(eventId);
+    },
+
+    async countAllEvents() {
+        return eventRepository.countAllEvents();
+    },
+
+    async countEventOrdersByStatus(eventId, status) {
+        return orderService.countByEventAndStatus(eventId, status);
+    },
+
+    async countIssuedTickets(eventId) {
+        return orderService.countIssuedTicketsByEvent(eventId);
+    },
+
+    async countActiveSeatReservations(eventId) {
+        try {
+            const keys = await redis.keys(`reservation:event:${eventId}:seat:*`);
+            return keys.length;
+        } catch (error) {
+            return null;
+        }
+    },
+
+    /**
+     * @param {number} id
+     */
+    async restoreDeleted(id) {
+        const event = await eventRepository.findByIdIncludingDeleted(id);
+        if (!event) {
+            throw new NotFoundError(undefined, undefined, [
+                {
+                    message: EventErrors.EVENT_NOT_FOUND.message,
+                    code: EventErrors.EVENT_NOT_FOUND.code,
+                },
+            ]);
+        }
+        return eventRepository.restoreDeleted(id);
+    },
+
+    /**
+     * @param {EventListOptions} [options]
+     */
+    list(options = { page: 1, limit: 10 }) {
+        return eventRepository.paginate(options);
+    },
+
+    // /**
+    //  * @param {EventModel | null | undefined} event
+    //  * @returns {EventModel | null | undefined}
+    //  */
+    // attachBannerUrl(event) {
+    //     if (!event) return event;
+
+    //     event.bannerUrl =
+    //         event.bannerPath && event.bannerDisk
+    //             ? fileService.getAbsUrl(event.bannerPath, event.bannerDisk)
+    //             : null;
+
+    //     return event;
+    // },
+
+    /**
+     * @param {EventModel[]} events
+     * @returns {EventModel[]}
+     */
+    attachBannerUrls(events = []) {
+        return events.map((event) => this.attachBannerUrl(event)).filter(Boolean);
+    },
+
     async handleBanner(banner, relPath = null) {
         if (!banner) return { disk: null, url: null, absUrl: null };
 
@@ -317,6 +429,9 @@ const eventService = {
         return eventService.getBannerAbsUrl(events);
     },
 
+    /**
+     * @deprecated - use findById with appropriate projection instead
+     */
     async getById(id, { selections, relations, filters, exclude } = {}) {
         const query = new PrismaQueryBuilder({
             allowedRelations: eventService.ALLOWED_RELATIONS,
@@ -1354,6 +1469,20 @@ const eventService = {
             take: 15,
         });
         return tags;
+    },
+
+    ticketsSoldOut(eventId) {
+        return prismaClient.ticketType.findMany({
+            where: {
+                eventId,
+                quantity: {
+                    gt: 0,
+                },
+                sold: {
+                    gte: prismaClient.ticketType.quantity,
+                },
+            },
+        });
     },
 };
 

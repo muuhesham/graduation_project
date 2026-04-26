@@ -1,7 +1,5 @@
-const OrderStatus = Object.freeze({
-    PENDING: 'pending',
-    COMPLETED: 'completed',
-    CANCELED: 'cancelled',
-});
+//@ts-check
+
+import { OrderStatus } from '@prisma/client';
 
 export default OrderStatus;

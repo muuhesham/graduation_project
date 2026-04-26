@@ -9,7 +9,7 @@ import ForbiddenError from './../errors/ForbiddenError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 
 /**
- * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('./../types/models/index.js').Organizer} Organizer
  *
  * @typedef {import('../types/models/index.js').Event} Event
  */
