@@ -154,6 +154,26 @@ const OrganizerErrors = Object.freeze({
         code: 'ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED',
         message: 'Organizer contact email is already verified',
     },
+
+    ORGANIZER_ALREADY_APPROVED: {
+        code: 'ORGANIZER_ALREADY_APPROVED',
+        message: 'Organizer is already approved',
+    },
+
+    ORGANIZER_ALREADY_REJECTED: {
+        code: 'ORGANIZER_ALREADY_REJECTED',
+        message: 'Organizer is already rejected',
+    },
+
+    ORGANIZER_ALREADY_SUSPENDED: {
+        code: 'ORGANIZER_ALREADY_SUSPENDED',
+        message: 'Organizer is already suspended',
+    },
+
+    ORGANIZER_NOT_SUSPENDED: {
+        code: 'ORGANIZER_NOT_SUSPENDED',
+        message: 'Organizer is not suspended',
+    },
 });
 
 export default OrganizerErrors;

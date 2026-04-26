@@ -29,6 +29,11 @@ const EventErrors = Object.freeze({
         message: 'Failed to delete the event. Please try again.',
     },
 
+    EVENT_DELETE_BLOCKED: {
+        code: 'EVENT_DELETE_BLOCKED',
+        message: 'Event cannot be deleted because one or more deletion conditions are not met.',
+    },
+
     EVENT_REGISTRATION_CLOSED: {
         code: 'EVENT_REGISTRATION_CLOSED',
         message: 'Registration for this event is closed.',

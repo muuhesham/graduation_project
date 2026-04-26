@@ -32,6 +32,7 @@ import ticketRoutes from './routes/ticket.routes.js';
 import profileRoutes from './routes/profile.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import locationRoutes from './routes/location.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 //! PAYMENT ROUTES - NEEDS RAW BODY PARSING (DON'T MOVE IT AFTER express.json())
 app.use('/api/v1/payments', paymentRoutes);
@@ -51,6 +52,7 @@ app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/category', categoryRoutes);
 app.use('/api/v1', locationRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 //! AFTER MIDDLEWARES
 import { errorHandler } from './middlewares/errorHandler.js';

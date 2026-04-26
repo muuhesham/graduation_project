@@ -20,8 +20,12 @@ function errorHandler(err, req, res, next) {
 
 function handleAppError(err, req, res) {
     const statusCode = err.statusCode || 500;
-    const details = err.details || null;
-    return sendFail(res, details, statusCode, err.code);
+    return sendFail(
+        res,
+        err.details || { message: err.message || 'An error occurred' },
+        statusCode,
+        err.code
+    );
 }
 
 function handlePrismaError(err, req, res) {

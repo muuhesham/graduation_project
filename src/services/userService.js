@@ -7,21 +7,32 @@ import userRoles from '../constants/enums/userRoles.js';
 import eventService from './eventService.js';
 import organizerService from './organizerService.js';
 
+import { userRepository } from './../repositories/index.js';
+
 import userPolicy from './../policies/UserPolicy.js';
 
 import AppError from '../errors/AppError.js';
+import NotFoundError from './../errors/NotFoundError.js';
+
+import UserErrors from './../constants/messages/errors/user.js';
 
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
  *
  * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
  *
- * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('@prisma/client').Prisma.UserDefaultArgs} UserDefaultArgs
+ * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
+ *
+ * @typedef {import('./../types/models/index.js').Organizer} Organizer
+ * @typedef {import('./../types/models/user.model.js').UserWhere} UserWhere
  *
  * @typedef {import('./../policies/UserPolicy.js').default} UserPolicy
+ *
+ * @typedef {import('./../types/shared/common.types.js').RepositoryReadOptions<UserWhere, UserDefaultArgs['select'], UserDefaultArgs['include'], UserDefaultArgs['omit']> & PaginationQuery & UserWhere} UserListOptions
  */
 
-/** @typedef {import('./../types/dtos').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO */
+/** @typedef {import('./../types/dtos/index.js').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO */
 
 const userService = {
     /**
@@ -196,6 +207,36 @@ const userService = {
         });
     },
 
+    async restoreDeleted(userId) {
+        const user = await userRepository.withTrashed().findById(userId);
+
+        if (!user) {
+            throw new NotFoundError(undefined, undefined, [
+                {
+                    message: UserErrors.USER_NOT_FOUND.message,
+                    code: UserErrors.USER_NOT_FOUND.code,
+                },
+            ]);
+        }
+        return userRepository.restoreDeleted(userId);
+    },
+
+    async countActiveUsers(days = 30) {
+        return userRepository.countActiveUsers(days);
+    },
+
+    async countAllUsers() {
+        return userRepository.countAllUsers();
+    },
+
+    async countDeletedUsers() {
+        return userRepository.countDeletedUsers();
+    },
+
+    async countByRole(role) {
+        return userRepository.countByRole(role);
+    },
+
     async getUser(userId) {
         const user = await prismaClient.user.findFirst({
             where: { id: userId },
@@ -245,6 +286,20 @@ const userService = {
                 phone: number,
             },
         });
+    },
+
+    /**
+     * @param {UserListOptions} [options]
+     */
+    async list(options = {}) {
+        return userRepository.getAllUsers(options);
+    },
+
+    /**
+     * @param {string} userId
+     */
+    findById(userId) {
+        return userRepository.findById(userId);
     },
 };
 
