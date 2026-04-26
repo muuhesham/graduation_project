@@ -41,8 +41,7 @@ model User {
   tickets            Ticket[]
   orders             Order[]
 
-  reviewedOrganizers Organizer[]       @relation("OrganizerReviewer")
-  interestedEvents   InterestedEvent[]
+  interestedEvents InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -53,7 +52,6 @@ model NewsletterSubscriber {
 }
 
 enum Role {
-  admin
   user
   organizer
 }
@@ -192,9 +190,10 @@ model Organizer {
   verificationStatus     OrganizerVerficiationStatus @default(UNDER_REVIEW)
   status                 OrganizerStatus             @default(ACTIVE)
 
+  stripeAccountId        String?                     @unique
   suspendReason   String?
   rejectionReason String?
-  reviewedBy      String?
+  reviewedBy      Int?
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -202,15 +201,16 @@ model Organizer {
   reviewedAt DateTime?
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewer User?    @relation("OrganizerReviewer", fields: [reviewedBy], references: [id])
+  reviewer Admin?   @relation("OrganizerReviewer", fields: [reviewedBy], references: [id])
   city     City?    @relation(fields: [cityId], references: [id])
   state    State?   @relation(fields: [stateId], references: [id])
   country  Country? @relation(fields: [countryId], references: [id])
   Event    Event[]
 
-  hobbyist Hobbyist?
-  business Business?
-  company  Company?
+  hobbyist    Hobbyist?
+  business    Business?
+  company     Company?
+  payoutItems PayoutItem[]
 }
 
 enum OrganizerType {
@@ -482,6 +482,48 @@ model Order {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   tickets    Ticket[]
+
+  payoutId  Int?
+  payout    Payout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  isPaidOut Boolean @default(false)
+}
+
+model Payout {
+  id             Int          @id @default(autoincrement())
+  adminId        Int
+  amount         Decimal      @db.Decimal(10, 2)
+  organizerCount Int
+  orderCount     Int
+  startDate      DateTime
+  endDate        DateTime
+  status         PayoutStatus @default(COMPLETED)
+  createdAt      DateTime     @default(now())
+
+  admin  Admin        @relation(fields: [adminId], references: [id])
+  items  PayoutItem[]
+  orders Order[]
+}
+
+model PayoutItem {
+  id          Int              @id @default(autoincrement())
+  payoutId    Int
+  organizerId String
+  amount      Decimal          @db.Decimal(10, 2)
+  status      PayoutItemStatus @default(PAID)
+
+  payout    Payout    @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  organizer Organizer @relation(fields: [organizerId], references: [id])
+}
+
+enum PayoutStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PayoutItemStatus {
+  PAID
+  FAILED
 }
 
 model OrderItem {
@@ -607,4 +649,27 @@ model City {
 
   state      State       @relation(fields: [stateId], references: [id], onDelete: Cascade)
   organizers Organizer[]
+}
+
+model Admin {
+  id         Int     @id @default(autoincrement())
+  name       String
+  email      String  @unique
+  password   String
+  isApproved Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refreshTokens      AdminRefreshToken[]
+  reviewedOrganizers Organizer[]         @relation("OrganizerReviewer")
+  payouts            Payout[]
+}
+
+model AdminRefreshToken {
+  id      Int    @id @default(autoincrement())
+  adminId Int
+  token   String
+
+  admin Admin @relation(fields: [adminId], references: [id])
 }
