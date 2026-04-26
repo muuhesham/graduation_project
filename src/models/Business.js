@@ -1,44 +1,36 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { dateCast, stringCast } from './casts.js';
 
-import { pluck } from './../helpers/pluck.js';
+/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models/index.js').Business} BusinessType */
 
-/**
- * @typedef {import('@prisma/client').PrismaClient} PrismaClient
- *
- * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
- *
- * @typedef {import('./../types/dtos').BusinessCreateDTO} BusinessCreateDTO
- *
- * @typedef {import('./../types/models/index.js').IOrganizer} IOrganizer
- */
+/** @extends {BaseModel<BusinessType>} */
+class Business extends BaseModel {
+    /** @param {BusinessType} data */
+    constructor(data) {
+        super(data);
+    }
 
-/** @implements {IOrganizer} */
-export default class Business extends BaseModel {
-    /**
-     * @param {string} organizerId
-     * @param {BusinessCreateDTO} data
-     * @param {PrismaClient | TransactionClient} tx
-     */
-    create(organizerId, data, tx) {
-        const validated = this.validate(data);
-        return tx.business.create({
-            data: {
-                organizerId,
-                ...validated,
-            },
-        });
+    static get resourceName() {
+        return 'business';
     }
 
     /**
-     * @private
-     * @param {BusinessCreateDTO} data
-     * @returns {{ commercialRegistration: string; taxId: string }}
+     * @return {CastDefinition[]}
      */
-    validate(data) {
-        return /** @type {{ commercialRegistration: string; taxId: string }} */ (
-            pluck(data, ['commercialRegistration', 'taxId'])
-        );
+    static getCastDefinitions() {
+        return [
+            { field: 'organizerId', cast: stringCast },
+            { field: 'commercialRegistration', cast: stringCast },
+            { field: 'taxId', cast: stringCast },
+            { field: 'createdAt', cast: dateCast },
+            { field: 'updatedAt', cast: dateCast },
+        ];
     }
 }
+
+/** @type {typeof Business & (new (data: BusinessType) => Business & BusinessType)} */
+const BusinessExport = /** @type {any} */ (Business);
+export default BusinessExport;
