@@ -41,7 +41,7 @@ import OrderStatus from './../constants/enums/orderStatus.js';
                 orderItems: {
                     where: {
                         order: {
-                            status: OrderStatus.completed,
+                            status: OrderStatus.COMPLETED,
                         },
                     },
                     select: {

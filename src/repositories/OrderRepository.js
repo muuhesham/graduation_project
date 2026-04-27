@@ -6,12 +6,12 @@ import OrderStatus from './../constants/enums/orderStatus.js';
 
 /**
  * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models/index.js').Order} OrderType
- * @typedef {import('./../types/models/index.js').OrderCreate} OrderCreate
- * @typedef {import('./../types/models/index.js').OrderUpdate} OrderUpdate
- * @typedef {import('./../types/models/index.js').OrderWhereUnique} OrderWhereUnique
- * @typedef {import('./../types/models/index.js').OrderSelect} OrderSelect
- * @typedef {import('./../types/models/index.js').OrderInclude} OrderInclude
+ * @typedef {import('./../types/models').Order} OrderType
+ * @typedef {import('./../types/models').OrderCreate} OrderCreate
+ * @typedef {import('./../types/models').OrderUpdate} OrderUpdate
+ * @typedef {import('./../types/models').OrderWhereUnique} OrderWhereUnique
+ * @typedef {import('./../types/models').OrderSelect} OrderSelect
+ * @typedef {import('./../types/models').OrderInclude} OrderInclude
  */
 
 /**
@@ -110,7 +110,7 @@ export default class OrderRepository extends BaseRepository {
                 orderItems: {
                     where: {
                         order: {
-                            status: OrderStatus.completed,
+                            status: OrderStatus.COMPLETED,
                         },
                     },
                     select: {
@@ -154,7 +154,7 @@ export default class OrderRepository extends BaseRepository {
     async getPendingPayoutOrders(since) {
         return this.findMany({
             where: {
-                status: OrderStatus.completed,
+                status: OrderStatus.COMPLETED,
                 createdAt: { gte: since },
                 isPaidOut: false,
             },

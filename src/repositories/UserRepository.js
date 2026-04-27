@@ -8,14 +8,14 @@ import OrderStatus from './../constants/enums/orderStatus.js';
 
 /**
  * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models/user.model.js').User} UserType
- * @typedef {import('./../types/models/user.model.js').UserCreate} UserCreate
- * @typedef {import('./../types/models/user.model.js').UserUpdate} UserUpdate
- * @typedef {import('./../types/models/user.model.js').UserWhereUnique} UserWhereUnique
- * @typedef {import('./../types/models/user.model.js').UserWhere} UserWhere
- * @typedef {import('./../types/models/user.model.js').UserSelect} UserSelect
- * @typedef {import('./../types/models/user.model.js').UserInclude} UserInclude
- * @typedef {import('./../types/models/user.model.js').UserProjection} UserProjection
+ * @typedef {import('./../types/models').User} UserType
+ * @typedef {import('./../types/models').UserCreate} UserCreate
+ * @typedef {import('./../types/models').UserUpdate} UserUpdate
+ * @typedef {import('./../types/models').UserWhereUnique} UserWhereUnique
+ * @typedef {import('./../types/models').UserWhere} UserWhere
+ * @typedef {import('./../types/models').UserSelect} UserSelect
+ * @typedef {import('./../types/models').UserInclude} UserInclude
+ * @typedef {import('./../types/models').UserProjection} UserProjection
  */
 
 /**
@@ -63,7 +63,7 @@ export default class UserRepository extends BaseRepository {
             where: {
                 orders: {
                     some: {
-                        status: OrderStatus.completed,
+                        status: OrderStatus.COMPLETED,
                         createdAt: { gte: since },
                     },
                 },

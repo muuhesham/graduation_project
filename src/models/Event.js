@@ -96,11 +96,11 @@ class Event extends BaseModel {
         const pendingOrders =
             typeof this.pendingOrders === 'number'
                 ? this.pendingOrders
-                : this.#countDistinctOrdersByStatus(OrderStatus.pending);
+                : this.#countDistinctOrdersByStatus(OrderStatus.PENDING);
         const completedOrders =
             typeof this.completedOrders === 'number'
                 ? this.completedOrders
-                : this.#countDistinctOrdersByStatus(OrderStatus.completed);
+                : this.#countDistinctOrdersByStatus(OrderStatus.COMPLETED);
         const issuedTickets =
             typeof this.issuedTickets === 'number'
                 ? this.issuedTickets

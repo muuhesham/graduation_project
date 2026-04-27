@@ -1,5 +1,8 @@
-//@ts-check
-
-import { OrderStatus } from '@prisma/client';
+const OrderStatus = Object.freeze({
+    PENDING: 'pending',
+    COMPLETED: 'completed',
+    CANCELED: 'cancelled',
+    REFUNDED: 'refunded',
+});
 
 export default OrderStatus;

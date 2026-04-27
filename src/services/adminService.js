@@ -700,10 +700,10 @@ class AdminService {
             ),
             this.#eventService.countAllEvents(),
             this.#orderService.countAllOrders(),
-            this.#orderService.countByStatus(OrderStatus.completed),
-            this.#orderService.countByStatus(OrderStatus.pending),
-            this.#orderService.countByStatus(OrderStatus.cancelled),
-            this.#orderService.revenueByStatus(OrderStatus.completed),
+            this.#orderService.countByStatus(OrderStatus.COMPLETED),
+            this.#orderService.countByStatus(OrderStatus.PENDING),
+            this.#orderService.countByStatus(OrderStatus.CANCELED),
+            this.#orderService.revenueByStatus(OrderStatus.COMPLETED),
         ]);
 
         return {
@@ -907,7 +907,7 @@ class AdminService {
         const since = days > 0 ? Order.payoutWindow(days).from : new Date(0);
 
         const [totalVolume, orders] = await Promise.all([
-            this.#orderService.revenueByStatus(OrderStatus.completed),
+            this.#orderService.revenueByStatus(OrderStatus.COMPLETED),
             this.#orderService.getPendingPayoutOrders({
                 since,
             }),

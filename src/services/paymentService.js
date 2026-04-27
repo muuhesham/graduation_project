@@ -145,7 +145,7 @@ const paymentService = {
                     include: { orderItems: true },
                 });
 
-                if (!order || order.status === OrderStatus.completed) return;
+                if (!order || order.status === OrderStatus.COMPLETED) return;
 
                 await tx.order.update({
                     where: { id: orderId },

@@ -34,7 +34,7 @@ const orderService = {
         userId,
         totalPrice,
         itemsCount,
-        status = OrderStatus.pending,
+        status = OrderStatus.PENDING,
         { selections, relations, exclude, filters } = {},
         tx = prismaClient
     ) {
@@ -146,7 +146,7 @@ const orderService = {
 
     async getOrderTickets({ orderId, userId }) {
         const order = await prismaClient.order.findFirst({
-            where: { userId, id: orderId, status: OrderStatus.completed },
+            where: { userId, id: orderId, status: OrderStatus.COMPLETED },
             select: {
                 totalPrice: true,
                 itemsCount: true,
@@ -245,7 +245,7 @@ const orderService = {
     async markOrdersAsPaid(since, payoutId, tx) {
         return orderRepository.updateMany({
             where: {
-                status: OrderStatus.completed,
+                status: OrderStatus.COMPLETED,
                 createdAt: { gte: since },
                 isPaidOut: false,
             },
@@ -259,7 +259,7 @@ const orderService = {
     async refundOrders({ eventId, tx }){
         const orders = await tx.order.findMany({
             where: {
-                status: OrderStatus.completed,
+                status: OrderStatus.COMPLETED,
                 orderItems: {
                     some: { ticketType: { eventId } }
                 }
@@ -274,7 +274,7 @@ const orderService = {
             }),
             tx.order.update({
                 where: {id: order.id},
-                data: {status: OrderStatus.refunded}
+                data: {status: OrderStatus.REFUNDED}
             }),
             tx.ticket.updateMany({
                 where: {orderId: order.id},
