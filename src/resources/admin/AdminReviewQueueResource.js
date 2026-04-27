@@ -9,14 +9,39 @@ import OrganizerResource from './../OrganizerResource.js';
  */
 
 /**
- * @extends {BaseResource<Organizer, OrganizerResourceData>}
+ * @extends {BaseResource}
  */
 export default class AdminReviewQueueResource extends BaseResource {
+    /**
+     * @param {Organizer | any} organizer
+     * @returns {OrganizerResourceData | null}
+     */
+    static make(organizer) {
+        return super.make(organizer);
+    }
+
     /**
      * @param {Organizer | any} organizer
      * @returns {OrganizerResourceData}
      */
     static toArray(organizer) {
         return OrganizerResource.toArray(organizer);
+    }
+
+    /**
+     * @param {Organizer[]} items
+     * @returns {OrganizerResourceData[]}
+     */
+    static collection(items) {
+        return super.collection(items);
+    }
+
+    /**
+     * @param {any} result
+     * @param {string} [dataKey]
+     * @returns {any}
+     */
+    static paginate(result, dataKey = 'organizers') {
+        return super.paginate(result, dataKey);
     }
 }

@@ -4,6 +4,7 @@ import asyncWrapper from './../middlewares/asyncWrapper.js';
 import { sendSuccess } from './../utils/response.js';
 
 import adminService from './../services/adminService.js';
+import couponService from './../services/couponService.js';
 import {
     AdminActiveUsersResource,
     AdminDashboardSummaryResource,
@@ -62,21 +63,28 @@ import {
  *
  * @typedef {import('./../types/dtos').AdminProcessPayoutsDTO} AdminProcessPayoutsDTO
  *
+ * @typedef {import('./../types/dtos').AdminCreateCouponDTO} AdminCreateCouponDTO
+ *
  * @typedef {AuthRequest & { body: Record<string, never> }} AuthenticatedNoBodyRequest
  * @typedef {AuthRequest & { body: AdminRejectOrganizerDTO }} RejectOrganizerRequest
  * @typedef {AuthRequest & { body: AdminSuspendOrganizerDTO }} SuspendOrganizerRequest
  * @typedef {AuthRequest & { body: AdminProcessPayoutsDTO }} ProcessPayoutsRequest
+ * @typedef {AuthRequest & { body: AdminCreateCouponDTO }} CreateCouponRequest
  */
 
 class AdminController {
     /** @type {AdminService} */
     #adminService;
+    /** @type {typeof import('./../services/couponService.js').default} */
+    #couponService;
 
     /**
      * @param {AdminService} adminService
+     * @param {typeof import('./../services/couponService.js').default} couponService
      */
-    constructor(adminService) {
+    constructor(adminService, couponService) {
         this.#adminService = adminService;
+        this.#couponService = couponService;
     }
 
     register = asyncWrapper(
@@ -266,7 +274,7 @@ class AdminController {
                 hasSeatMap,
             });
 
-            return sendSuccess(res, AdminEventResource.paginate(data, 'events'));
+            return sendSuccess(res, AdminEventResource.paginate(data));
         }
     );
 
@@ -326,7 +334,7 @@ class AdminController {
 
             const data = await this.#adminService.getReviewQueue(adminId, { page, limit });
 
-            return sendSuccess(res, AdminReviewQueueResource.make(data));
+            return sendSuccess(res, AdminReviewQueueResource.paginate(data));
         }
     );
 
@@ -347,7 +355,7 @@ class AdminController {
 
             return sendSuccess(res, {
                 summary: AdminDashboardSummaryResource.make(data.summary),
-                reviewQueue: AdminReviewQueueResource.make(data.reviewQueue),
+                reviewQueue: AdminReviewQueueResource.paginate(data.reviewQueue),
             });
         }
     );
@@ -520,7 +528,42 @@ class AdminController {
             return sendSuccess(res, data);
         }
     );
+
+    listCoupons = asyncWrapper(
+        /**
+         * @param {Request} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const coupons = await this.#couponService.getAllCoupons({});
+            return sendSuccess(res, { coupons });
+        }
+    );
+
+    createCoupon = asyncWrapper(
+        /**
+         * @param {CreateCouponRequest} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const { code, discount } = req.body;
+            const coupon = await this.#couponService.createCoupon({ code, discount });
+            return sendSuccess(res, { coupon }, 201);
+        }
+    );
+
+    deleteCoupon = asyncWrapper(
+        /**
+         * @param {Request & { params: { id: string } }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const { id } = req.params;
+            await this.#couponService.deleteCoupon({ id: Number(id) });
+            return sendSuccess(res, null, 204);
+        }
+    );
 }
 
-export default new AdminController(adminService);
+export default new AdminController(adminService, couponService);
 export { AdminController };

@@ -7,9 +7,17 @@ import BaseResource from './../BaseResource.js';
  */
 
 /**
- * @extends {BaseResource<any, Data>}
+ * @extends {BaseResource}
  */
 export default class AdminActiveUsersResource extends BaseResource {
+    /**
+     * @param {any} result
+     * @returns {Data | null}
+     */
+    static make(result) {
+        return super.make(result);
+    }
+
     /**
      * @param {any} result
      * @returns {Data}

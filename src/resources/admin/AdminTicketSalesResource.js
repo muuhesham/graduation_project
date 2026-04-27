@@ -9,14 +9,39 @@ import TicketTypeResource from './../TicketTypeResource.js';
  */
 
 /**
- * @extends {BaseResource<TicketType, Data>}
+ * @extends {BaseResource}
  */
 export default class AdminTicketSalesResource extends BaseResource {
+    /**
+     * @param {TicketType | any} ticketType
+     * @returns {Data | null}
+     */
+    static make(ticketType) {
+        return super.make(ticketType);
+    }
+
     /**
      * @param {TicketType | any} ticketType
      * @returns {Data}
      */
     static toArray(ticketType) {
         return TicketTypeResource.toArray(ticketType);
+    }
+
+    /**
+     * @param {TicketType[]} items
+     * @returns {Data[]}
+     */
+    static collection(items) {
+        return super.collection(items);
+    }
+
+    /**
+     * @param {any} result
+     * @param {string} [dataKey]
+     * @returns {any}
+     */
+    static paginate(result, dataKey = 'ticketSales') {
+        return super.paginate(result, dataKey);
     }
 }

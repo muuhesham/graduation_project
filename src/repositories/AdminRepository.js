@@ -6,20 +6,20 @@ import { Admin } from './../models/index.js';
 
 /**
  * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models/admin.model.js').AdminHydrated} AdminType
-  * @typedef {import('./../types/models/admin.model.js').AdminRefreshTokenRecord} AdminRefreshTokenRecord
-  * @typedef {import('./../types/models/admin.model.js').AdminCreate} AdminCreate
-  * @typedef {import('./../types/models/admin.model.js').AdminUpdate} AdminUpdate
-  * @typedef {import('./../types/models/admin.model.js').AdminWhereUnique} AdminWhereUnique
-  * @typedef {import('./../types/models/admin.model.js').AdminSelect} AdminSelect
-  * @typedef {import('./../types/models/admin.model.js').AdminInclude} AdminInclude
-  * @typedef {import('./../types/models/admin.model.js').AdminProjection} AdminProjection
-  */
+ * @typedef {import('./../types/models').AdminHydrated} AdminType
+ * @typedef {import('./../types/models').AdminRefreshTokenRecord} AdminRefreshTokenRecord
+ * @typedef {import('./../types/models').AdminCreate} AdminCreate
+ * @typedef {import('./../types/models').AdminUpdate} AdminUpdate
+ * @typedef {import('./../types/models').AdminWhereUnique} AdminWhereUnique
+ * @typedef {import('./../types/models').AdminSelect} AdminSelect
+ * @typedef {import('./../types/models').AdminInclude} AdminInclude
+ * @typedef {import('./../types/models').AdminProjection} AdminProjection
+ */
 
- /**
-  * @extends {BaseRepository<AdminType, AdminCreate, AdminUpdate, AdminWhereUnique, AdminSelect, AdminInclude, any>}
-  */
- export default class AdminRepository extends BaseRepository {
+/**
+ * @extends {BaseRepository<AdminType, AdminCreate, AdminUpdate, AdminWhereUnique, AdminSelect, AdminInclude, any>}
+ */
+export default class AdminRepository extends BaseRepository {
     /**
      * @param {IDriver} driver
      */
