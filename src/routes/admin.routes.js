@@ -17,7 +17,6 @@ const router = Router();
 const authLimiterHandler = /** @type {import('express').RequestHandler} */ (authLimiter);
 const adminOnly = [auth, authorize.isAdmin];
 
-// Coupon Management
 router.get('/coupons', ...adminOnly, adminController.listCoupons);
 router.post(
     '/coupons',

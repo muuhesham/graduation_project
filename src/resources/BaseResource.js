@@ -15,7 +15,7 @@ export default class BaseResource {
      * @returns {any}
      */
     static make(data) {
-        if (!data) return null;
+        if (data === null || data === undefined) return null;
 
         const resource = this.toArray(data);
         return this.cleanup(resource, data);

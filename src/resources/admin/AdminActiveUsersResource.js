@@ -12,19 +12,12 @@ import BaseResource from './../BaseResource.js';
 export default class AdminActiveUsersResource extends BaseResource {
     /**
      * @param {any} result
-     * @returns {Data | null}
-     */
-    static make(result) {
-        return super.make(result);
-    }
-
-    /**
-     * @param {any} result
      * @returns {Data}
      */
     static toArray(result) {
+        const count = typeof result === 'number' ? result : Number(result?.activeUsers ?? 0);
         return {
-            activeUsers: Number(result?.activeUsers ?? 0),
+            activeUsers: count,
         };
     }
 }

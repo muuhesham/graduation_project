@@ -510,7 +510,7 @@ class AdminController {
                 limit: Number(limit),
             });
 
-            return sendSuccess(res, data);
+            return sendSuccess(res, AdminPayoutResource.paginate(data));
         }
     );
 
