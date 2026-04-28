@@ -44,9 +44,9 @@ export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 export const SUCCESS_URL = `${process.env.FRONT_URL}${process.env.SUCCESS_ROUTE}`;
 export const CANCEL_URL = `${process.env.FRONT_URL}${process.env.CANCEL_ROUTE}`;
 export const APP_CURRENCY = process.env.APP_CURRENCY || 'USD';
-
 export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 export const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+export const AI_API_KEY = process.env.AI_API_KEY;
 
 export { BASE_PATH };
