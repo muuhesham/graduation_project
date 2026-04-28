@@ -11,42 +11,43 @@ const openai = new OpenAI({
 
 const chatbotService = {
     async handleChat({ message, userId }) {
-        const input = message.toLowerCase();
-        const matches = faqs.filter((f) =>
-            f.keywords.some((k) => {
-                const regex = new RegExp(`(\\s|^)${k.toLowerCase()}(\\s|$|[.!?,])`, 'i');
-                return regex.test(input);
-            })
-        );
+        const cleanText = (text) => {
+            return text
+                .toLowerCase()
+                .replace(/[أإآ]/g, 'ا') 
+                .replace(/[ة]/g, 'ه') 
+                .replace(/[؟?.!,]/g, '') 
+                .trim()
+                .split(/\s+/);
+        };
+        const input = cleanText(message);
+        const matches = faqs.map((f) => {
+            const allKeywordsWords = new Set();
 
-        if (matches.length > 0) {
-            matches.sort((a, b) => {
-                const longestK_A = a.keywords
-                    .filter((k) =>
-                        new RegExp(`(\\s|^)${k.toLowerCase()}(\\s|$|[.!?,])`, 'i').test(input)
-                    )
-                    .sort((k1, k2) => k2.length - k1.length)[0].length;
-
-                const longestK_B = b.keywords
-                    .filter((k) =>
-                        new RegExp(`(\\s|^)${k.toLowerCase()}(\\s|$|[.!?,])`, 'i').test(input)
-                    )
-                    .sort((k1, k2) => k2.length - k1.length)[0].length;
-
-                return longestK_B - longestK_A;
+            f.keywords.forEach((k) => {
+                const keywordWords = cleanText(k); 
+                keywordWords.forEach((word) => allKeywordsWords.add(word));
             });
 
-            return matches[0].a;
+            const matchCount = input.filter((word) => allKeywordsWords.has(word)).length;
+
+            return { ...f, score: matchCount };
+        });
+
+        const bestMatch = matches.sort((a, b) => b.score - a.score)[0];
+
+        if (bestMatch && bestMatch.score >= 2) {
+            return bestMatch.a;
         }
 
         const systemPrompt = await chatbotService.generateContext({ userId });
         const response = await openai.chat.completions.create({
-            model: 'llama-3.1-8b-instant',
+            model: 'llama-3.3-70b-versatile',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: message },
             ],
-            max_tokens: 150,
+            max_tokens: 300,
             temperature: 0.1,
         });
 
