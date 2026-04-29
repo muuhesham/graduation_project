@@ -1,42 +1,35 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { dateCast, stringCast } from './casts.js';
 
-import { pluck } from './../helpers/pluck.js';
+/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models/index.js').Hobbyist} HobbyistType */
 
-/**
- * @typedef {import('@prisma/client').PrismaClient} PrismaClient
- *
- * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
- *
- * @typedef {import('./../types/dtos').HobbyistCreateDTO} HobbyistCreateDTO
- *
- * @typedef {import('./../types/models/index.js').IOrganizer} IOrganizer
- */
+/** @extends {BaseModel<HobbyistType>} */
+class Hobbyist extends BaseModel {
+    /** @param {HobbyistType} data */
+    constructor(data) {
+        super(data);
+    }
 
-/** @implements {IOrganizer} */
-export default class Hobbyist extends BaseModel {
-    /**
-     * @param {string} organizerId
-     * @param {HobbyistCreateDTO} data
-     * @param {PrismaClient | TransactionClient} tx
-     */
-    create(organizerId, data, tx) {
-        const validated = this.validate(data);
-        return tx.hobbyist.create({
-            data: {
-                ...validated,
-                organizerId,
-            },
-        });
+    static get resourceName() {
+        return 'hobbyist';
     }
 
     /**
-     * @private
-     * @param {HobbyistCreateDTO} data
-     * @returns {{ nationalId: string }}
+     * @return {CastDefinition[]}
      */
-    validate(data) {
-        return /** @type {{ nationalId: string }} */ (pluck(data, ['nationalId']));
+    static getCastDefinitions() {
+        return [
+            { field: 'organizerId', cast: stringCast },
+            { field: 'nationalId', cast: stringCast },
+            { field: 'createdAt', cast: dateCast },
+            { field: 'updatedAt', cast: dateCast },
+        ];
     }
 }
+
+/** @type {typeof Hobbyist & (new (data: HobbyistType) => Hobbyist & HobbyistType)} */
+const HobbyistExport = /** @type {any} */ (Hobbyist);
+export default HobbyistExport;

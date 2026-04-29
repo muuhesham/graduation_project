@@ -1,4 +1,4 @@
-import { validationResult } from 'express-validator';
+import { matchedData, validationResult } from 'express-validator';
 
 import ValidationError from './../errors/ValidationError.js';
 
@@ -55,9 +55,39 @@ function normalizeValidationMessage(rawMsg) {
     };
 }
 
+/**
+ * @param {import('express').Request} req
+ * @param {'params' | 'query' | 'body'} key
+ * @param {Record<string, any>} data
+ */
+function overwriteRequestLocation(req, key, data) {
+    const current = req[key] && typeof req[key] === 'object' ? req[key] : {};
+
+    Object.defineProperty(req, key, {
+        value: { ...current, ...data },
+        writable: true,
+        configurable: true,
+        enumerable: true,
+    });
+}
+
 function validate(req, res, next) {
     const result = validationResult(req);
-    if (result.isEmpty()) return next();
+    if (result.isEmpty()) {
+        if (req.params) {
+            overwriteRequestLocation(req, 'params', matchedData(req, { locations: ['params'] }));
+        }
+
+        if (req.query) {
+            overwriteRequestLocation(req, 'query', matchedData(req, { locations: ['query'] }));
+        }
+
+        if (req.body) {
+            overwriteRequestLocation(req, 'body', matchedData(req, { locations: ['body'] }));
+        }
+
+        return next();
+    }
 
     const errorsByField = {};
     for (const err of result.array()) {

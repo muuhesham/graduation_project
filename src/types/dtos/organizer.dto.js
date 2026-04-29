@@ -27,7 +27,7 @@
  * @property {string} [status]
  * @property {string} [suspendReason]
  * @property {string} [rejectionReason]
- * @property {string} [reviewedById]
+ * @property {number} [reviewedBy]
  * @property {Date} [reviewedAt]
  * @property {string} [nationalId]
  * @property {string} [ownerName]

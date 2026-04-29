@@ -17,6 +17,8 @@ import locationService from './locationService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
 
+import { organizerRepository } from './../repositories/index.js';
+
 import AppError from '../errors/AppError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 import ConflictError from './../errors/ConflictError.js';
@@ -24,19 +26,20 @@ import ConflictError from './../errors/ConflictError.js';
 import organizerPolicy from './../policies/OrganizerPolicy.js';
 
 import OrganizerFactory from './../factories/OrganizerFactory.js';
+import OrganizerVerificationStatus from './../constants/enums/organizerVerificationStatus.js';
 
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
  *
  * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
  *
- * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('./../types/models/index.js').Organizer} Organizer
  *
- * @typedef {import('./../types/models').Business} Business
+ * @typedef {import('./../types/models/index.js').Business} Business
  *
- * @typedef {import('./../types/models').Company} Company
+ * @typedef {import('./../types/models/index.js').Company} Company
  *
- * @typedef {import('./../types/models').Hobbyist} Hobbyist
+ * @typedef {import('./../types/models/index.js').Hobbyist} Hobbyist
  */
 
 /** @typedef {import('./../types/dtos/organizer.dto.js').OrganizerCreateDTO} OrganizerCreateDTO */
@@ -95,7 +98,7 @@ const organizerService = {
         'status',
         'suspendReason',
         'rejectionReason',
-        'reviewedById',
+        'reviewedBy',
         'reviewedAt',
     ],
 
@@ -780,6 +783,51 @@ const organizerService = {
             where: { contactPhone: phone },
         });
     },
+
+    findByVerificationStatus(verificationStatus, { page = 1, limit = 20 }) {
+        return organizerRepository.findByVerificationStatus(verificationStatus, { page, limit });
+    },
+
+    /**
+     * @param {{ status?: import('@prisma/client').$Enums.OrganizerStatus, verificationStatus?: import('@prisma/client').$Enums.OrganizerVerficiationStatus, page?: number, limit?: number }} [options]
+     */
+    list(options = {}) {
+        return organizerRepository.list(options);
+    },
+
+    /**
+     * @param {string} organizerId
+     */
+    findById(organizerId) {
+        return organizerRepository.findById(organizerId);
+    },
+
+    /**
+     * @param {string} organizerId
+     * @param {object} data
+     */
+    updateModerationState(organizerId, data) {
+        return organizerRepository.update({
+            where: { id: organizerId },
+            data,
+        });
+    },
+
+    countByVerificationStatus(verificationStatus) {
+        return organizerRepository.countByVerificationStatus(verificationStatus);
+    },
+
+    async countAllOrganizers() {
+        return organizerRepository.countAllOrganizers();
+    },
+
+    async getReviewQueue({ page = 1, limit = 20 } = {}) {
+        return organizerRepository.findByVerificationStatus(
+            OrganizerVerificationStatus.UNDER_REVIEW,
+            { page, limit }
+        );
+    },
+
 };
 
 export default organizerService;

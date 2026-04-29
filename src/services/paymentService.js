@@ -53,6 +53,52 @@ const paymentService = {
         });
     },
 
+    /**
+     * Executes a batch of transfers to various accounts.
+     * Use this for processing organizer payouts after an event or settlement period.
+     * 
+     * @param {Array<{ amount: number, accountId: string, referenceId: string|number }>} transfers
+     */
+    async executePayoutBatch(transfers) {
+        const results = await Promise.allSettled(
+            transfers.map((item) =>
+                this.transferToAccount(
+                    item.amount,
+                    item.accountId,
+                    `Payout Ref: ${item.referenceId}`
+                )
+            )
+        );
+
+        const summary = {
+            success: results.filter((r) => r.status === 'fulfilled').length,
+            failed: results.filter((r) => r.status === 'rejected').length,
+        };
+
+        console.log(`[Finance] Batch payout completed. Success: ${summary.success}, Failed: ${summary.failed}`);
+        return summary;
+    },
+
+    /**
+     * Sends money to a connected Stripe account.
+     * @param {number} amount - Amount in cents
+     * @param {string} destinationAccountId - The target Stripe Account ID
+     * @param {string} [description]
+     */
+    async transferToAccount(amount, destinationAccountId, description = 'Platform transfer') {
+        try {
+            return await paymentService.stripe.transfers.create({
+                amount: Math.round(amount * 100), // Stripe expects cents
+                currency: APP_CURRENCY.toLowerCase(),
+                destination: destinationAccountId,
+                description,
+            });
+        } catch (err) {
+            console.error('❌ Stripe Transfer Failed:', err);
+            throw new AppError(`Transfer failed: ${err.message}`, 500, 'TRANSFER_FAILED');
+        }
+    },
+
     // WEBHOOK HANDLER
     async handleWebhookEvent(signature, rawBody) {
         let event;
@@ -157,3 +203,4 @@ const paymentService = {
 };
 
 export default paymentService;
+
