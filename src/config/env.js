@@ -14,7 +14,6 @@ dotenv.config({
 
 export const APP_NAME = process.env.APP_NAME;
 export const HOSTNAME = process.env.HOSTNAME;
-export const DATABASE_URL = process.env.DATABASE_URL;
 export const JWT_KEY = process.env.JWT_KEY;
 export const PORT = process.env.PORT || 8000;
 export const DATABASE_NAME = process.env.DATABASE_NAME;
@@ -45,14 +44,9 @@ export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 export const SUCCESS_URL = `${process.env.FRONT_URL}${process.env.SUCCESS_ROUTE}`;
 export const CANCEL_URL = `${process.env.FRONT_URL}${process.env.CANCEL_ROUTE}`;
 export const APP_CURRENCY = process.env.APP_CURRENCY || 'USD';
-
 export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 export const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
-
-export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'nomic-embed-text-v2-moe:latest';
-export const OLLAMA_TIMEOUT = parseInt(process.env.OLLAMA_TIMEOUT) || 30000;
-export const OLLAMA_DIMENSION = parseInt(process.env.OLLAMA_DIMENSION) || 768;
+export const AI_API_KEY = process.env.AI_API_KEY;
 
 export { BASE_PATH };

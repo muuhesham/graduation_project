@@ -5,9 +5,9 @@ import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
 import { OLLAMA_BASE_URL, OLLAMA_DIMENSION, OLLAMA_MODEL } from '../config/env.js';
 
 import AIErrors from './../constants/errors/ai.js';
-import AppError from './../errors/AppError.js';
 import TimeoutError from './../errors/TimeoutError.js';
 import ValidationError from './../errors/ValidationError.js';
+import InternalServerError from './../errors/InternalServerError.js';
 
 /**
  * @typedef {object} AIServiceOptions
@@ -73,11 +73,24 @@ class AIService {
         try {
             return await this.getEmbeddings().embedQuery(text);
         } catch (error) {
-            if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout'))) {
-                throw new TimeoutError(AIErrors.OLLAMA_TIMEOUT.message, AIErrors.OLLAMA_TIMEOUT.code);
+            if (
+                error instanceof Error &&
+                (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout'))
+            ) {
+                throw new TimeoutError(undefined, undefined, [
+                    {
+                        message: AIErrors.OLLAMA_TIMEOUT.message,
+                        code: AIErrors.OLLAMA_TIMEOUT.code,
+                    },
+                ]);
             }
 
-            throw new AppError(AIErrors.OLLAMA_UNAVAILABLE.message, 503, AIErrors.OLLAMA_UNAVAILABLE.code);
+            throw new InternalServerError(undefined, undefined, [
+                {
+                    message: AIErrors.OLLAMA_UNAVAILABLE.message,
+                    code: AIErrors.OLLAMA_UNAVAILABLE.code,
+                },
+            ]);
         }
     }
 
@@ -91,11 +104,24 @@ class AIService {
         try {
             return await this.getEmbeddings().embedDocuments(texts);
         } catch (error) {
-            if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout'))) {
-                throw new TimeoutError(AIErrors.OLLAMA_TIMEOUT.message, AIErrors.OLLAMA_TIMEOUT.code);
+            if (
+                error instanceof Error &&
+                (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout'))
+            ) {
+                throw new TimeoutError(undefined, undefined, [
+                    {
+                        message: AIErrors.OLLAMA_TIMEOUT.message,
+                        code: AIErrors.OLLAMA_TIMEOUT.code,
+                    },
+                ]);
             }
 
-            throw new AppError(AIErrors.OLLAMA_UNAVAILABLE.message, 503, AIErrors.OLLAMA_UNAVAILABLE.code);
+            throw new InternalServerError(undefined, undefined, [
+                {
+                    message: AIErrors.OLLAMA_UNAVAILABLE.message,
+                    code: AIErrors.OLLAMA_UNAVAILABLE.code,
+                },
+            ]);
         }
     }
 
@@ -117,15 +143,33 @@ class AIService {
         });
     }
 
+    /**
+     * @param {string} text
+     */
     #validateText(text) {
         if (!text || typeof text !== 'string') {
-            throw new ValidationError([], AIErrors.INVALID_EMBED_TEXT.message, AIErrors.INVALID_EMBED_TEXT.code);
+            throw new ValidationError(
+                [],
+                AIErrors.INVALID_EMBED_TEXT.message,
+                AIErrors.INVALID_EMBED_TEXT.code
+            );
         }
     }
 
+    /**
+     * @param {string[]} texts
+     */
     #validateTexts(texts) {
-        if (!Array.isArray(texts) || !texts.length || texts.some(t => typeof t !== 'string' || !t.trim().length)) {
-            throw new ValidationError([], AIErrors.INVALID_EMBED_TEXTS.message, AIErrors.INVALID_EMBED_TEXTS.code);
+        if (
+            !Array.isArray(texts) ||
+            !texts.length ||
+            texts.some((t) => typeof t !== 'string' || !t.trim().length)
+        ) {
+            throw new ValidationError(
+                [],
+                AIErrors.INVALID_EMBED_TEXTS.message,
+                AIErrors.INVALID_EMBED_TEXTS.code
+            );
         }
     }
 }
