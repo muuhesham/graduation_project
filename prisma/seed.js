@@ -15,11 +15,11 @@ async function main() {
     await seedGovernorates(prisma); // this must be first, and must exist before any deployments
     await seedLocations(prisma);
     await seedTags(prisma);
-    // const users = await seedUsers(prisma);
-    await seedCategories(prisma);
-    // const venues = await seedVenues(prisma);
-    // const organizers = await seedOrganizers(prisma, { users });
-    // await seedEvents(prisma, { categories, venues, organizers });
+    const users = await seedUsers(prisma);
+    const categories = await seedCategories(prisma);
+    const venues = await seedVenues(prisma);
+    const organizers = await seedOrganizers(prisma, { users });
+    await seedEvents(prisma, { categories, venues, organizers });
     console.log('🌱 All seeders completed.');
 }
 

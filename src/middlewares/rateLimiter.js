@@ -3,7 +3,6 @@ import RedisStore from 'rate-limit-redis';
 import { redis as redisClient } from '../config/redis.js';
 import { sendError } from './../utils/response.js';
 import { NODE_ENV } from '../config/env.js';
-import { RateLimiterRedis } from 'rate-limiter-flexible';
 
 /**
  * Generic rate limiter factory
@@ -186,14 +185,6 @@ const reserveLimiter = rateLimiter({
     prefix: 'reserve',
 });
 
-const chatLimiter = new RateLimiterRedis({
-    storeClient: redisClient,
-    keyPrefix: 'chatbot',
-    points: 5, // 5 messages
-    duration: 10, // per 10 seconds
-    message: 'Too many chat messages. Please try again later.',
-});
-
 export {
     rateLimiter,
     strictLimiter,
@@ -212,5 +203,4 @@ export {
     profileLimiter,
     availabilityLimiter,
     reserveLimiter,
-    chatLimiter,
 };
