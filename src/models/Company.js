@@ -18,6 +18,22 @@ class Company extends BaseModel {
     }
 
     /**
+     * @param {string} organizerId
+     * @param {object} data
+     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     */
+    create(organizerId, data, tx) {
+        return tx.company.create({
+            data: {
+                organizerId,
+                registrationNumber: data.registrationNumber,
+                taxId: data.taxId,
+                officialEmailDomain: data.officialEmailDomain,
+            },
+        });
+    }
+
+    /**
      * @return {CastDefinition[]}
      */
     static getCastDefinitions() {

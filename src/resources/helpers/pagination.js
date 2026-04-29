@@ -5,18 +5,35 @@
  */
 
 /**
- * @param {PaginationMeta | null | undefined} pagination
+ * @typedef {object} PaginationInput
+ * @property {number | string} total
+ * @property {number | string} [page]
+ * @property {number | string} [limit]
+ * @property {number | string} [totalPages]
+ * @property {boolean} [hasNext]
+ * @property {boolean} [hasPrev]
+ * @property {number | null} [nextPage]
+ * @property {number | null} [prevPage]
+ */
+
+/**
+ * @param {PaginationInput} input
  * @returns {PaginationMeta}
  */
-export function makePagination(pagination) {
+export function makePagination(input) {
+    const total = Number(input.total || 0);
+    const page = Number(input.page || 1);
+    const limit = Number(input.limit || 20);
+    const totalPages = Number(input.totalPages || Math.ceil(total / limit) || 0);
+
     return {
-        total: Number(pagination?.total ?? 0),
-        page: Number(pagination?.page ?? 1),
-        limit: Number(pagination?.limit ?? 20),
-        totalPages: Number(pagination?.totalPages ?? 0),
-        hasNext: Boolean(pagination?.hasNext),
-        hasPrev: Boolean(pagination?.hasPrev),
-        nextPage: pagination?.nextPage ?? null,
-        prevPage: pagination?.prevPage ?? null,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: input.hasNext ?? (page * limit < total),
+        hasPrev: input.hasPrev ?? (page > 1),
+        nextPage: input.nextPage ?? (page * limit < total ? page + 1 : null),
+        prevPage: input.prevPage ?? (page > 1 ? page - 1 : null),
     };
 }

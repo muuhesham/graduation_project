@@ -288,6 +288,7 @@ model Event {
   organizer        Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   venue            Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
   hasSeatMap       Boolean           @default(false)
+  embedding        Unsupported("vector(768)")?
   eventSessions    EventSession[]
   ticketTypes      TicketType[]
   eventRules       EventRule[]

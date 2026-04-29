@@ -12,10 +12,10 @@ import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
-
 import { eventRepository } from './../repositories/index.js';
-
 import EventErrors from './../constants/messages/errors/event.js';
+import { addEmbeddingJob, EmbeddingJobType } from '../queues/embeddingQueue.js';
+import eventEmbeddingService from './eventEmbeddingService.js';
 
 /**
  * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
@@ -26,6 +26,43 @@ import EventErrors from './../constants/messages/errors/event.js';
  * @typedef {import('./../types/shared/common.types.js').RepositoryProjection<EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']> & { selections?: EventDefaultArgs['select'], relations?: EventDefaultArgs['include'], exclude?: EventDefaultArgs['omit'] }} EventProjectionInput
  * @typedef {EventProjectionInput & { filters?: EventWhere }} EventFindByIdOptions
  */
+
+const SEARCH_STOP_WORDS = new Set([
+    'a',
+    'an',
+    'and',
+    'are',
+    'at',
+    'be',
+    'for',
+    'from',
+    'i',
+    'in',
+    'is',
+    'it',
+    'me',
+    'my',
+    'of',
+    'on',
+    'or',
+    'our',
+    'the',
+    'to',
+    'we',
+    'where',
+    'with',
+    'you',
+    'your',
+]);
+
+const KEYWORD_SEARCH_PATHS = [
+    ['title'],
+    ['description'],
+    ['venue', 'is', 'name'],
+    ['venue', 'is', 'city'],
+    ['category', 'is', 'name'],
+    ['eventTags', 'some', 'tag', 'name'],
+];
 
 const eventService = {
     DEFAULT_MEDIA_FOLDER: 'events',
@@ -136,6 +173,12 @@ const eventService = {
         }
         const { bannerDisk: _, bannerPath: __, ...eventData } = event;
 
+        await addEmbeddingJob(EmbeddingJobType.GENERATE_EMBEDDING, String(event.id)).catch(
+            (err) => {
+                console.error(`Failed to queue embedding generation for event ${event.id}:`, err);
+            }
+        );
+
         return {
             ...eventData,
             bannerUrl: absUrl,
@@ -184,6 +227,10 @@ const eventService = {
         if (!result) {
             return null;
         }
+
+        await addEmbeddingJob(EmbeddingJobType.DELETE_EMBEDDING, String(eventId)).catch((err) => {
+            console.error(`Failed to queue embedding deletion for event ${eventId}:`, err);
+        });
 
         event.deletedAt = deletedAt;
         return event;
@@ -249,6 +296,10 @@ const eventService = {
         const formattedTags = eventTags?.map((tag) => tag.tag.name) || [];
         updatedEventData.tags = formattedTags;
         updatedEventData.rules = formattedRules;
+
+        await addEmbeddingJob(EmbeddingJobType.UPDATE_EMBEDDING, String(eventId)).catch((err) => {
+            console.error(`Failed to queue embedding update for event ${eventId}:`, err);
+        });
 
         return {
             ...updatedEventData,
@@ -1483,6 +1534,14 @@ const eventService = {
                 },
             },
         });
+    },
+
+    searchByKeywords(options) {
+        return eventRepository.searchByKeywords(options);
+    },
+
+    hydrateMatches(matches) {
+        return eventRepository.hydrateSearchMatches(matches);
     },
 };
 

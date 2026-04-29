@@ -15,9 +15,17 @@ export default class AdminActiveUsersResource extends BaseResource {
      * @returns {Data}
      */
     static toArray(result) {
-        const count = typeof result === 'number' ? result : Number(result?.activeUsers ?? 0);
+        // Handle both raw numbers and objects with activeUsers/activeInPeriod field
+        let count = 0;
+        
+        if (typeof result === 'number') {
+            count = result;
+        } else if (result && typeof result === 'object') {
+            count = result.activeUsers ?? result.activeInPeriod ?? 0;
+        }
+
         return {
-            activeUsers: count,
+            activeUsers: Number(count) || 0,
         };
     }
 }

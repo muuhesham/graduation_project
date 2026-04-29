@@ -18,6 +18,20 @@ class Hobbyist extends BaseModel {
     }
 
     /**
+     * @param {string} organizerId
+     * @param {object} data
+     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     */
+    create(organizerId, data, tx) {
+        return tx.hobbyist.create({
+            data: {
+                organizerId,
+                nationalId: data.nationalId,
+            },
+        });
+    }
+
+    /**
      * @return {CastDefinition[]}
      */
     static getCastDefinitions() {
