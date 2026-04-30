@@ -3,7 +3,6 @@ import { createRequire } from 'module';
 import Gender from '../constants/enums/userGender.js';
 import Language from '../constants/enums/userLanguage.js';
 import { calculateAge } from '../utils/calculateAge.js';
-import GovernoratesNames from '../constants/enums/governoratesNames.js';
 
 const require = createRequire(import.meta.url);
 const disposableDomains = require('disposable-email-domains');
@@ -40,7 +39,7 @@ const profileValidations = {
             .withMessage('Name cannot be empty')
             .matches(/^[\p{L}\s\-]+$/u)
             .withMessage('Name can only contain letters, spaces, and hyphens')
-            .isLength({max: 25})
+            .isLength({ max: 25 })
             .withMessage('Name cannot be that long'),
 
         body('phone')
@@ -56,13 +55,12 @@ const profileValidations = {
             .isIn(Object.values(Gender))
             .withMessage('Gender must be male or female'),
 
-        // frontend 
         body('location')
             .optional()
-            .toUpperCase()
             .trim()
-            .isIn(Object.values(GovernoratesNames))
-            .withMessage('Location must be from governorates of egypt only'),
+            .isString()
+            .isLength({ max: 500 })
+            .withMessage('Location must be valid string'),
 
         body('languagePreference')
             .optional()
@@ -139,7 +137,7 @@ const profileValidations = {
                 'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
             ),
     ],
-    
+
     confirmEmail: [query('token').notEmpty().withMessage('Token is required')],
 
     updatePreferences: [

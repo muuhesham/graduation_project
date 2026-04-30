@@ -16,7 +16,6 @@ import NotFoundError from './../errors/NotFoundError.js';
 
 import UserErrors from './../constants/messages/errors/user.js';
 
-
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
  *
@@ -241,8 +240,14 @@ const userService = {
     async getUser(userId) {
         const user = await prismaClient.user.findFirst({
             where: { id: userId },
+            include: {
+                governorate: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
             omit: {
-                id: true,
                 password: true,
                 idInProviderDB: true,
                 governorateId: true,
@@ -251,7 +256,11 @@ const userService = {
                 isVerified: true,
             },
         });
-        return user;
+        return {
+            ...user,
+            location: user.location || "",
+            governorate: user.governorate?.name || "",
+        };
     },
 
     async isEmailAvailable({ newEmail, confirmEmail }) {
@@ -281,14 +290,14 @@ const userService = {
         return user;
     },
 
-    async checkWallet({userId}) {
+    async checkWallet({ userId }) {
         const user = await prismaClient.user.findUnique({
             where: { id: userId },
             select: { wallet: true },
         });
         return user?.wallet || 0;
     },
-    
+
     findByPhoneNumber(number) {
         return prismaClient.user.findUnique({
             where: {
