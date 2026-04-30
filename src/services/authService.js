@@ -31,7 +31,7 @@ const authService = {
             return createdUser;
         }
 
-        const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
+        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
             authService.generateRefreshToken(createdUser),
             authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
@@ -45,6 +45,7 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
+                language: language,
             },
         };
     },
@@ -77,7 +78,7 @@ const authService = {
             };
         }
 
-        const { accessToken, type, expiresIn } = authService.generateAccessToken(exists);
+        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(exists);
         const refreshToken = await authService.generateRefreshToken(exists);
 
         return {
@@ -88,6 +89,7 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
+                language: language,
             },
         };
     },
@@ -98,6 +100,7 @@ const authService = {
             name: user.name,
             email: user.email,
             role: user.role,
+            languagePreference: user.languagePreference,
         };
 
         const token = jwt.sign(payload, JWT_KEY, { expiresIn: authService.JWT_EXPIRATION });
@@ -106,6 +109,7 @@ const authService = {
             accessToken: token,
             type: 'Bearer',
             expiresIn: authService.JWT_EXPIRATION,
+            language: user.languagePreference,
         };
     },
 
