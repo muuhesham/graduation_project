@@ -544,6 +544,7 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
@@ -593,6 +594,7 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
@@ -620,7 +622,6 @@ const eventService = {
                 ...filters,
             })
             .sort(orderBy).value;
-        console.log(query);
 
         if (query.select.interestedEvents) {
             query.select.interestedEvents = {
@@ -638,6 +639,7 @@ const eventService = {
         }
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
