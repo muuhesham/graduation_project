@@ -29,20 +29,17 @@ model User {
   isCompleted        Boolean                    @default(false)
   birthDate          DateTime?
   governorateId      Int?
-  wallet             Decimal      @db.Decimal(10, 2) @default(0)
-  governorate        Governorate? @relation(fields: [governorateId], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  wallet             Decimal                    @default(0) @db.Decimal(10, 2)
+  governorate        Governorate?               @relation(fields: [governorateId], references: [id])
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
   deletedAt          DateTime?
-  //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
   refreshToken       RefreshToken[]
-  //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer          Organizer?
   categories         AttendeeFavoriteCategory[]
   tickets            Ticket[]
   orders             Order[]
-
-  interestedEvents InterestedEvent[]
+  interestedEvents   InterestedEvent[]
 }
 
 model NewsletterSubscriber {
@@ -191,7 +188,7 @@ model Organizer {
   verificationStatus     OrganizerVerficiationStatus @default(UNDER_REVIEW)
   status                 OrganizerStatus             @default(ACTIVE)
 
-  stripeAccountId        String?                     @unique
+  stripeAccountId String? @unique
   suspendReason   String?
   rejectionReason String?
   reviewedBy      Int?
@@ -270,24 +267,24 @@ model Company {
 }
 
 model Event {
-  id               Int               @id @default(autoincrement())
+  id               Int                         @id @default(autoincrement())
   organizerId      String
   venueId          Int?
   categoryId       Int?
   slug             String
   title            String
-  bannerDisk       String            @default("local")
+  bannerDisk       String                      @default("local")
   bannerPath       String
   description      String
-  type             EventType         @default(ticketed)
-  mode             EventMode         @default(single)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  type             EventType                   @default(ticketed)
+  mode             EventMode                   @default(single)
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
   deletedAt        DateTime?
-  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  organizer        Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  venue            Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  hasSeatMap       Boolean           @default(false)
+  category         Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organizer        Organizer                   @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  venue            Venue?                      @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  hasSeatMap       Boolean                     @default(false)
   embedding        Unsupported("vector(768)")?
   eventSessions    EventSession[]
   ticketTypes      TicketType[]
@@ -306,8 +303,6 @@ model EventSession {
   id        Int           @id @default(autoincrement())
   eventId   Int
   status    SessionStatus @default(active)
-  //* TODO: ADD capcaity field
-  // capacity Int
   startDate DateTime
   endDate   DateTime
   createdAt DateTime      @default(now())
@@ -564,33 +559,6 @@ model InterestedEvent {
   @@id([userId, eventId])
 }
 
-// model Payment {
-//   id            String        @id @default(uuid())
-//   orderId       String        @unique
-//   paymentMethod PaymentMethod
-//   amount        Decimal       @db.Decimal(10, 2)
-//   currency      String
-//   status        PaymentStatus @default(pending)
-//   transactionId String        @unique
-//   createdAt     DateTime      @default(now())
-//   updatedAt     DateTime      @updatedAt
-//
-//   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-// }
-//
-// enum PaymentMethod {
-//   credit_card
-//   paypal
-//   stripe
-// }
-//
-// enum PaymentStatus {
-//   pending
-//   completed
-//   failed
-//   refunded
-//}
-
 model QrCode {
   id        String   @id @default(uuid())
   ticketId  String   @unique
@@ -611,14 +579,14 @@ enum QRStatus {
 }
 
 model Coupon {
-  id              Int   @id @default(autoincrement())
-  code            String   @unique
-  stripePromoId   String  
-  eventId         Int?
-  event           Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt       DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  stripePromoId String
+  eventId       Int?
+  event         Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
 }
- 
+
 model Country {
   id             Int     @id @default(autoincrement())
   name           String  @unique
