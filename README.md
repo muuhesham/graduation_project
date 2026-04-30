@@ -392,7 +392,7 @@ OPENAI_API_KEY="sk-..."
 
 # App
 NODE_ENV="development"
-PORT=3000
+PORT=8000
 ```
 
 ---
