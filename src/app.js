@@ -34,6 +34,7 @@ import categoryRoutes from './routes/category.routes.js';
 import locationRoutes from './routes/location.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import searchRoutes from './routes/search.routes.js';
+import reviewRoutes from './routes/review.routes.js';
 
 //! PAYMENT ROUTES - NEEDS RAW BODY PARSING (DON'T MOVE IT AFTER express.json())
 app.use('/api/v1/payments', paymentRoutes);
@@ -55,6 +56,7 @@ app.use('/api/v1/category', categoryRoutes);
 app.use('/api/v1', locationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1', searchRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
 
 //! AFTER MIDDLEWARES
 import { errorHandler } from './middlewares/errorHandler.js';
