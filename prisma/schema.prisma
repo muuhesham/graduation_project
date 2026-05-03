@@ -40,6 +40,7 @@ model User {
   tickets            Ticket[]
   orders             Order[]
   interestedEvents   InterestedEvent[]
+  eventReviews       EventReview[]
 }
 
 model NewsletterSubscriber {
@@ -107,7 +108,6 @@ model Governorate {
   latitude  Float
   longitude Float
 
-  // JSON array of nearest governorates IDs in order (e.g. [3, 20, 17, ...]) asc. nearest w.r.t the row's governorate
   otherGovsIdsSorted Json?
 
   users  User[]
@@ -290,6 +290,7 @@ model Event {
   ticketTypes      TicketType[]
   eventRules       EventRule[]
   interestedEvents InterestedEvent[]
+  eventReviews     EventReview[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
@@ -351,6 +352,21 @@ model EventTag {
   tag   Tag   @relation(fields: [tagId], references: [id])
 
   @@id([eventId, tagId])
+}
+
+model EventReview {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  eventId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
 }
 
 model Venue {
@@ -530,9 +546,6 @@ model OrderItem {
   ticketTypeId Int
   price        Decimal  @db.Decimal(10, 2)
   quantity     Int
-  //seatRowIndex  Int?
-  //seatIndex     Int?
-  //eventId       Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
