@@ -2,7 +2,6 @@ import { prisma as prismaClient } from '../config/db.js';
 import organizerService from './organizerService.js';
 
 const organizerDashboardService = {
-    // EVENT PIE CHART
     async getEventsData(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -52,7 +51,6 @@ const organizerDashboardService = {
         };
     },
 
-    // TICKET BAR CHART
     async getTicketsData(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -95,7 +93,6 @@ const organizerDashboardService = {
         };
     },
 
-    // ORDER BAR CHART
     async getOrdersData(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -177,7 +174,6 @@ const organizerDashboardService = {
         };
     },
 
-    // EVENT STATS
     async getEventsStats(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -249,7 +245,6 @@ const organizerDashboardService = {
         };
     },
 
-    // TICKETS STATS
     async getTicketStats(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -289,7 +284,6 @@ const organizerDashboardService = {
         };
     },
 
-    // ORDER STATS
     async getOrderStats(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
@@ -352,7 +346,6 @@ const organizerDashboardService = {
         };
     },
 
-    // REVENUE STATS
     async getRevenueStats(userId) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {

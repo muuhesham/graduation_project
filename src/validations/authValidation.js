@@ -1,7 +1,6 @@
 import { body } from 'express-validator';
 import { createRequire } from 'module';
 
-// For JSON imports in ES modules
 const require = createRequire(import.meta.url);
 const disposableDomains = require('disposable-email-domains');
 

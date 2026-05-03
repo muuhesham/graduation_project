@@ -12,7 +12,6 @@ const ticketTypeService = {
         eventId: true,
     },
 
-    //CREATE BULK TICKETS TYPES
     async createBulkTickets(eventId, ticketTypes, tx = prismaClient) {
         try {
             const ticketTypeData = ticketTypes.map((ticket) => ({
@@ -30,7 +29,6 @@ const ticketTypeService = {
         }
     },
 
-    //CREATE FREE BULK TICKET TYPES
     async createFreeBulkTickets(eventId, ticketTypes, tx = prismaClient) {
         const ticketTypeData = ticketTypes.map((ticket) => ({
             eventId,
@@ -43,7 +41,6 @@ const ticketTypeService = {
         });
     },
 
-    //GET TOTAL NUMBER TICKET TYPES FOR EVENT
     async getTotalTickets(eventId) {
         const totalTickets = await prismaClient.ticketType.aggregate({
             where: { eventId },
@@ -52,21 +49,18 @@ const ticketTypeService = {
         return totalTickets._sum.quantity || 0;
     },
 
-    // GET ALL TICKET TYPES FOR EVENT
     async getAllTicketTypes(eventId) {
         return prismaClient.ticketType.findMany({
             where: { eventId },
         });
     },
 
-    // DELETE TICKET TYPES FOR EVENT
     async deleteTickets(eventId, tx = prismaClient) {
         return tx.ticketType.deleteMany({
             where: { eventId },
         });
     },
 
-    // CREATE ACTUAL TICKETS FOR ORDER
     async issueTicketsForOrder(orderId, userId, orderItems, seatMetaData = [], tx = prismaClient) {
         const ticketsToCreate = [];
         const updateStockPromises = [];

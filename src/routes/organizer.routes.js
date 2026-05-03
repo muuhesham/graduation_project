@@ -13,7 +13,6 @@ const Router = express.Router();
 
 // CRUD OPERATIONS FOR ORGANIZER EVENTS
 
-// CREATE EVENT
 Router.post(
     '/events',
     publicLimiter,
@@ -27,7 +26,6 @@ Router.post(
     organizerController.createEvent
 );
 
-// UPDATE EVENT
 Router.put(
     '/events/:eventId',
     publicLimiter,
@@ -41,7 +39,6 @@ Router.put(
     organizerController.updateEvent
 );
 
-// DELETE EVENT
 Router.delete(
     '/events/:eventId',
     publicLimiter,
@@ -52,7 +49,6 @@ Router.delete(
     organizerController.deleteEvent
 );
 
-// GET ALL EVENTS FOR ORGANIZER
 Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
 
 Router.patch('/events/:eventId', auth, authorize.isOrganizer, organizerValidation.cancelEvent, validate, organizerController.cancelEvent);
