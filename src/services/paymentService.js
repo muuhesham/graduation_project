@@ -18,7 +18,6 @@ import { getIO } from '../config/socketInstance.js';
 const paymentService = {
     stripe: new Stripe(STRIPE_SECRET_KEY),
 
-    // CREATE CHECKOUT SESSION
     async createCheckoutSession(
         paymentMethods = ['card'],
         mode = 'payment',
@@ -99,7 +98,6 @@ const paymentService = {
         }
     },
 
-    // WEBHOOK HANDLER
     async handleWebhookEvent(signature, rawBody) {
         let event;
         try {
@@ -124,7 +122,6 @@ const paymentService = {
         }
     },
 
-    // COMPLETED CHECKOUT HANDLER
     async handleCheckoutCompleted(session) {
         const orderId = session.metadata.orderId;
         const userId = session.metadata.userId;
@@ -195,7 +192,6 @@ const paymentService = {
         }
     },
 
-    // CANCELED CHECKOUT HANDLER
     async handlePaymentFailed(session) {
         const orderId = session.metadata.orderId;
         await orderService.updateOrderStatus(orderId, OrderStatus.CANCELED);

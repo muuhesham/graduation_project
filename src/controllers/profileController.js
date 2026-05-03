@@ -39,7 +39,6 @@ const profileController = {
             await cacheService.set(cacheKey, true, ttl);
         }
 
-        //logout
         sendSuccess(res, { message: 'Profile deleted successfully. please login again.' }, 200);
     }),
 
@@ -96,7 +95,6 @@ const profileController = {
             await cacheService.set(cacheKey, true, ttl);
         }
 
-        //logout 
         sendSuccess(res, { message: 'Password updated successfully. Please login again.' }, 200);
     }),
 

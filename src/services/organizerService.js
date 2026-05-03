@@ -135,7 +135,6 @@ const organizerService = {
         'reviewedAt',
     ],
 
-    // CREATE
     /**
      * @param {string} userId
      * @param {OrganizerCreateDTO} dto
@@ -237,7 +236,6 @@ const organizerService = {
         }
     },
 
-    // CREATE EVENT
     async createEvent(
         userId,
         {
@@ -364,7 +362,6 @@ const organizerService = {
         }
     },
 
-    //UPDATE EVENT
     async updateEvent(
         userId,
         eventId,
@@ -500,7 +497,6 @@ const organizerService = {
         }
     },
 
-    //DELETE EVENT
     async deleteEvent(userId, eventId) {
         const [event, organizer] = await Promise.all([
             eventService.getById(eventId),
@@ -577,7 +573,6 @@ const organizerService = {
         });
     },
 
-    // GET ALL EVENTS
     async listEvents(userId) {
         const organizer = await organizerService.getByUserId(userId);
 
