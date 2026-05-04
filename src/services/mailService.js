@@ -4,6 +4,7 @@ import passwordResetMail from '../mails/templates/passwordResetMail.js';
 import newsletterConfirmTemplate from '../mails/templates/newsletterConfirmMail.js';
 import { FRONT_URL } from '../config/env.js';
 import updateEmailTemplate from '../mails/templates/updateEmailMail.js';
+import purchaseTicketMailTemplate from '../mails/templates/purchaseTicketMail.js';
 
 const mailService = {
     async sendOtpJob(user, otp, expiresIn) {
@@ -86,7 +87,7 @@ const mailService = {
                 }
             );
     },
-    async sendUpdateEmail({user, newEmail, token}) {
+    async sendUpdateEmail({ user, newEmail, token }) {
         const html = updateEmailTemplate({
             name: user.name,
             newEmail: newEmail,
@@ -110,7 +111,49 @@ const mailService = {
                 removeOnFail: false,
             }
         );
-    }
+    },
+
+    async sendPurchaseConfirmationJob(
+        user,
+        eventDetails,
+        ticketDetails,
+        totalAmount,
+        orderId,
+        qrCodes = []
+    ) {
+        const html = purchaseTicketMailTemplate({
+            userName: user.name,
+            eventTitle: eventDetails.title,
+            eventDescription: eventDetails.description,
+            eventDate: eventDetails.date,
+            eventTime: eventDetails.time,
+            venueName: eventDetails.venueName,
+            venueAddress: eventDetails.venueAddress,
+            ticketDetails,
+            totalAmount,
+            orderId,
+            qrCodes,
+        });
+
+        await mailQueue.add(
+            'sendPurchaseConfirmationMail',
+            {
+                to: user.email,
+                subject: `Your tickets for "${eventDetails.title}" are confirmed!`,
+                html,
+                text: `Hi ${user.name},\n\nYour purchase has been confirmed! You have successfully booked tickets for "${eventDetails.title}".\n\nOrder ID: ${orderId}\nTotal Amount: $${totalAmount}\n\nThank you for using our service!`,
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000,
+                },
+                removeOnComplete: true,
+                removeOnFail: false,
+            }
+        );
+    },
 };
 
 export default mailService;
