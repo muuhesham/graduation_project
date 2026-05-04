@@ -3,6 +3,7 @@ import { STRIPE_SECRET_KEY } from '../config/env.js';
 import { prisma as prismaClient } from '../config/db.js';
 import organizerService from './organizerService.js';
 import AppError from '../errors/AppError.js';
+import notificationService from './notificationService.js';
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
 
@@ -30,12 +31,19 @@ const couponService = {
             // }
         });
 
-        return await prismaClient.coupon.create({
+        const createdCoupon = await prismaClient.coupon.create({
             data: {
                 code: code,
                 stripePromoId: promoCode.id,
             },
         });
+
+        await notificationService.broadcastAnnouncement(
+            'New Coupon Available!',
+            `Use code "${code}" to get ${discount}% off on your next purchase!`
+        );
+
+        return createdCoupon;
     },
 
     async deleteCoupon({ id }) {
