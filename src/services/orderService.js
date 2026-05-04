@@ -5,7 +5,7 @@ import AppError from '../errors/AppError.js';
 import fileService from './fileService.js';
 import orderItemService from './orderItemService.js';
 import TicketStatus from '../constants/enums/ticketStatus.js';
-
+import notificationService from './notificationService.js';
 import { orderRepository } from './../repositories/index.js';
 
 const orderService = {
@@ -236,46 +236,65 @@ const orderService = {
      * @param {import('@prisma/client').Prisma.TransactionClient} tx
      */
     async markOrdersAsPaid(since, payoutId, tx) {
-        return orderRepository.updateMany({
-            where: {
-                status: OrderStatus.COMPLETED,
-                createdAt: { gte: since },
-                isPaidOut: false,
+        return orderRepository.updateMany(
+            {
+                where: {
+                    status: OrderStatus.COMPLETED,
+                    createdAt: { gte: since },
+                    isPaidOut: false,
+                },
+                data: {
+                    isPaidOut: true,
+                    payoutId: payoutId,
+                },
             },
-            data: {
-                isPaidOut: true,
-                payoutId: payoutId,
-            },
-        }, tx);
+            tx
+        );
     },
 
-    async refundOrders({ eventId, tx }){
+    async refundOrders({ eventId, tx }) {
         const orders = await tx.order.findMany({
             where: {
                 status: OrderStatus.COMPLETED,
                 orderItems: {
-                    some: { ticketType: { eventId } }
-                }
-        }});
+                    some: { ticketType: { eventId } },
+                },
+            },
+            include: {
+                orderItems: { include: { ticketType: { include: { event: true } } } },
+                user: true,
+            },
+        });
 
-        if(orders.length === 0) return;
+        if (orders.length === 0) return;
 
-        const refundOrders = orders.flatMap(order => [
-            tx.user.update({
-                where: {id: order.userId},
-                data: {wallet: {increment: order.totalPrice}}
-            }),
-            tx.order.update({
-                where: {id: order.id},
-                data: {status: OrderStatus.REFUNDED}
-            }),
-            tx.ticket.updateMany({
-                where: {orderId: order.id},
-                data: {status: TicketStatus.EXPIRED}
-            }),
-        ]);
+        for (const order of orders) {
+            await tx.user.update({
+                where: { id: order.userId },
+                data: { wallet: { increment: order.totalPrice } },
+            });
+
+            await tx.order.update({
+                where: { id: order.id },
+                data: { status: OrderStatus.REFUNDED },
+            });
+
+            await tx.ticket.updateMany({
+                where: { orderId: order.id },
+                data: { status: TicketStatus.EXPIRED },
+            });
         
-        await Promise.all(refundOrders);
+            if (order.orderItems.length > 0) {
+                const eventTitle = order.orderItems[0].ticketType.event.title;
+                const refundAmount = parseFloat(order.totalPrice);
+                await notificationService.notifyRefundProcessed(
+                    order.userId,
+                    eventTitle,
+                    refundAmount,
+                    order.id
+                );
+            }
+        }
     },
 };
 
