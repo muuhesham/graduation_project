@@ -122,6 +122,8 @@ const organizerController = {
         await prismaClient.$transaction(async (tx) => {
             await organizerService.cancelEvent({userId, eventId, tx});
             await orderService.refundOrders({eventId, tx});
+        }, {
+            timeout: 30000,
         });
 
         return sendSuccess(res, { message: 'Event cancelled & refunds processed successfully.' }, 200);
