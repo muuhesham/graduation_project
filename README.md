@@ -109,6 +109,8 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 - Interested events tracking
 - Coupon/discount codes
 - Rate limiting and security
+- Reviews system
+- Real-time notifications
 
 ---
 
