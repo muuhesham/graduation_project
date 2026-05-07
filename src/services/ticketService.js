@@ -131,6 +131,9 @@ const ticketService = {
                         event: {
                             select: {
                                 title: true,
+                                organizer: {
+                                    select: { user: { select: { name: true } } },
+                                },
                                 eventSessions: {
                                     select: { startDate: true, endDate: true },
                                     orderBy: { startDate: 'asc' },
@@ -140,11 +143,8 @@ const ticketService = {
                                     select: {
                                         name: true,
                                         address: true,
-                                        city: { select: { name: true } },
+                                        city: true,
                                     },
-                                },
-                                organizer: {
-                                    select: { user: { select: { name: true } } },
                                 },
                             },
                         },
@@ -167,7 +167,7 @@ const ticketService = {
             const eventSeat = ticket.eventSeat;
 
             let seat = null;
-            if (eventSeat?.rowIndex !== null || eventSeat?.seatIndex !== null) {
+            if (eventSeat && (eventSeat?.rowIndex !== null || eventSeat?.seatIndex !== null)) {
                 const rowLetter = String.fromCharCode(65 + eventSeat.rowIndex);
                 const displaySeatNumber = eventSeat.seatIndex + 1;
                 seat = {
@@ -186,11 +186,11 @@ const ticketService = {
                     ? {
                           name: venue.name,
                           address: venue.address,
-                          city: venue.city?.name,
+                          city: venue.city,
                       }
                     : null,
                 status: ticket.status,
-                organizer: organizer?.name || null,
+                organizer: organizer?.name || "Organizer",
                 seat,
             };
         });

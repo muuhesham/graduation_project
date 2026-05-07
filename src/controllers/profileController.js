@@ -46,6 +46,8 @@ const profileController = {
         const userId = req.user.id;
         const { newEmail, confirmEmail, password } = req.body;
 
+        await profileService.checkAuthMethod({userId});
+
         await profileService.isPasswordValid({userId, password});
 
         await profileService.getMyProfile({userId});
@@ -80,6 +82,8 @@ const profileController = {
     updatePassword: asyncHandler(async (req, res) => {
         const userId = req.user.id;
         const { oldPassword, newPassword, confirmPassword } = req.body;
+
+        await profileService.checkAuthMethod({userId});
 
         await profileService.getMyProfile({userId});
 

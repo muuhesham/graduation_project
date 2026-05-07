@@ -11,10 +11,7 @@ const profileService = {
         if (!user) {
             throw new AppError('User not found', 404);
         }
-        if (user.authProvider !== AuthProvider.LOCAL) {
-            throw new AppError(`Email or Password can't be changed for google login users`, 400);
-        }
-
+        
         return user;
     },
 
@@ -88,6 +85,13 @@ const profileService = {
          if (!isPasswordMatch) {
              throw new AppError('Current password is incorrect', 400);
          }
+    },
+
+    async checkAuthMethod({userId}){
+        const user = await userService.findUser(userId);
+        if(user.authProvider !== AuthProvider.LOCAL){
+            throw new AppError(`Email or Password can't be changed for google login users`, 400);
+        }
     },
 
 };
