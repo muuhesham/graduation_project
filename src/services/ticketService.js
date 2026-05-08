@@ -31,7 +31,7 @@ const ticketService = {
                                     select: {
                                         name: true,
                                         address: true,
-                                        city: { select: { name: true } },
+                                        city: true,
                                     },
                                 },
                             },
@@ -44,6 +44,7 @@ const ticketService = {
                         quantity: true,
                         order: {
                             select: {
+                                id: true,
                                 totalPrice: true,
                             },
                         },
@@ -72,7 +73,8 @@ const ticketService = {
         }
 
         return {
-            id: ticket.id,
+            ticketId: ticket.id,
+            orderId: ticket.orderItem?.order?.id,
             title: event?.title,
             bannerUrl: bannerAbsUrl,
             date: event?.eventSessions?.[0]?.startDate || null,
@@ -152,6 +154,7 @@ const ticketService = {
                 },
                 orderItem: {
                     select: {
+                        order: true,
                         quantity: true,
                     },
                 },
@@ -178,7 +181,8 @@ const ticketService = {
             }
 
             return {
-                id: ticket.id,
+                ticketId: ticket.id,
+                orderId: ticket.orderItem?.order?.id,
                 title: event?.title,
                 date: session?.startDate ? new Date(session.startDate).toISOString() : null,
                 numberOfTickets: ticket.orderItem?.quantity || 1,
