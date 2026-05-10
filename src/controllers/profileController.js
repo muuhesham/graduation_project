@@ -19,8 +19,16 @@ const profileController = {
 
     updateMyProfile: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const { name, phone, gender, location, languagePreference, birthDate } = req.body;
-        const allowedData = { name, phone, gender, location, languagePreference, birthDate };
+        const { name, phone, gender, location, languagePreference, birthDate, governorate } = req.body;
+        const allowedData = {
+            name,
+            phone,
+            gender,
+            location,
+            languagePreference,
+            birthDate,
+            governorate,
+        };
         const updateUser = await profileService.updateMyProfile({userId, allowedData});
         sendSuccess(res, updateUser, 200);
     }),
