@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import Gender from '../constants/enums/userGender.js';
 import Language from '../constants/enums/userLanguage.js';
 import { calculateAge } from '../utils/calculateAge.js';
+import GovernoratesNames from '../constants/enums/governoratesNames.js';
 
 const require = createRequire(import.meta.url);
 const disposableDomains = require('disposable-email-domains');
@@ -17,6 +18,7 @@ const profileValidations = {
                 'location',
                 'languagePreference',
                 'birthDate',
+                'governorate',
             ];
             const updates = Object.keys(req.body);
             const invalidFields = updates.filter((field) => {
@@ -45,6 +47,8 @@ const profileValidations = {
         body('phone')
             .optional()
             .trim()
+            .isLength({ min: 11 })
+            .withMessage('Phone number must be at least 11 characters long')
             .notEmpty()
             .withMessage('Phone number cannot be empty')
             .isMobilePhone()
@@ -81,6 +85,15 @@ const profileValidations = {
                 }
                 return true;
             }),
+
+        body('governorate')
+            .optional()
+            .trim()
+            .toUpperCase()
+            .notEmpty()
+            .withMessage('Governorate cannot be empty')
+            .isIn(Object.values(GovernoratesNames))
+            .withMessage('Invalid governorate'),
     ],
 
     updateEmail: [
@@ -108,6 +121,11 @@ const profileValidations = {
             .withMessage('Email cannot be that long')
             .isEmail()
             .withMessage('Invalid email format'),
+        
+        body('password')
+            .trim()
+            .notEmpty()
+            .withMessage('Password cannot be empty'),
     ],
 
     updatePassword: [
