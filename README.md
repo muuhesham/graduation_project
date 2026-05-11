@@ -1,4 +1,4 @@
-# Fa3liat — Online Ticketing & Event Management Web Application
+# Fa3liat — Event Management & E-Ticketing Web Application
 
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
@@ -16,11 +16,11 @@
 
 - [Overview](#-overview)
 - [Tech Stack](#-tech-stack)
+- [Installation](#-installation)
 - [Features](#-features)
 - [Project Structure](#-project-structure)
 - [API Endpoints](#-api-endpoints)
 - [Database Schema](#-database-schema)
-- [Installation](#-installation)
 - [Environment Variables](#-environment-variables)
 - [Available Scripts](#-available-scripts)
 - [Contributing](#-contributing)
@@ -33,15 +33,19 @@
 Fa3liat is an event management and ticketing platform built with modern web technologies. It enables organizers to create events, sell tickets online, manage venues, and handle payments through integrated payment gateways. The platform supports:
 
 - 🎫 **General Admission Tickets** - Standard ticketed events
-- 💺 **Seat-Based Events** - Events with assigned seating
-- 👤 **User Authentication** - Email, phone, and social login
-- 📱 **QR Code Tickets** - Mobile ticket validation
+- 💺 **Seat-Based Events** - Events with assigned seating and flexible seat management
+- 👤 **User Authentication** - Email, phone, and social login with soft delete support
+- 📱 **QR Code Tickets** - Mobile ticket validation with QR code generation
 - 💳 **Payment Integration** - Stripe payment processing
 - 📧 **Email Notifications** - OTP and event notifications
 - 📅 **Event Sessions** - Multiple sessions per event
 - 🎟️ **Ticket Types** - Multiple ticket tiers with pricing
 - 📍 **Venue Management** - Location and seating maps
 - 🔖 **Coupon System** - Discount codes for events
+- 🏷️ **Event Tagging** - Categorize events with tags
+- 📋 **Event Rules** - Define policies and rules for events
+- ❤️ **Interested Events** - Track user interests in events
+- 📱 **Mobile App** - Mobile app for ticket scanning and validation via QR codes
 
 ---
 
@@ -63,6 +67,56 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 
 ---
 
+## 🚀 Installation
+
+### Prerequisites
+
+- Node.js (v18+)
+- PostgreSQL (v14+)
+- Redis
+
+### Steps
+
+1. **Clone the repository**
+
+    ```bash
+    git clone https://github.com/muuhesham/graduation_project.git
+    cd graduation_project
+    ```
+
+2. **Install dependencies**
+
+    ```bash
+    npm install
+    ```
+
+3. **Configure environment variables**
+
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
+
+4. **Setup database**
+
+    ```bash
+    npm run prisma:migrate
+    npm run prisma:generate
+    ```
+
+5. **Seed database (optional)**
+
+    ```bash
+    npm run prisma:seed
+    ```
+
+6. **Start the server**
+    ```bash
+    npm run dev
+    ```
+
+---
+
 ## ✨ Features
 
 ### Authentication & Authorization
@@ -80,12 +134,13 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 - Multiple event sessions
 - Event rules and policies
 - Banner and media uploads
+- Interested events tracking
 
 ### Ticketing System
 
 - Multiple ticket types per event
 - General admission tickets
-- Seat-based ticketing with tier pricing
+- Seat-based ticketing with tier pricing and flexible seating
 - QR code generation for tickets
 - Ticket validation and check-in
 
@@ -111,6 +166,8 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 - Rate limiting and security
 - Reviews system
 - Real-time notifications
+- User soft delete functionality
+- Mobile app for ticket scanning and validation using QR codes
 
 ---
 
@@ -305,57 +362,7 @@ fa3liat/
 
 ---
 
-## 🚀 Installation
-
-### Prerequisites
-
-- Node.js (v18+)
-- PostgreSQL (v14+)
-- Redis
-
-### Steps
-
-1. **Clone the repository**
-
-    ```bash
-    git clone https://github.com/muuhesham/graduation_project.git
-    cd graduation_project
-    ```
-
-2. **Install dependencies**
-
-    ```bash
-    npm install
-    ```
-
-3. **Configure environment variables**
-
-    ```bash
-    cp .env.example .env
-    # Edit .env with your configuration
-    ```
-
-4. **Setup database**
-
-    ```bash
-    npm run prisma:migrate
-    npm run prisma:generate
-    ```
-
-5. **Seed database (optional)**
-
-    ```bash
-    npm run prisma:seed
-    ```
-
-6. **Start the server**
-    ```bash
-    npm run dev
-    ```
-
----
-
-## 🔧 Environment Variables
+## Environment Variables
 
 ```env
 # Database
