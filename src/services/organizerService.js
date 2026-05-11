@@ -685,11 +685,18 @@ const organizerService = {
             };
         }
 
-        // check if the event related to tickets -> can't delete else -> soft delete or hard delete
+        const ticketsCount = await prismaClient.ticket.count({
+            where: {
+                ticketType: { eventId }
+            }
+        });
+
+        if(ticketsCount > 0) {
+            throw new AppError(`The event related to tickets can't be deleted`, 400);
+        }
 
         let result;
         try {
-            // result = await eventService.delete(eventId);
             result = await eventService.softDelete(eventId);
         } catch (err) {
             if (err.code === 'P2003') {

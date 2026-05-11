@@ -25,10 +25,7 @@ const couponService = {
         const promoCode = await stripe.promotionCodes.create({
             coupon: coupon.id,
             code: code,
-            // max_redemptions: 1,
-            // restrictions: {
-            //     first_time_transaction: true,
-            // }
+            max_redemptions: 20,
         });
 
         const createdCoupon = await prismaClient.coupon.create({
