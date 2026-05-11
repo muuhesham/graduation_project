@@ -24,6 +24,11 @@ const UserErrors = Object.freeze({
         code: 'USER_NOT_FOLLOWING',
         message: 'You are not following this organizer.',
     },
+
+    CANNOT_FOLLOW_SELF: {
+        code: 'CANNOT_FOLLOW_SELF',
+        message: 'You cannot follow your own organizer profile',
+    },
 });
 
 export default UserErrors;

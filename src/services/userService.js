@@ -291,12 +291,7 @@ const userService = {
         }
 
         if (organizer.userId === userId) {
-            throw new ConflictError(undefined, undefined, [
-                {
-                    message: 'You cannot follow your own organizer profile',
-                    code: 'CANNOT_FOLLOW_SELF',
-                },
-            ]);
+            throw new ConflictError(undefined, undefined, [UserErrors.CANNOT_FOLLOW_SELF]);
         }
 
         const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);

@@ -19,3 +19,4 @@ export * from './ticket.model.js';
 export * from './otp.model.js';
 export * from './phoneOtp.model.js';
 export * from './newsletterSubscriber.model.js';
+export * from './organizerFollower.model.js';

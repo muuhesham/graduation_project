@@ -6,12 +6,12 @@ import { OrganizerFollower as OrganizerFollowerModel } from '../models/index.js'
 /**
  * @typedef {import('./drivers/IDriver').default} IDriver
  * @typedef {import('./../types/shared').RepositoryModelClass<OrganizerFollower>} OrganizerFollowerClass
- * @typedef {import('./../types/models').OrganizerFollower} OrganizerFollower
- * @typedef {import('./../types/models').OrganizerFollowerCreate} OrganizerFollowerCreate
- * @typedef {import('./../types/models').OrganizerFollowerUpdate} OrganizerFollowerUpdate
- * @typedef {import('./../types/models').OrganizerFollowerWhere} OrganizerFollowerWhere
- * @typedef {import('./../types/models').OrganizerFollowerSelect} OrganizerFollowerSelect
- * @typedef {import('./../types/models').OrganizerFollowerInclude} OrganizerFollowerInclude
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollower} OrganizerFollower
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollowerCreate} OrganizerFollowerCreate
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollowerUpdate} OrganizerFollowerUpdate
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollowerWhere} OrganizerFollowerWhere
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollowerSelect} OrganizerFollowerSelect
+ * @typedef {import('./../types/models/organizerFollower.model').OrganizerFollowerInclude} OrganizerFollowerInclude
  */
 
 /**
