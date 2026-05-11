@@ -1,25 +1,21 @@
-FROM node:22-bookworm-slim
+# Use Node.js 18 Alpine for a lightweight image
+FROM node:18-alpine
 
+# Set the working directory
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates openssl \
-    && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package*.json ./
 
-COPY package.json package-lock.json ./
+# Install dependencies (using --legacy-peer-deps as used in root)
+RUN npm install --legacy-peer-deps
 
-RUN npm ci --legacy-peer-deps
-
-COPY prisma ./prisma
-
-RUN npx prisma generate
-
+# Copy the rest of the application code
 COPY . .
 
-ENV NODE_ENV=production
-
-RUN mkdir -p uploads logs
-
+# Expose the backend port
 EXPOSE 8000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
+# Start development with Prisma client generation
+# We use a shell script format to ensure commands run in sequence
+CMD npm run prisma:generate && npm run dev

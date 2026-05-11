@@ -82,6 +82,7 @@
         "nodemailer": "^7.0.9",
         "openai": "^6.35.0",
         "pg": "^8.20.0",
+        "project-root": "file:../..",
         "qrcode": "^1.5.4",
         "rate-limit-redis": "^4.2.3",
         "rate-limiter-flexible": "^11.0.1",

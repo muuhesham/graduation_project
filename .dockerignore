@@ -1,9 +1,10 @@
 node_modules
 npm-debug.log
+.env
 .git
 .gitignore
-.DS_Store
-coverage
-logs
-uploads
-.env
+Dockerfile
+docker-compose*
+README.md
+docs
+prisma/migrations
