@@ -1,6 +1,10 @@
 import { prisma as prismaClient } from '../config/db.js';
 import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import fileService from './fileService.js';
+import { categoryRepository } from '../repositories/index.js';
+import ConflictError from '../errors/ConflictError.js';
+import CategoryErrors from '../constants/messages/errors/category.js';
+import NotFoundError from '../errors/NotFoundError.js';
 
 const categoryService = {
     ALL_CACHE_PREFIX: 'category:all_categories',
@@ -89,17 +93,109 @@ const categoryService = {
                 })),
             });
 
-            return await this.getPreferences({userId, tx});
+            return await this.getPreferences({ userId, tx });
         });
     },
 
-    async getAllCategories(){
+    async getAllCategories() {
         return await prismaClient.category.findMany({
             select: { id: true, name: true },
-            orderBy: { name: 'asc' }
-        })
+            orderBy: { name: 'asc' },
+        });
     },
-    
+
+    /**
+     * @param {import('./../types/shared').RepositoryReadOptions} [options]
+     * @returns {Promise<import('../types/models').Category[]>}
+     */
+    async list(options = {}) {
+        return categoryRepository.findMany(options);
+    },
+
+    /**
+     * @param {object} data
+     * @param {string} data.name
+     * @param {any} [data.image]
+     */
+    async createCategory(data) {
+        const existing = await categoryRepository.findByName(data.name);
+        if (existing) {
+            throw new ConflictError(undefined, undefined, [CategoryErrors.CATEGORY_ALREADY_EXISTS]);
+        }
+
+        let imageData = { imageDisk: 'local', imagePath: '' };
+        if (data.image) {
+            const savedFile = await fileService.save(data.image, 'categories');
+            if (savedFile) {
+                imageData = {
+                    imageDisk: savedFile.disk,
+                    imagePath: savedFile.path,
+                };
+            }
+        }
+
+        return categoryRepository.create({
+            name: data.name,
+            ...imageData,
+        });
+    },
+
+    /**
+     * @param {number} id
+     * @param {object} data
+     * @param {string} [data.name]
+     * @param {any} [data.image]
+     */
+    async updateCategory(id, data) {
+        const category = await categoryRepository.findById(id);
+        if (!category) {
+            throw new NotFoundError(undefined, undefined, [CategoryErrors.CATEGORY_NOT_FOUND]);
+        }
+
+        if (data.name && data.name !== category.name) {
+            const existing = await categoryRepository.findByName(data.name);
+            if (existing) {
+                throw new ConflictError(undefined, undefined, [
+                    CategoryErrors.CATEGORY_ALREADY_EXISTS,
+                ]);
+            }
+        }
+
+        let imageData = {};
+        if (data.image) {
+            if (category.imagePath) {
+                await fileService.delete(category.imagePath, category.imageDisk);
+            }
+
+            const savedFile = await fileService.save(data.image, 'categories');
+            if (savedFile) {
+                imageData = {
+                    imageDisk: savedFile.disk,
+                    imagePath: savedFile.path,
+                };
+            }
+        }
+
+        return categoryRepository.update({
+            where: { id },
+            data: {
+                ...(data.name ? { name: data.name } : {}),
+                ...imageData,
+            },
+        });
+    },
+
+    /**
+     * @param {number} id
+     */
+    async deleteCategory(id) {
+        const category = await categoryRepository.findById(id);
+        if (!category) {
+            throw new NotFoundError(undefined, undefined, [CategoryErrors.CATEGORY_NOT_FOUND]);
+        }
+
+        return categoryRepository.delete({ where: { id } });
+    },
 };
 
 export default categoryService;

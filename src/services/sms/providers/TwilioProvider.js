@@ -2,7 +2,7 @@
 
 import ISMSProvider from './ISMSProvider.js';
 
-/** @typedef {typeof import('../../../config/twilio.js').default} TwilioClient */
+/** @typedef {typeof import('../../../config/twilio').default} TwilioClient */
 /** @typedef {import('../../../types/shared').SMSData} SMSData */
 
 /** @implements {ISMSProvider} */

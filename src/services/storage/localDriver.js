@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BASE_PATH, HOSTNAME, PORT, PROTOCOL } from '../../config/env.js';
+import { APP_URL, BASE_PATH } from '../../config/env.js';
 
 const UPLOADS_ROOT = path.join(BASE_PATH, 'uploads');
 
@@ -28,13 +28,16 @@ const localDriver = {
         try {
             await fs.unlink(fullPath);
         } catch (e) {
-            console.warn("File not found on disk:", fullPath);
+            console.warn('File not found on disk:', fullPath);
         }
     },
 
-    
     getAbsUrl(filePath) {
-        return `${PROTOCOL}://${HOSTNAME}:${PORT}${filePath}`;
+        if (!filePath) return null;
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+            return filePath;
+        }
+        return `${APP_URL}${filePath}`;
     },
 };
 

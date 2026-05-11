@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 
-import { JWT_KEY, JWT_REKEY } from './../config/env.js';
+import { JWT_KEY, JWT_REKEY, FRONT_URL } from './../config/env.js';
 import { hashHMAC, hashPassword, matchPassword } from './../utils/hash.js';
 
 import OrganizerVerficiationStatus from './../constants/enums/organizerVerificationStatus.js';
@@ -14,6 +14,9 @@ import eventService from './eventService.js';
 import organizerService from './organizerService.js';
 import orderService from './orderService.js';
 import paymentService from './paymentService.js';
+import mailService from './mailService.js';
+import newsletterService from './newsletterService.js';
+import categoryService from './categoryService.js';
 
 import OrderStatus from '../constants/enums/orderStatus.js';
 import PayoutStatus from '../constants/enums/payoutStatus.js';
@@ -35,35 +38,39 @@ import AdminErrors from './../constants/messages/errors/admin.js';
 import adminPolicy from './../policies/AdminPolicy.js';
 
 /**
+ * @typedef {import('./../types/models').Event} Event
+ * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('./userService').default} UserService
+ * @typedef {import('./eventService').default} EventService
+ * @typedef {import('./organizerService').default} OrganizerService
+ * @typedef {import('./orderService').default} OrderService
+ * @typedef {import('./mailService').default} MailService
+ * @typedef {import('./newsletterService').NewsletterService} NewsletterService
+ * @typedef {typeof import('./categoryService').default} CategoryService
  *
- * @typedef {import('./../types/models/event.model.js').Event} Event
- * @typedef {import('./userService.js').default} UserService
- * @typedef {import('./eventService.js').default} EventService
- * @typedef {import('./organizerService.js').default} OrganizerService
- * @typedef {import('./orderService.js').default} OrderService
+ * @typedef {import('./../repositories/AdminRepository').default} AdminRepository
+ * @typedef {import('./../models/Admin').default} AdminModel
+ * @typedef {import('./../types/models').AdminHydrated} AdminType
+ * @typedef {import('./../types/models').AdminCreate} AdminCreate
  *
- *
- * @typedef {import('./../repositories/AdminRepository.js').default} AdminRepository
- * @typedef {import('./../models/Admin.js').default} AdminModel
- * @typedef {import('./../types/models/admin.model.js').AdminHydrated} AdminType
- * @typedef {import('./../types/models/admin.model.js').AdminCreate} AdminCreate
- *
- * @typedef {import('./../types/dtos/index.js').AdminRegisterDTO} AdminRegisterDTO
- * @typedef {import('./../types/dtos/index.js').AdminLoginDTO} AdminLoginDTO
- * @typedef {import('./../types/dtos/index.js').AdminRefreshTokenDTO} AdminRefreshTokenDTO
- * @typedef {import('./../types/dtos/index.js').AdminListEventsOptionsDTO} AdminListEventsOptionsDTO
- * @typedef {import('./../types/dtos/index.js').AdminDashboardSummaryQueryDTO} AdminDashboardSummaryQueryDTO
- *
- * */
+ * @typedef {import('./../types/dtos').AdminRegisterDTO} AdminRegisterDTO
+ * @typedef {import('./../types/dtos').AdminLoginDTO} AdminLoginDTO
+ * @typedef {import('./../types/dtos').AdminRefreshTokenDTO} AdminRefreshTokenDTO
+ * @typedef {import('./../types/dtos').AdminListEventsOptionsDTO} AdminListEventsOptionsDTO
+ * @typedef {import('./../types/dtos').AdminDashboardSummaryQueryDTO} AdminDashboardSummaryQueryDTO
+ * @typedef {import('./../types/shared').RepositoryReadOptions} RepositoryReadOptions
+ */
 
 /**
  * @typedef {object} AdminServiceDeps
- *
  * @property {object} services
  * @property {UserService} services.userService
  * @property {EventService} services.eventService
  * @property {OrganizerService} services.organizerService
  * @property {OrderService} services.orderService
+ * @property {MailService} services.mailService
+ * @property {NewsletterService} services.newsletterService
+ * @property {CategoryService} services.categoryService
  *
  * @property {object} repositories
  * @property {AdminRepository} repositories.adminRepository
@@ -83,13 +90,22 @@ class AdminService {
     /** @type {OrderService} */
     #orderService;
 
+    /** @type {MailService} */
+    #mailService;
+
+    /** @type {NewsletterService} */
+    #newsletterService;
+
+    /** @type {CategoryService} */
+    #categoryService;
+
     /** @type {AdminRepository} */
     #adminRepository;
 
     /** @type {any} */
     #payoutRepository;
 
-    /**  */
+    /** @type {typeof adminPolicy} */
     #adminPolicy = adminPolicy;
 
     /**
@@ -100,6 +116,9 @@ class AdminService {
         this.#eventService = services.eventService;
         this.#organizerService = services.organizerService;
         this.#orderService = services.orderService;
+        this.#mailService = services.mailService;
+        this.#newsletterService = services.newsletterService;
+        this.#categoryService = services.categoryService;
         this.#adminRepository = repositories.adminRepository;
         this.#payoutRepository = repositories.payoutRepository;
     }
@@ -119,12 +138,7 @@ class AdminService {
     async register({ name, email, password }) {
         const existingAdmin = await this.#adminRepository.findByEmail(email);
         if (existingAdmin) {
-            throw new ConflictError(undefined, undefined, [
-                {
-                    message: AdminErrors.EMAIL_ALREADY_IN_USE.message,
-                    code: AdminErrors.EMAIL_ALREADY_IN_USE.code,
-                },
-            ]);
+            throw new ConflictError(undefined, undefined, [AdminErrors.EMAIL_ALREADY_IN_USE]);
         }
 
         const hashedPassword = await hashPassword(password);
@@ -155,12 +169,7 @@ class AdminService {
         const admin = await this.#adminRepository.findByEmail(email);
 
         if (!admin) {
-            throw new UnauthorizedError(undefined, undefined, [
-                {
-                    message: AdminErrors.INVALID_CREDENTIALS.message,
-                    code: AdminErrors.INVALID_CREDENTIALS.code,
-                },
-            ]);
+            throw new UnauthorizedError(undefined, undefined, [AdminErrors.INVALID_CREDENTIALS]);
         }
 
         this.#adminPolicy.canLogin(admin);
@@ -180,12 +189,7 @@ class AdminService {
         }
 
         if (!isPasswordValid) {
-            throw new UnauthorizedError(undefined, undefined, [
-                {
-                    message: AdminErrors.INVALID_CREDENTIALS.message,
-                    code: AdminErrors.INVALID_CREDENTIALS.code,
-                },
-            ]);
+            throw new UnauthorizedError(undefined, undefined, [AdminErrors.INVALID_CREDENTIALS]);
         }
 
         const accessToken = this.#generateAccessToken(admin);
@@ -268,12 +272,7 @@ class AdminService {
         );
 
         if (!tokenRecord?.admin) {
-            throw new UnauthorizedError(undefined, undefined, [
-                {
-                    message: AdminErrors.INVALID_REFRESH_TOKEN.message,
-                    code: AdminErrors.INVALID_REFRESH_TOKEN.code,
-                },
-            ]);
+            throw new UnauthorizedError(undefined, undefined, [AdminErrors.INVALID_REFRESH_TOKEN]);
         }
 
         this.#adminPolicy.canAccessDashboard(tokenRecord.admin);
@@ -290,12 +289,7 @@ class AdminService {
         );
 
         if (!tokenRecord) {
-            throw new UnauthorizedError(undefined, undefined, [
-                {
-                    message: AdminErrors.INVALID_REFRESH_TOKEN.message,
-                    code: AdminErrors.INVALID_REFRESH_TOKEN.code,
-                },
-            ]);
+            throw new UnauthorizedError(undefined, undefined, [AdminErrors.INVALID_REFRESH_TOKEN]);
         }
 
         return this.#adminRepository.deleteRefreshToken(tokenRecord.id);
@@ -310,12 +304,7 @@ class AdminService {
         const user = await this.#userService.findById(userId);
 
         if (!user) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: UserErrors.USER_NOT_FOUND.message,
-                    code: UserErrors.USER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [UserErrors.USER_NOT_FOUND]);
         }
 
         return this.#userService.softDelete(userId);
@@ -340,12 +329,7 @@ class AdminService {
         const user = await this.#userService.findById(userId);
 
         if (!user) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: UserErrors.USER_NOT_FOUND.message,
-                    code: UserErrors.USER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [UserErrors.USER_NOT_FOUND]);
         }
 
         return user;
@@ -360,30 +344,42 @@ class AdminService {
         const organizer = await this.#organizerService.findById(organizerId);
 
         if (!organizer) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         if (organizer.verificationStatus === OrganizerVerficiationStatus.APPROVED) {
             throw new ConflictError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_ALREADY_APPROVED.message,
-                    code: OrganizerErrors.ORGANIZER_ALREADY_APPROVED.code,
-                },
+                OrganizerErrors.ORGANIZER_ALREADY_APPROVED,
             ]);
         }
 
-        return this.#organizerService.updateModerationState(organizerId, {
+        const updatedOrganizer = await this.#organizerService.updateModerationState(organizerId, {
             verificationStatus: OrganizerVerficiationStatus.APPROVED,
             status: OrganizerStatus.ACTIVE,
             rejectionReason: null,
             suspendReason: null,
             reviewedAt: new Date(),
             reviewedBy: id,
+        });
+
+        await this.#sendApprovedMail(updatedOrganizer);
+
+        return updatedOrganizer;
+    }
+
+    /**
+     * @param {Organizer} organizer
+     */
+    async #sendApprovedMail(organizer) {
+        return this.#mailService.sendQueued({
+            to: organizer.contactEmail,
+            subject: 'Your Organizer Profile has been Approved!',
+            templateName: 'organizerApprovedMail',
+            variables: {
+                name: organizer.name || 'Organizer',
+                dashboardUrl: `${FRONT_URL}/organizer/dashboard`,
+                plainText: `Congratulations! Your organizer profile has been approved. You can now access your dashboard at: ${FRONT_URL}/organizer/dashboard`,
+            },
         });
     }
 
@@ -397,20 +393,12 @@ class AdminService {
         const organizer = await this.#organizerService.findById(organizerId);
 
         if (!organizer) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         if (organizer.verificationStatus === OrganizerVerficiationStatus.REJECTED) {
             throw new ConflictError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_ALREADY_REJECTED.message,
-                    code: OrganizerErrors.ORGANIZER_ALREADY_REJECTED.code,
-                },
+                OrganizerErrors.ORGANIZER_ALREADY_REJECTED,
             ]);
         }
 
@@ -434,20 +422,12 @@ class AdminService {
         const organizer = await this.#organizerService.findById(organizerId);
 
         if (!organizer) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         if (organizer.status === OrganizerStatus.SUSPENDED) {
             throw new ConflictError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_ALREADY_SUSPENDED.message,
-                    code: OrganizerErrors.ORGANIZER_ALREADY_SUSPENDED.code,
-                },
+                OrganizerErrors.ORGANIZER_ALREADY_SUSPENDED,
             ]);
         }
 
@@ -468,29 +448,16 @@ class AdminService {
         const organizer = await this.#organizerService.findById(organizerId);
 
         if (!organizer) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         if (organizer.verificationStatus === OrganizerVerficiationStatus.REJECTED) {
-            throw new ConflictError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_REJECTED.message,
-                    code: OrganizerErrors.ORGANIZER_REJECTED.code,
-                },
-            ]);
+            throw new ConflictError(undefined, undefined, [OrganizerErrors.ORGANIZER_REJECTED]);
         }
 
         if (organizer.status !== OrganizerStatus.SUSPENDED) {
             throw new ConflictError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_SUSPENDED.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_SUSPENDED.code,
-                },
+                OrganizerErrors.ORGANIZER_NOT_SUSPENDED,
             ]);
         }
 
@@ -550,12 +517,7 @@ class AdminService {
         );
 
         if (!event) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: EventErrors.EVENT_NOT_FOUND.message,
-                    code: EventErrors.EVENT_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
         }
 
         /** @type {any} */ (event).activeSeatReservations =
@@ -651,12 +613,7 @@ class AdminService {
         });
 
         if (!event) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: EventErrors.EVENT_NOT_FOUND.message,
-                    code: EventErrors.EVENT_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
         }
 
         return event;
@@ -758,16 +715,19 @@ class AdminService {
 
     /**
      * @param {number} id
-     * @param {import('./../types/models/user.model.js').UserFilters} [options]
+     * @param {import('./../types/models').UserFilters} [options]
      */
     async listUsers(id, options = {}) {
         await this.#assertApprovedAdmin(id);
-        return this.#userService.list(options);
+        return this.#userService.list({
+            ...options,
+            withDeleted: true,
+        });
     }
 
     /**
      * @param {number} id
-     * @param {import('./../types/models/organizer.model.js').OrganizerFilters} [options]
+     * @param {import('./../types/models').OrganizerFilters} [options]
      */
     async listOrganizers(id, options = {}) {
         await this.#assertApprovedAdmin(id);
@@ -784,15 +744,19 @@ class AdminService {
         const organizer = await this.#organizerService.findById(organizerId);
 
         if (!organizer) {
-            throw new NotFoundError(undefined, undefined, [
-                {
-                    message: OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                    code: OrganizerErrors.ORGANIZER_NOT_FOUND.code,
-                },
-            ]);
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         return organizer;
+    }
+
+    /**
+     * @param {number} id
+     * @param {import('./../types/models').NewsletterFilters} [options]
+     */
+    async listNewsletterSubscribers(id, options = {}) {
+        await this.#assertApprovedAdmin(id);
+        return this.#newsletterService.list(options);
     }
 
     /**
@@ -867,7 +831,7 @@ class AdminService {
     }
 
     /**
-     * @param {import('./../repositories/OrderRepository.js').PayoutSummaryRow[]} settlements
+     * @param {import('./../repositories/OrderRepository').PayoutSummaryRow[]} settlements
      * @param {number} payoutId
      */
     async #prepareTransferBatch(settlements, payoutId) {
@@ -887,7 +851,7 @@ class AdminService {
 
     /**
      * @param {number} id
-     * @param {import('./../types/shared/common.types.js').PaginationQuery} [pagination]
+     * @param {import('./../types/shared').PaginationQuery} [pagination]
      */
     async getPayoutHistory(id, pagination = {}) {
         await this.#assertApprovedAdmin(id);
@@ -899,7 +863,8 @@ class AdminService {
 
     /**
      * @param {number} id
-     * @param {{ days?: number }} [options]
+     * @param {object} [options]
+     * @param {number} [options.days] - Look for payouts in the last X days
      */
     async getFinanceSummary(id, options = {}) {
         await this.#assertApprovedAdmin(id);
@@ -922,6 +887,44 @@ class AdminService {
             pendingOrganizerCount: pendingTotals.organizers,
         };
     }
+
+    /**
+     * @param {number} adminId
+     */
+    async listCategories(adminId) {
+        await this.#assertApprovedAdmin(adminId);
+        return this.#categoryService.list({
+            sort: { field: 'name', order: 'asc' },
+        });
+    }
+
+    /**
+     * @param {number} adminId
+     * @param {{ name: string, image?: import('./../types/shared').MulterFile }} data
+     */
+    async createCategory(adminId, data) {
+        await this.#assertApprovedAdmin(adminId);
+        return this.#categoryService.createCategory(data);
+    }
+
+    /**
+     * @param {number} adminId
+     * @param {number} categoryId
+     * @param {{ name?: string, image?: import('./../types/shared').MulterFile }} data
+     */
+    async updateCategory(adminId, categoryId, data) {
+        await this.#assertApprovedAdmin(adminId);
+        return this.#categoryService.updateCategory(categoryId, data);
+    }
+
+    /**
+     * @param {number} adminId
+     * @param {number} categoryId
+     */
+    async deleteCategory(adminId, categoryId) {
+        await this.#assertApprovedAdmin(adminId);
+        return this.#categoryService.deleteCategory(categoryId);
+    }
 }
 
 export default new AdminService({
@@ -930,6 +933,9 @@ export default new AdminService({
         eventService,
         organizerService,
         orderService,
+        mailService,
+        newsletterService,
+        categoryService,
     },
     repositories: {
         adminRepository,

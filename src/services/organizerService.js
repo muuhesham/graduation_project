@@ -3,6 +3,8 @@ import { prisma as prismaClient } from '../config/db.js';
 import EventType from '../constants/enums/eventType.js';
 
 import OrganizerErrors from './../constants/messages/errors/organizer.js';
+import CategoryErrors from './../constants/messages/errors/category.js';
+import EventErrors from './../constants/messages/errors/event.js';
 
 import { pluck } from './../helpers/pluck.js';
 
@@ -16,33 +18,31 @@ import SessionStatus from '../constants/enums/sessionStatus.js';
 import locationService from './locationService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
+import orderService from './orderService.js';
 
-import { organizerRepository } from './../repositories/index.js';
+import { organizerRepository, organizerFollowerRepository } from './../repositories/index.js';
 
-import AppError from '../errors/AppError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 import ConflictError from './../errors/ConflictError.js';
+import AppError from '../errors/AppError.js';
 
 import organizerPolicy from './../policies/OrganizerPolicy.js';
 
 import OrganizerFactory from './../factories/OrganizerFactory.js';
 import OrganizerVerificationStatus from './../constants/enums/organizerVerificationStatus.js';
+import OrganizerStatus from './../constants/enums/organizerStatus.js';
+import { Company } from '../models/index.js';
 
 /**
- * @typedef {import('@prisma/client').PrismaClient} PrismaClient
- *
- * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
- *
- * @typedef {import('./../types/models/index.js').Organizer} Organizer
- *
- * @typedef {import('./../types/models/index.js').Business} Business
- *
- * @typedef {import('./../types/models/index.js').Company} Company
- *
- * @typedef {import('./../types/models/index.js').Hobbyist} Hobbyist
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
+ * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('./../types/models').OrganizerHydrated} OrganizerHydrated
+ * @typedef {import('./../types/models').Event} Event
+ * @typedef {import('./../types/models').EventHydrated} EventHydrated
+ * @typedef {import('./../types/models').Venue} Venue
+ * @typedef {import('./../types/models').EventPaginatedResource} EventPaginatedResource
+ * @typedef {import('./../types/dtos/organizer.dto').OrganizerCreateDTO} OrganizerCreateDTO
  */
-
-/** @typedef {import('./../types/dtos/organizer.dto.js').OrganizerCreateDTO} OrganizerCreateDTO */
 
 const organizerService = {
     /**
@@ -139,34 +139,62 @@ const organizerService = {
     /**
      * @param {string} userId
      * @param {OrganizerCreateDTO} dto
-     * @param {PrismaClient | TransactionClient} [tx=prismaClient] Default is `prismaClient`
+     * @param {TransactionClient} [tx=prismaClient]
      * @returns {Promise<Organizer>}
      */
-    async create(userId, dto, tx = prismaClient) {
-        const validated = /** @type {OrganizerCreateDTO} */ (pluck(dto, this.allowedFields));
+    create(userId, dto, tx = prismaClient) {
+        return this.createRecord(userId, dto, null, tx);
+    },
+
+    /**
+     * @param {string} userId
+     * @param {OrganizerCreateDTO} dto
+     * @param {any} [file]
+     * @param {TransactionClient | null} [tx]
+     * @returns {Promise<Organizer>}
+     */
+    async createRecord(userId, dto, file = null, tx = null) {
+        if (file && dto.type === 'company') {
+            const saved = await fileService.save(file, Company.getUploadPath(userId));
+            if (saved) {
+                dto.officialDocumentsDisk = saved.disk;
+                dto.officialDocumentsPath = saved.url;
+            }
+        }
+
         const normalizedOrganizerData = {
-            ...validated,
-            contactName: validated.contactPersonName,
-            websiteUrl: validated.website,
-            reviewedBy: validated.reviewedBy,
+            ...dto,
+            contactName: dto.contactPersonName || dto.contactName,
+            websiteUrl: dto.website || dto.websiteUrl,
+            verificationStatus: OrganizerVerificationStatus.UNDER_REVIEW,
+            status: OrganizerStatus.ACTIVE,
         };
-        const organizerCreateData = pluck(normalizedOrganizerData, this.organizerCreateFields);
 
         await Promise.all([
-            this.ensureUniqueConstraints(userId, validated),
-            this.ensureReferenceConstraints(userId, validated),
+            this.ensureUniqueConstraints(userId, dto),
+            this.ensureReferenceConstraints(userId, dto),
         ]);
 
-        const organizer = await tx.organizer.create({
-            data: { ...organizerCreateData, userId },
-        });
-        await OrganizerFactory.createInstance(validated.type).create(
-            organizer.id,
-            { ...validated, organizerId: organizer.id },
-            tx
-        );
+        const organizer = await organizerRepository.runInTransaction(async (transaction) => {
+            const useTx = tx || transaction;
 
-        return organizer;
+            const organizerCreateData = {
+                ...pluck(normalizedOrganizerData, this.organizerCreateFields),
+                userId,
+            };
+            const createdOrganizer = await organizerRepository.create(organizerCreateData, useTx);
+
+            await OrganizerFactory.create(
+                normalizedOrganizerData.type,
+                createdOrganizer.id,
+                normalizedOrganizerData,
+                useTx
+            );
+
+            return createdOrganizer;
+        });
+
+        return /** @type {Organizer} */ (await this.findById(organizer.id, tx));
     },
 
     /**
@@ -196,11 +224,7 @@ const organizerService = {
             errors.push({ field: 'cityId', message: 'Referenced city does not exist' });
         }
         if (errors.length > 0) {
-            throw new ConflictError(
-                OrganizerErrors.ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION.message,
-                OrganizerErrors.ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION.code,
-                errors
-            );
+            throw new ConflictError(undefined, undefined, errors);
         }
     },
 
@@ -229,11 +253,7 @@ const organizerService = {
             });
         }
         if (errors.length > 0) {
-            throw new ConflictError(
-                OrganizerErrors.ORGANIZER_ALREADY_EXISTS.message,
-                OrganizerErrors.ORGANIZER_ALREADY_EXISTS.code,
-                errors
-            );
+            throw new ConflictError(undefined, undefined, errors);
         }
     },
 
@@ -364,7 +384,91 @@ const organizerService = {
         }
     },
 
-    //UPDATE EVENT
+    /**
+     * @param {string} userId
+     * @param {object} input
+     * @returns {Promise<EventHydrated>}
+     */
+    async createOrganizerEvent(userId, input) {
+        const [organizer, category] = await Promise.all([
+            this.findByUserId(userId),
+            categoryService.getByCategory(input.categoryName),
+        ]);
+
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        if (!category) {
+            throw new NotFoundError(undefined, undefined, [CategoryErrors.CATEGORY_NOT_FOUND]);
+        }
+
+        organizerPolicy.canCreateEvent(organizer);
+
+        return organizerRepository.runInTransaction(async (tx) => {
+            const venue = await venueService.createRecord(input.location, tx);
+
+            const event = await eventService.createRecord(
+                organizer.id,
+                {
+                    ...input,
+                    venueId: venue.id,
+                    categoryId: category.id,
+                },
+                tx
+            );
+
+            await eventService.createSessionsRecord(event.id, input.sessions, tx);
+            await ticketTypeService.createBulkRecord(
+                event.id,
+                input.tickets,
+                { eventType: input.type },
+                tx
+            );
+            await this.handleEventSubResources(event.id, input, tx);
+
+            if (event.hasSeatMap) {
+                await this.handleSeatMapResources(event.id, input, tx);
+            }
+
+            return /** @type {EventHydrated} */ (eventService.findById(event.id, {}, tx));
+        });
+    },
+
+    /**
+     * @private
+     * @param {number} eventId
+     * @param {object} input
+     * @param {TransactionClient} tx
+     */
+    async handleEventSubResources(eventId, input, tx) {
+        if (input.eventRules?.length > 0) {
+            await eventService.createEventRulesRecord(eventId, input.eventRules, tx);
+        }
+        if (input.tags?.length > 0) {
+            await eventService.createEventTagsRecord(eventId, input.tags, tx);
+        }
+    },
+
+    /**
+     * @private
+     * @param {number} eventId
+     * @param {object} input
+     * @param {TransactionClient} tx
+     */
+    async handleSeatMapResources(eventId, input, tx) {
+        await seatService.createTiers(
+            eventId,
+            {
+                priceTiers: input.priceTiers,
+                numberOfRows: input.numberOfRows,
+                numberOfColumns: input.numberOfColumns,
+            },
+            tx
+        );
+        await seatService.createSeats(eventId, input.seatsData, tx);
+    },
+
     async updateEvent(
         userId,
         eventId,
@@ -500,7 +604,47 @@ const organizerService = {
         }
     },
 
-    //DELETE EVENT
+    /**
+     * @param {string} userId
+     * @param {number} eventId
+     * @param {object} input
+     * @returns {Promise<EventHydrated>}
+     */
+    async updateOrganizerEvent(userId, eventId, input) {
+        const [organizer, event] = await Promise.all([
+            this.findByUserId(userId),
+            eventService.findById(eventId),
+        ]);
+
+        if (!event) {
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
+        }
+
+        organizerPolicy.canUpdateEvent(organizer, event);
+
+        return organizerRepository.runInTransaction(async (tx) => {
+            if (input.location) {
+                await venueService.updateRecord(event.venueId, input.location, tx);
+            }
+
+            await eventService.updateRecord(eventId, organizer.id, input, tx);
+
+            if (input.sessions?.length > 0) {
+                await eventService.deleteSessionsRecord(eventId, tx);
+                await eventService.createSessionsRecord(eventId, input.sessions, tx);
+            }
+
+            if (input.eventRules !== undefined) {
+                await eventService.updateEventRulesRecord(eventId, input.eventRules, tx);
+            }
+            if (input.tags !== undefined) {
+                await eventService.updateEventTagsRecord(eventId, input.tags, tx);
+            }
+
+            return eventService.findById(eventId, {}, tx);
+        });
+    },
+
     async deleteEvent(userId, eventId) {
         const [event, organizer] = await Promise.all([
             eventService.getById(eventId),
@@ -565,6 +709,26 @@ const organizerService = {
         };
     },
 
+    /**
+     * @param {string} userId
+     * @param {number} eventId
+     * @returns {Promise<any>}
+     */
+    async deleteOrganizerEvent(userId, eventId) {
+        const [organizer, event] = await Promise.all([
+            this.findByUserId(userId),
+            eventService.findById(eventId),
+        ]);
+
+        if (!event) {
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
+        }
+
+        organizerPolicy.canDeleteEvent(organizer, event);
+
+        return eventService.softDelete(eventId);
+    },
+
     async getByUserId(userId) {
         return prismaClient.organizer.findFirst({
             where: { userId },
@@ -577,7 +741,16 @@ const organizerService = {
         });
     },
 
-    // GET ALL EVENTS
+    /**
+     * @param {string} userId
+     * @returns {Promise<Organizer | null>}
+     */
+    async findByUserId(userId) {
+        return organizerRepository.findUnique({
+            where: { userId },
+        });
+    },
+
     async listEvents(userId) {
         const organizer = await organizerService.getByUserId(userId);
 
@@ -618,22 +791,57 @@ const organizerService = {
         };
     },
 
-    async cancelEvent({userId, eventId, tx}){
+    /**
+     * @param {string} userId
+     * @returns {Promise<EventPaginatedResource>}
+     */
+    async listOrganizerEvents(userId) {
+        const organizer = await this.findByUserId(userId);
+        this.organizerPolicy.canAccessDashboard(organizer);
+
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        return eventService.list({
+            where: { organizerId: organizer.id },
+            include: { venue: { select: { name: true } } },
+        });
+    },
+
+    async cancelEvent({ userId, eventId, tx }) {
         const organizer = await organizerService.getByUserId(userId);
         if (!organizer) {
             throw new AppError('Organizer not found');
         }
         await tx.event.update({
-            where: {id: eventId, organizerId: organizer.id},
+            where: { id: eventId, organizerId: organizer.id },
             data: {
                 deletedAt: new Date(),
                 eventSessions: {
                     updateMany: {
                         where: {},
-                        data: {status: SessionStatus.CANCELLED}
-                    }
-                }
-            }
+                        data: { status: SessionStatus.CANCELLED },
+                    },
+                },
+            },
+        });
+    },
+
+    /**
+     * @param {string} userId
+     * @param {number} eventId
+     * @returns {Promise<void>}
+     */
+    async cancelOrganizerEvent(userId, eventId) {
+        const organizer = await this.findByUserId(userId);
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        return organizerRepository.runInTransaction(async (tx) => {
+            await eventService.cancelEvent(eventId, tx);
+            await orderService.refundOrdersRecord({ eventId, tx });
         });
     },
 
@@ -643,11 +851,11 @@ const organizerService = {
      * @param {string} contactEmail
      * @returns {Promise<void>}
      */
-    async sendOrganizerContactEmailOtp(organizer, contactEmail) {
+    async sendEmailOtp(organizer, contactEmail) {
         const normalizedContactEmail = contactEmail.trim().toLowerCase();
         const otp = otpService.generateOtp();
 
-        await Promise.all([
+        return Promise.all([
             mailService.sendOtpJob(
                 {
                     name: organizer.name || organizer.user?.name || 'there',
@@ -661,104 +869,52 @@ const organizerService = {
     },
 
     /**
-     * @private
-     * @param {Organizer} organizer
-     * @returns {string}
+     * @param {string} userId
      */
-    getVerifiedOrganizerContactEmail(organizer) {
-        const organizerContactEmail = organizer.contactEmail?.trim().toLowerCase();
+    async requestEmailOtp(userId) {
+        const organizer = await this.findByUserId(userId);
 
-        if (!organizerContactEmail) {
-            throw new AppError('Contact email is required', 400, 'CONTACT_EMAIL_REQUIRED');
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
-        return organizerContactEmail;
+        if (organizer.isContactEmailVerified) {
+            throw new ConflictError(undefined, undefined, [
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED,
+            ]);
+        }
+
+        return this.sendEmailOtp(organizer, organizer.contactEmail);
     },
 
     /**
      * @param {string} userId
+     * @param {{ otp: string }} input
+     * @param {TransactionClient | null} [tx]
+     * @returns {Promise<Organizer>}
      */
-    async requestOrganizerContactEmailVerification(userId) {
-        const organizer = await this.getByUserId(userId);
+    async verifyContactEmail(userId, input, tx = null) {
+        const organizer = await this.findByUserId(userId);
 
         if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
         if (organizer.isContactEmailVerified) {
-            throw new AppError(
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
-                400,
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
-            );
+            throw new ConflictError(undefined, undefined, [
+                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED,
+            ]);
         }
 
-        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
+        await otpService.verifyEmailOtpRecord(organizer.contactEmail, input?.otp, tx);
 
-        await this.sendOrganizerContactEmailOtp(organizer, contactEmail);
-    },
-
-    /**
-     * @param {string} userId
-     * @returns {Promise<void>}
-     */
-    async resendOrganizerContactEmailVerification(userId) {
-        const organizer = await this.getByUserId(userId);
-
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-
-        if (organizer.isContactEmailVerified) {
-            throw new AppError(
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
-                400,
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
-            );
-        }
-
-        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
-
-        await this.sendOrganizerContactEmailOtp(organizer, contactEmail);
-    },
-
-    /**
-     * @param {string} userId
-     * @param {object} input
-     * @param {string} input.otp
-     */
-    async verifyOrganizerContactEmail(userId, input) {
-        const organizer = await this.getByUserId(userId);
-
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-
-        if (organizer.isContactEmailVerified) {
-            throw new AppError(
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.message,
-                400,
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_ALREADY_VERIFIED.code
-            );
-        }
-
-        const contactEmail = this.getVerifiedOrganizerContactEmail(organizer);
-
-        await otpService.verifyEmailOtp(contactEmail, input?.otp);
-
-        await prismaClient.organizer.update({
-            where: { id: organizer.id },
-            data: { isContactEmailVerified: true },
-        });
+        return organizerRepository.update(
+            {
+                where: { id: organizer.id },
+                data: { isContactEmailVerified: true },
+            },
+            tx
+        );
     },
 
     /**
@@ -772,6 +928,7 @@ const organizerService = {
             where: { contactEmail: email },
         });
     },
+
     /**
      * @param {string} phone
      * @return {Promise<Organizer | null>}
@@ -797,14 +954,15 @@ const organizerService = {
 
     /**
      * @param {string} organizerId
+     * @param {TransactionClient | null} [tx]
      */
-    findById(organizerId) {
-        return organizerRepository.findById(organizerId);
+    findById(organizerId, tx = null) {
+        return organizerRepository.findById(organizerId, {}, tx);
     },
 
     /**
      * @param {string} organizerId
-     * @param {object} data
+     * @param {TransactionClient | null} [tx]
      */
     updateModerationState(organizerId, data) {
         return organizerRepository.update({
@@ -828,6 +986,173 @@ const organizerService = {
         );
     },
 
+    /**
+     * @param {string} userId
+     * @param {object} input
+     * @param {object} [files]
+     * @returns {Promise<Organizer>}
+     */
+    async updateSettings(userId, settings, files) {
+        const organizer = await this.findByUserId(userId);
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        const updateData = pluck(settings, [
+            'name',
+            'description',
+            'contactName',
+            'contactEmail',
+            'contactPhone',
+            'websiteUrl',
+            'instagramUrl',
+            'facebookUrl',
+            'twitterUrl',
+            'linkedinUrl',
+            'youtubeUrl',
+            'address',
+        ]);
+
+        if (updateData.contactEmail && updateData.contactEmail !== organizer.contactEmail) {
+            // Check for uniqueness
+            const existing = await organizerRepository.findOne({
+                where: { contactEmail: updateData.contactEmail },
+            });
+            if (existing && existing.id !== organizer.id) {
+                throw new ConflictError(undefined, undefined, [
+                    OrganizerErrors.ORGANIZER_EMAIL_ALREADY_IN_USE,
+                ]);
+            }
+            updateData.isContactEmailVerified = false;
+        }
+
+        if (updateData.contactPhone && updateData.contactPhone !== organizer.contactPhone) {
+            // Check for uniqueness
+            const existing = await organizerRepository.findOne({
+                where: { contactPhone: updateData.contactPhone },
+            });
+            if (existing && existing.id !== organizer.id) {
+                throw new ConflictError(undefined, undefined, [
+                    OrganizerErrors.ORGANIZER_PHONE_ALREADY_IN_USE,
+                ]);
+            }
+            updateData.isContactPhoneVerified = false;
+        }
+
+        if (files.logo) {
+            const saved = await fileService.save(files.logo, `organizers/${organizer.id}/logo`);
+            updateData.logoDisk = saved.disk;
+            updateData.logoPath = saved.url;
+
+            if (organizer.logoPath) {
+                await fileService.delete(organizer.logoPath, organizer.logoDisk).catch(() => {});
+            }
+        }
+
+        if (files.cover) {
+            const saved = await fileService.save(files.cover, `organizers/${organizer.id}/cover`);
+            updateData.coverDisk = saved.disk;
+            updateData.coverPath = saved.url;
+
+            if (organizer.coverPath) {
+                await fileService.delete(organizer.coverPath, organizer.coverDisk).catch(() => {});
+            }
+        }
+
+        return organizerRepository.update({
+            where: { id: organizer.id },
+            data: updateData,
+        });
+    },
+
+    /**
+     * @param {string} userId
+     * @returns {Promise<void>}
+     */
+    async requestPhoneOtp(userId) {
+        const organizer = await this.findByUserId(userId);
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        if (organizer.isContactPhoneVerified) {
+            throw new ConflictError(undefined, undefined, [
+                OrganizerErrors.ORGANIZER_CONTACT_PHONE_ALREADY_VERIFIED,
+            ]);
+        }
+
+        await otpService.requestPhoneOtpRecord(organizer.contactPhone);
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} otp
+     * @returns {Promise<Organizer>}
+     */
+    async verifyPhoneOtp(userId, otp) {
+        const organizer = await this.findByUserId(userId);
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        if (organizer.isContactPhoneVerified) {
+            throw new ConflictError(undefined, undefined, [
+                OrganizerErrors.ORGANIZER_CONTACT_PHONE_ALREADY_VERIFIED,
+            ]);
+        }
+
+        return organizerRepository.runInTransaction(async (tx) => {
+            await otpService.verifyPhoneOtpRecord(organizer.contactPhone, otp, tx);
+
+            return organizerRepository.update(
+                {
+                    where: { id: organizer.id },
+                    data: { isContactPhoneVerified: true },
+                },
+                tx
+            );
+        });
+    },
+
+    /**
+     * @param {string} organizerId
+     * @param {string} [currentUserId]
+     * @returns {Promise<Organizer & { isFollowing: boolean }>}
+     */
+    async getPublicProfile(organizerId, currentUserId) {
+        const organizer = /** @type {any} */ (
+            await organizerRepository.findById(organizerId, {
+                include: {
+                    _count: {
+                        select: { followers: true },
+                    },
+                    Event: {
+                        where: {
+                            deletedAt: null,
+                        },
+                        orderBy: { createdAt: 'desc' },
+                        take: 10,
+                        include: {
+                            venue: { select: { name: true } },
+                        },
+                    },
+                },
+            })
+        );
+
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        if (currentUserId) {
+            organizer.isFollowing = await organizerFollowerRepository.isFollowing(
+                currentUserId,
+                organizerId
+            );
+        }
+
+        return organizer;
+    },
 };
 
 export default organizerService;

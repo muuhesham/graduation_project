@@ -322,12 +322,12 @@ const authService = {
         const user = await userService.findById(userId);
         if (!user) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
 
-        if (user.isPhoneVerified && user.phone === phone) {
+        if (organizer.isContactPhoneVerified && organizer.contactPhone === phone) {
             throw new AppError('Phone already verified', 400, 'PHONE_ALREADY_VERIFIED');
         }
 
-        if (user.phone !== phone) {
-            await userService.updatePhone(userId, phone);
+        if (organizer.contactPhone !== phone) {
+            throw new AppError('Phone number mismatch', 400, 'PHONE_MISMATCH');
         }
 
         return { phone, templateName: 'phoneOtp', variables: {} };

@@ -8,6 +8,10 @@ import TicketStatus from '../constants/enums/ticketStatus.js';
 
 import { orderRepository } from './../repositories/index.js';
 
+/**
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
+ */
+
 const orderService = {
     MAX_LIMIT: 100,
     DEFAULT_SELECTIONS: {
@@ -240,7 +244,7 @@ const orderService = {
     /**
      * @param {Date} since
      * @param {number} payoutId
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     * @param {TransactionClient} tx
      */
     async markOrdersAsPaid(since, payoutId, tx) {
         return orderRepository.updateMany({
@@ -256,33 +260,45 @@ const orderService = {
         }, tx);
     },
 
-    async refundOrders({ eventId, tx }){
+    /**
+     * @deprecated Use refundOrdersRecord instead.
+     */
+    async refundOrders({ eventId, tx }) {
+        return this.refundOrdersRecord({ eventId, tx });
+    },
+
+    /**
+     * @param {{ eventId: number, tx: TransactionClient }} params
+     * @returns {Promise<void>}
+     */
+    async refundOrdersRecord({ eventId, tx }) {
         const orders = await tx.order.findMany({
             where: {
                 status: OrderStatus.COMPLETED,
                 orderItems: {
-                    some: { ticketType: { eventId } }
-                }
-        }});
+                    some: { ticketType: { eventId } },
+                },
+            },
+        });
 
-        if(orders.length === 0) return;
+        if (orders.length === 0) return;
 
-        const refundOrders = orders.flatMap(order => [
+        const refundPromises = orders.flatMap((order) => [
             tx.user.update({
-                where: {id: order.userId},
-                data: {wallet: {increment: order.totalPrice}}
+                where: { id: order.userId },
+                data: { wallet: { increment: order.totalPrice } },
             }),
             tx.order.update({
-                where: {id: order.id},
-                data: {status: OrderStatus.REFUNDED}
+                where: { id: order.id },
+                data: { status: OrderStatus.REFUNDED },
             }),
             tx.ticket.updateMany({
-                where: {orderId: order.id},
-                data: {status: TicketStatus.EXPIRED}
+                where: { orderId: order.id },
+                data: { status: TicketStatus.EXPIRED },
             }),
         ]);
-        
-        await Promise.all(refundOrders);
+
+        await Promise.all(refundPromises);
     },
 };
 
