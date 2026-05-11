@@ -11,6 +11,7 @@ import auth from './../middlewares/auth.js';
 import authorize from './../middlewares/authorize.js';
 import { restrictToLocalhost } from './../middlewares/network.js';
 import couponValidation from './../validations/couponValidation.js';
+import { upload } from './../middlewares/upload.js';
 
 /** @type {Router} */
 const router = Router();
@@ -228,6 +229,39 @@ router.post(
     adminValidation.processPayouts,
     validate,
     adminController.processPayouts
+);
+
+router.get(
+    '/newsletter/subscribers',
+    ...adminOnly,
+    adminValidation.listNewsletterSubscribersQuery,
+    validate,
+    adminController.listNewsletterSubscribers
+);
+
+router.get('/categories', ...adminOnly, adminController.listCategories);
+router.post(
+    '/categories',
+    ...adminOnly,
+    upload.single('image'),
+    adminValidation.createCategory,
+    validate,
+    adminController.createCategory
+);
+router.put(
+    '/categories/:id',
+    ...adminOnly,
+    upload.single('image'),
+    adminValidation.updateCategory,
+    validate,
+    adminController.updateCategory
+);
+router.delete(
+    '/categories/:id',
+    ...adminOnly,
+    adminValidation.categoryIdParam,
+    validate,
+    adminController.deleteCategory
 );
 
 export default router;

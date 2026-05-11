@@ -1,8 +1,9 @@
+//@ts-check
+
 import asyncWrapper from '../middlewares/asyncWrapper.js';
-import { sendSuccess, sendFail } from '../utils/response.js';
+import { sendSuccess } from '../utils/response.js';
 import organizerService from '../services/organizerService.js';
-import orderService from '../services/orderService.js';
-import { prisma as prismaClient } from '../config/db.js';
+import { EventResource, OrganizerPublicResource } from './../resources/index.js';
 
 const organizerController = {
     createEvent: asyncWrapper(async (req, res) => {
@@ -10,123 +11,107 @@ const organizerController = {
         const banner = req.file;
 
         let {
-            title,
-            categoryName,
-            location,
-            description,
+            priceTiers,
+            seatsData,
             tickets,
             sessions,
-            type,
-            mode,
-            eventType,
-            seatsData,
-            numberOfRows,
-            numberOfColumns,
-            priceTiers,
             eventRules,
             tags,
         } = req.body;
 
-        if (priceTiers) {
+        if (priceTiers && typeof priceTiers === 'string') {
             priceTiers = JSON.parse(priceTiers);
         }
 
-        if (seatsData) {
+        if (seatsData && typeof seatsData === 'string') {
             seatsData = JSON.parse(seatsData);
         }
 
-        const result = await organizerService.createEvent(userId, {
-            title,
-            categoryName,
-            location,
-            description,
-            banner,
-            tickets,
-            sessions,
-            type,
-            mode,
-            eventType,
-            seatsData,
-            numberOfRows,
-            numberOfColumns,
-            priceTiers,
-            eventRules,
-            tags,
-        });
-
-        if (result.status === 'fail') {
-            return sendFail(res, result.data, 400);
+        if (tickets && typeof tickets === 'string') {
+            tickets = JSON.parse(tickets);
         }
 
-        return sendSuccess(res, result.data, 201);
+        if (sessions && typeof sessions === 'string') {
+            sessions = JSON.parse(sessions);
+        }
+
+        if (eventRules && typeof eventRules === 'string') {
+            eventRules = JSON.parse(eventRules);
+        }
+
+        if (tags && typeof tags === 'string') {
+            tags = JSON.parse(tags);
+        }
+
+        const event = await organizerService.createOrganizerEvent(userId, {
+            ...req.body,
+            priceTiers,
+            seatsData,
+            tickets,
+            sessions,
+            eventRules,
+            tags,
+            banner,
+        });
+
+        return sendSuccess(res, EventResource.make(event), 201);
     }),
 
     deleteEvent: asyncWrapper(async (req, res) => {
-        const eventId = parseInt(req.params.eventId, 10);
+        const eventId = req.params.eventId;
         const userId = req.user.id;
 
-        const result = await organizerService.deleteEvent(userId, eventId);
+        const result = await organizerService.deleteOrganizerEvent(userId, eventId);
 
-        if (result.status === 'fail') {
-            return sendFail(res, result.data, 400);
-        }
-
-        return sendSuccess(res, result.data, 200);
+        return sendSuccess(res, EventResource.make(result), 200);
     }),
 
     updateEvent: asyncWrapper(async (req, res) => {
-        const eventId = parseInt(req.params.eventId, 10);
+        const eventId = req.params.eventId;
         const userId = req.user.id;
         const banner = req.file;
 
-        const { title, categoryName, location, description, tickets, sessions, type, mode, eventRules, tags } =
-            req.body;
-
-        const result = await organizerService.updateEvent(userId, eventId, {
-            title,
-            categoryName,
-            location,
-            description,
+        const event = await organizerService.updateOrganizerEvent(userId, eventId, {
+            ...req.body,
             banner,
-            tickets,
-            sessions,
-            type,
-            mode,
-            eventRules,
-            tags,
         });
 
-        if (result.status === 'fail') {
-            return sendFail(res, result.data, 400);
-        }
-
-        return sendSuccess(res, result.data, 200);
+        return sendSuccess(res, EventResource.make(event), 200);
     }),
 
     listEvents: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
 
-        const result = await organizerService.listEvents(userId);
+        const result = await organizerService.listOrganizerEvents(userId);
 
-        if (result.status === 'fail') {
-            return sendFail(res, result.data, 400);
-        }
-
-        return sendSuccess(res, result.data, 200);
+        return sendSuccess(res, EventResource.paginate(result), 200);
     }),
 
-    cancelEvent: asyncWrapper(async (req,res) => {
+    cancelEvent: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
-        const {eventId} = req.params;
+        const { eventId } = req.params;
 
-        await prismaClient.$transaction(async (tx) => {
-            await organizerService.cancelEvent({userId, eventId, tx});
-            await orderService.refundOrders({eventId, tx});
-        });
+        await organizerService.cancelOrganizerEvent(userId, parseInt(eventId, 10));
 
-        return sendSuccess(res, { message: 'Event cancelled & refunds processed successfully.' }, 200);
+        return sendSuccess(
+            res,
+            { message: 'Event cancelled & refunds processed successfully.' },
+            200
+        );
     }),
 
+    /**
+     * @param {import('express').Request} req
+     * @param {import('express').Response} res
+     */
+    getPublicProfile: asyncWrapper(async (req, res) => {
+        const { id } = req.params;
+        const currentUserId = /** @type {any} */ (req).user?.id;
+
+        const organizer = await organizerService.getPublicProfile(id, currentUserId);
+
+        return sendSuccess(res, { organizer: OrganizerPublicResource.make(organizer) });
+    }),
 };
 
 export default organizerController;

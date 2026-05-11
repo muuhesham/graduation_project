@@ -9,7 +9,7 @@ import locationService from '../services/locationService.js';
  * @typedef {import('express').Request} Request
  * @typedef {import('express').Response} Response
  *
- * @typedef {import('./../services/locationService.js').default} LocationService
+ * @typedef {import('./../services/locationService').default} LocationService
  */
 
 class LocationController {

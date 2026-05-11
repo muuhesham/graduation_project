@@ -14,14 +14,19 @@ import {
     AdminReviewQueueResource,
     AdminTicketSalesResource,
     AdminUserResource,
+    NewsletterSubscriberResource,
+    CategoryResource,
 } from './../resources.js';
+
+import OrganizerSuccessMessages from '../constants/messages/success/organizer.js';
+import CategorySuccessMessages from '../constants/messages/success/category.js';
 
 /**
  * @typedef {import('express').Request} Request
  * @typedef {import('express').Response} Response
- * @typedef {Request & { user?: import('./../types/express/common.types.js').AuthUser }} AuthRequest
+ * @typedef {import('./../types/express').AuthRequest} AuthRequest
  *
- * @typedef {import('./../services/adminService.js').default} AdminService
+ * @typedef {import('./../services/adminService').default} AdminService
  *
  * @typedef {import('./../types/dtos').AdminRegisterDTO} AdminRegisterDTO
  *
@@ -70,17 +75,18 @@ import {
  * @typedef {AuthRequest & { body: AdminSuspendOrganizerDTO }} SuspendOrganizerRequest
  * @typedef {AuthRequest & { body: AdminProcessPayoutsDTO }} ProcessPayoutsRequest
  * @typedef {AuthRequest & { body: AdminCreateCouponDTO }} CreateCouponRequest
+ * @typedef {AuthRequest & { query: { page?: number, limit?: number, q?: string } }} ListNewsletterRequest
  */
 
 class AdminController {
     /** @type {AdminService} */
     #adminService;
-    /** @type {typeof import('./../services/couponService.js').default} */
+    /** @type {typeof import('./../services/couponService').default} */
     #couponService;
 
     /**
      * @param {AdminService} adminService
-     * @param {typeof import('./../services/couponService.js').default} couponService
+     * @param {typeof import('./../services/couponService').default} couponService
      */
     constructor(adminService, couponService) {
         this.#adminService = adminService;
@@ -145,11 +151,11 @@ class AdminController {
 
     deleteUser = asyncWrapper(
         /**
-         * @param {Request & { params: AdminDeleteUserDTO }} req
+         * @param {AuthRequest & { params: AdminDeleteUserDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { userId } = req.params;
 
             const data = await this.#adminService.deleteUser(adminId, userId);
@@ -164,7 +170,7 @@ class AdminController {
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { userId } = req.params;
 
             const data = await this.#adminService.restoreUser(adminId, userId);
@@ -175,11 +181,11 @@ class AdminController {
 
     getUser = asyncWrapper(
         /**
-         * @param {Request & { params: AdminUserParamsDTO }} req
+         * @param {AuthRequest & { params: AdminUserParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { userId } = req.params;
 
             const data = await this.#adminService.getUserById(adminId, userId);
@@ -190,11 +196,11 @@ class AdminController {
 
     ticketsSoldByEvent = asyncWrapper(
         /**
-         * @param {Request & { params: AdminTicketsSoldByEventDTO }} req
+         * @param {AuthRequest & { params: AdminTicketsSoldByEventDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { eventId } = req.params;
 
             const data = await this.#adminService.ticketsSoldByEvent(adminId, eventId);
@@ -207,11 +213,11 @@ class AdminController {
 
     revenueByEvent = asyncWrapper(
         /**
-         * @param {Request & { params: AdminRevenueByEventDTO }} req
+         * @param {AuthRequest & { params: AdminRevenueByEventDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { eventId } = req.params;
 
             const data = await this.#adminService.revenueByEvent(adminId, eventId);
@@ -224,11 +230,11 @@ class AdminController {
 
     deleteEvent = asyncWrapper(
         /**
-         * @param {Request & { params: AdminEventParamsDTO }} req
+         * @param {AuthRequest & { params: AdminEventParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { eventId } = req.params;
 
             const data = await this.#adminService.deleteEvent(adminId, eventId);
@@ -239,11 +245,11 @@ class AdminController {
 
     restoreEvent = asyncWrapper(
         /**
-         * @param {Request & { params: AdminEventParamsDTO }} req
+         * @param {AuthRequest & { params: AdminEventParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { eventId } = req.params;
 
             const data = await this.#adminService.restoreEvent(adminId, eventId);
@@ -254,11 +260,11 @@ class AdminController {
 
     listEvents = asyncWrapper(
         /**
-         * @param {Request & { query: AdminListEventsQueryDTO }} req
+         * @param {AuthRequest & { query: AdminListEventsQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { page, limit, q, type, mode, organizerId, venueId, categoryId, hasSeatMap } =
                 req.query;
 
@@ -280,11 +286,11 @@ class AdminController {
 
     getEvent = asyncWrapper(
         /**
-         * @param {Request & { params: AdminEventParamsDTO }} req
+         * @param {AuthRequest & { params: AdminEventParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { eventId } = req.params;
 
             const data = await this.#adminService.getEventById(adminId, eventId);
@@ -295,11 +301,11 @@ class AdminController {
 
     activeUsers = asyncWrapper(
         /**
-         * @param {Request & { query: { days?: number } }} req
+         * @param {AuthRequest & { query: { days?: number } }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const days = req.query.days ?? 30;
 
             const data = await this.#adminService.activeUsers(adminId, days);
@@ -310,11 +316,11 @@ class AdminController {
 
     dashboardSummary = asyncWrapper(
         /**
-         * @param {Request & { query: AdminDashboardSummaryQueryDTO }} req
+         * @param {AuthRequest & { query: AdminDashboardSummaryQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { days } = req.query;
 
             const data = await this.#adminService.getDashboardSummary(adminId, { days });
@@ -325,11 +331,11 @@ class AdminController {
 
     reviewQueue = asyncWrapper(
         /**
-         * @param {Request & { query: AdminReviewQueueQueryDTO }} req
+         * @param {AuthRequest & { query: AdminReviewQueueQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { page, limit } = req.query;
 
             const data = await this.#adminService.getReviewQueue(adminId, { page, limit });
@@ -340,11 +346,11 @@ class AdminController {
 
     dashboardOverview = asyncWrapper(
         /**
-         * @param {Request & { query: AdminDashboardOverviewQueryDTO }} req
+         * @param {AuthRequest & { query: AdminDashboardOverviewQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { days, page, limit } = req.query;
 
             const data = await this.#adminService.dashboardOverview(adminId, {
@@ -362,11 +368,11 @@ class AdminController {
 
     listUsers = asyncWrapper(
         /**
-         * @param {Request & { query: AdminListUsersQueryDTO }} req
+         * @param {AuthRequest & { query: AdminListUsersQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { page, limit, gender, isVerified, languagePreference, isCompleted, createdAt } =
                 req.query;
 
@@ -386,11 +392,11 @@ class AdminController {
 
     listOrganizers = asyncWrapper(
         /**
-         * @param {Request & { query: AdminListOrganizersQueryDTO }} req
+         * @param {AuthRequest & { query: AdminListOrganizersQueryDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { page, limit, status, verificationStatus } = req.query;
 
             const data = await this.#adminService.listOrganizers(adminId, {
@@ -406,11 +412,11 @@ class AdminController {
 
     getOrganizer = asyncWrapper(
         /**
-         * @param { Request & { params: AdminOrganizerParamsDTO }} req
+         * @param { AuthRequest & { params: AdminOrganizerParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { organizerId } = req.params;
 
             const data = await this.#adminService.getOrganizerById(adminId, organizerId);
@@ -421,63 +427,75 @@ class AdminController {
 
     approveOrganizer = asyncWrapper(
         /**
-         * @param {AuthenticatedNoBodyRequest & { params: AdminOrganizerParamsDTO }} req
+         * @param {AuthRequest & { params: AdminOrganizerParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
+            const adminId = req.user.id;
             const { organizerId } = req.params;
-            const adminId = Number(/** @type {any} */ (req).user.id);
 
             const data = await this.#adminService.approveOrganizer(adminId, organizerId);
 
-            return sendSuccess(res, { organizer: AdminOrganizerResource.make(data) });
+            return sendSuccess(res, {
+                message: OrganizerSuccessMessages.ORGANIZER_APPROVED.message,
+                organizer: AdminOrganizerResource.make(data),
+            });
         }
     );
 
     rejectOrganizer = asyncWrapper(
         /**
-         * @param {RejectOrganizerRequest & { params: AdminOrganizerParamsDTO }} req
+         * @param {AuthRequest & { body: AdminRejectOrganizerDTO, params: AdminOrganizerParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { organizerId } = req.params;
             const { reason } = req.body;
 
             const data = await this.#adminService.rejectOrganizer(adminId, organizerId, reason);
 
-            return sendSuccess(res, { organizer: AdminOrganizerResource.make(data) });
+            return sendSuccess(res, {
+                message: OrganizerSuccessMessages.ORGANIZER_REJECTED.message,
+                organizer: AdminOrganizerResource.make(data),
+            });
         }
     );
 
     suspendOrganizer = asyncWrapper(
         /**
-         * @param {SuspendOrganizerRequest & { params: AdminOrganizerParamsDTO }} req
+         * @param {AuthRequest & { body: AdminSuspendOrganizerDTO, params: AdminOrganizerParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { organizerId } = req.params;
             const { reason } = req.body;
 
             const data = await this.#adminService.suspendOrganizer(adminId, organizerId, reason);
 
-            return sendSuccess(res, { organizer: AdminOrganizerResource.make(data) });
+            return sendSuccess(res, {
+                message: OrganizerSuccessMessages.ORGANIZER_SUSPENDED.message,
+                organizer: AdminOrganizerResource.make(data),
+            });
         }
     );
 
     reactivateOrganizer = asyncWrapper(
         /**
-         * @param {AuthenticatedNoBodyRequest & { params: AdminOrganizerParamsDTO }} req
+         * @param {AuthRequest & { params: AdminOrganizerParamsDTO }} req
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { organizerId } = req.params;
 
             const data = await this.#adminService.reactivateOrganizer(adminId, organizerId);
 
-            return sendSuccess(res, { organizer: AdminOrganizerResource.make(data) });
+            return sendSuccess(res, {
+                message: OrganizerSuccessMessages.ORGANIZER_REACTIVATED.message,
+                organizer: AdminOrganizerResource.make(data),
+            });
         }
     );
 
@@ -487,7 +505,7 @@ class AdminController {
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { days } = req.body;
 
             const data = await this.#adminService.processPayouts(adminId, { days });
@@ -502,12 +520,12 @@ class AdminController {
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { page, limit } = req.query;
 
             const data = await this.#adminService.getPayoutHistory(adminId, {
-                page: Number(page),
-                limit: Number(limit),
+                page,
+                limit,
             });
 
             return sendSuccess(res, AdminPayoutResource.paginate(data));
@@ -520,7 +538,7 @@ class AdminController {
          * @param {Response} res
          */
         async (req, res) => {
-            const adminId = Number(/** @type {any} */ (req).user.id);
+            const adminId = req.user.id;
             const { days } = req.query;
 
             const data = await this.#adminService.getFinanceSummary(adminId, { days });
@@ -531,7 +549,7 @@ class AdminController {
 
     listCoupons = asyncWrapper(
         /**
-         * @param {Request} req
+         * @param {AuthRequest} req
          * @param {Response} res
          */
         async (req, res) => {
@@ -542,7 +560,7 @@ class AdminController {
 
     createCoupon = asyncWrapper(
         /**
-         * @param {CreateCouponRequest} req
+         * @param {AuthRequest & { body: { code: string, discount: number } }} req
          * @param {Response} res
          */
         async (req, res) => {
@@ -554,13 +572,98 @@ class AdminController {
 
     deleteCoupon = asyncWrapper(
         /**
-         * @param {Request & { params: { id: string } }} req
+         * @param {AuthRequest & { params: { id: string } }} req
          * @param {Response} res
          */
         async (req, res) => {
             const { id } = req.params;
             await this.#couponService.deleteCoupon({ id: Number(id) });
             return sendSuccess(res, null, 204);
+        }
+    );
+
+    listNewsletterSubscribers = asyncWrapper(
+        /**
+         * @param {ListNewsletterRequest} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const { page, limit, q } = req.query;
+
+            const data = await this.#adminService.listNewsletterSubscribers(adminId, {
+                page,
+                limit,
+                q,
+            });
+
+            return sendSuccess(res, NewsletterSubscriberResource.paginate(data));
+        }
+    );
+
+    listCategories = asyncWrapper(
+        /**
+         * @param {AuthRequest} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const data = await this.#adminService.listCategories(adminId);
+            return sendSuccess(res, { categories: CategoryResource.collection(data) });
+        }
+    );
+
+    createCategory = asyncWrapper(
+        /**
+         * @param {AuthRequest & { body: { name: string }, file?: import('./../types/shared').MulterFile }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const data = await this.#adminService.createCategory(adminId, {
+                ...req.body,
+                image: req.file,
+            });
+            return sendSuccess(
+                res,
+                {
+                    message: CategorySuccessMessages.CATEGORY_CREATED,
+                    category: CategoryResource.make(data),
+                },
+                201
+            );
+        }
+    );
+
+    updateCategory = asyncWrapper(
+        /**
+         * @param {AuthRequest & { params: { id: number }, body: { name?: string }, file?: import('./../types/shared').MulterFile }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const categoryId = req.params.id;
+            const data = await this.#adminService.updateCategory(adminId, categoryId, {
+                ...req.body,
+                image: req.file,
+            });
+            return sendSuccess(res, {
+                ...CategorySuccessMessages.CATEGORY_UPDATED,
+                category: CategoryResource.make(data),
+            });
+        }
+    );
+
+    deleteCategory = asyncWrapper(
+        /**
+         * @param {AuthRequest & { params: { id: number } }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const categoryId = req.params.id;
+            await this.#adminService.deleteCategory(adminId, categoryId);
+            return sendSuccess(res, CategorySuccessMessages.CATEGORY_DELETED, 200);
         }
     );
 }

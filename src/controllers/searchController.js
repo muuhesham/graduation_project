@@ -9,8 +9,8 @@ import SearchResource from '../resources/SearchResource.js';
 /**
  * @typedef {import('express').Request} Request
  * @typedef {import('express').Response} Response
- * @typedef {import('../types/search.types.js').SearchFilters} SearchFilters
- * @typedef {import('../types/search.types.js').ValidatedSearchQuery} ValidatedSearchQuery
+ * @typedef {import('../types/search.types').SearchFilters} SearchFilters
+ * @typedef {import('../types/search.types').ValidatedSearchQuery} ValidatedSearchQuery
  * @typedef {Request & { query: ValidatedSearchQuery }} SearchRequest
  */
 

@@ -4,7 +4,7 @@ import organizerTypes from './../constants/enums/organizerTypes.js';
 class UserValidation {
     /** @typedef {import('./../types/dtos').UpgradeToOrganizerDTO} */
     upgradeToOrganizer = [
-        body('organizerType')
+        body('type')
             .notEmpty()
             .withMessage('Organizer type is required')
             .trim()
@@ -22,13 +22,18 @@ class UserValidation {
             .withMessage('Name cannot exceed 150 characters'),
 
         body('description').optional().trim().isString(),
-        body('website').optional().trim().isString(),
-        body('contactPersonName').optional().trim().isString(),
+        body('websiteUrl').optional().trim().isString(),
+        body('contactName').optional().trim().isString(),
         body('instagramUrl')
             .optional()
             .trim()
             .isString()
-            .custom((val) => this.isValidUrl(val, 'Instagram URL')),
+            .isURL({
+                protocols: ['http', 'https'],
+                require_protocol: true,
+                host_whitelist: ['instagram.com', 'www.instagram.com'],
+            })
+            .withMessage('Instagram URL must be a valid Instagram link'),
         body('facebookUrl')
             .optional()
             .trim()
@@ -73,7 +78,7 @@ class UserValidation {
             })
             .withMessage('YouTube URL must be a valid YouTube link'),
 
-        body('website')
+        body('websiteUrl')
             .optional()
             .trim()
             .isString()
@@ -107,21 +112,21 @@ class UserValidation {
             .withMessage('stateId must be a valid integer'),
 
         body('nationalId')
-            .if(body('organizerType').equals(organizerTypes.HOBBYIST))
+            .if(body('type').equals(organizerTypes.HOBBYIST))
             .notEmpty()
             .withMessage('nationalId is required for hobbyist organizers')
             .trim()
             .isString(),
 
         body('ownerName')
-            .if(body('organizerType').equals(organizerTypes.BUSINESS))
+            .if(body('type').equals(organizerTypes.BUSINESS))
             .notEmpty()
             .withMessage('ownerName is required for business organizers')
             .trim()
             .isString(),
 
         body('commercialRegistration')
-            .if(body('organizerType').equals(organizerTypes.BUSINESS))
+            .if(body('type').equals(organizerTypes.BUSINESS))
             .notEmpty()
             .withMessage('commercialRegistration is required for business organizers')
             .trim()
@@ -132,26 +137,20 @@ class UserValidation {
             .withMessage('contactEmail is required')
             .trim()
             .isEmail()
+            .toLowerCase()
             .withMessage('contactEmail must be a valid email address')
             .custom((value, { req }) => {
-                if (req.body.organizerType !== organizerTypes.COMPANY) {
+                if (req.body.type !== organizerTypes.COMPANY) {
                     return true;
                 }
 
                 const blockedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com'];
                 const emailDomain = String(value).toLowerCase().split('@')[1] || '';
-                const officialDomain = String(req.body.officialEmailDomain || '')
-                    .toLowerCase()
-                    .replace(/^@/, '');
 
                 if (blockedDomains.includes(emailDomain)) {
                     throw new Error(
-                        'Company contactEmail must use a company domain, not a personal email provider'
+                        'Company contactEmail must use a professional domain, not a personal email provider'
                     );
-                }
-
-                if (officialDomain && emailDomain !== officialDomain) {
-                    throw new Error('contactEmail domain must match officialEmailDomain');
                 }
 
                 return true;
@@ -166,7 +165,7 @@ class UserValidation {
 
         body('taxId')
             .if(
-                body('organizerType').custom((value) =>
+                body('type').custom((value) =>
                     [organizerTypes.BUSINESS, organizerTypes.COMPANY].includes(value)
                 )
             )
@@ -176,34 +175,11 @@ class UserValidation {
             .isString(),
 
         body('registrationNumber')
-            .if(body('organizerType').equals(organizerTypes.COMPANY))
+            .if(body('type').equals(organizerTypes.COMPANY))
             .notEmpty()
             .withMessage('registrationNumber is required for company organizers')
             .trim()
             .isString(),
-
-        body('officialEmailDomain')
-            .if(body('organizerType').equals(organizerTypes.COMPANY))
-            .notEmpty()
-            .withMessage('officialEmailDomain is required for company organizers')
-            .trim()
-            .isString()
-            .custom((value) => {
-                const domain = value.toLowerCase().replace(/^@/, '');
-                const blockedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com'];
-
-                if (blockedDomains.includes(domain)) {
-                    throw new Error(
-                        'Please use a company domain instead of a personal email provider'
-                    );
-                }
-
-                if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
-                    throw new Error('officialEmailDomain must be a valid company domain');
-                }
-
-                return true;
-            }),
 
         body('officialDocumentsDisk').optional().trim().isString(),
         body('officialDocumentsPath').optional().trim().isString(),
@@ -212,6 +188,9 @@ class UserValidation {
 
         body('officialDocument').custom((_, { req }) => {
             if (!req.file) {
+                if (req.body.type === organizerTypes.COMPANY) {
+                    throw new Error('officialDocument is required for company organizers');
+                }
                 return true;
             }
 
@@ -230,9 +209,7 @@ class UserValidation {
         }),
     ];
 
-    sendOrganizerContactEmailVerification = [];
-
-    resendOrganizerContactEmailVerification = this.sendOrganizerContactEmailVerification;
+    resendOrganizerEmailOtp = [];
 
     verifyOrganizerContactEmail = [
         body('otp')

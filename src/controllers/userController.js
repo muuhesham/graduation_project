@@ -5,8 +5,10 @@ import { sendSuccess } from '../utils/response.js';
 import userService from '../services/userService.js';
 import organizerService from '../services/organizerService.js';
 import ticketService from '../services/ticketService.js';
-import fileService from '../services/fileService.js';
-import OrganizerSuccessMessages from '../constants/messages/success/organizer.js';
+
+import { OrganizerResource } from './../resources/index.js';
+
+import OrganizerSuccessMessages from './../constants/messages/success/organizer.js';
 
 /** @typedef {import('express').Response} Response */
 /** @typedef {import('./../types/express').UpgradeToOrganizerWithFileRequest} UpgradeToOrganizerWithFileRequest */
@@ -28,69 +30,48 @@ const userController = {
         async (req, res) => {
             const userId = req.user.id;
 
-            if (req.body.organizerType && !req.body.type) {
-                req.body.type = req.body.organizerType;
-            }
+            const organizer = await userService.upgradeToOrganizer(userId, req.body, req.file);
 
-            if (req.file) {
-                const organizerDocumentsFolder = `user/${userId}/organizer/documents`;
-                const savedOfficialDocument = await fileService.save(
-                    req.file,
-                    organizerDocumentsFolder
-                );
+            await organizerService.requestEmailOtp(userId);
 
-                if (savedOfficialDocument) {
-                    req.body.officialDocumentsDisk = savedOfficialDocument.disk;
-                    req.body.officialDocumentsPath = savedOfficialDocument.path;
-                }
-            }
-
-            const result = await userService.upgradeToOrganizer(userId, req.body);
-
-            return sendSuccess(res, result, 201);
+            return sendSuccess(
+                res,
+                {
+                    organizer: OrganizerResource.make(organizer),
+                },
+                201
+            );
         }
     ),
 
-    sendOrganizerContactEmailVerification: asyncWrapper(
+    resendOrganizerEmailOtp: asyncWrapper(
         /**
          * @param {AuthenticatedRequestNoBody} req
          * @param {Response} res
          */
         async (req, res) => {
             const userId = req.user.id;
-            await organizerService.requestOrganizerContactEmailVerification(userId);
+            await organizerService.requestEmailOtp(userId);
 
             return sendSuccess(
                 res,
-                OrganizerSuccessMessages.ORGANIZER_CONTACT_EMAIL_VERIFICATION_SENT,
-                200
+                OrganizerSuccessMessages.ORGANIZER_CONTACT_EMAIL_VERIFICATION_SENT
             );
         }
     ),
 
-    resendOrganizerContactEmailVerification: asyncWrapper(
+    checkWallet: asyncWrapper(
         /**
          * @param {AuthenticatedRequestNoBody} req
          * @param {Response} res
          */
         async (req, res) => {
             const userId = req.user.id;
-            await organizerService.resendOrganizerContactEmailVerification(userId);
+            const result = await userService.checkWallet({ userId });
 
-            return sendSuccess(
-                res,
-                OrganizerSuccessMessages.ORGANIZER_CONTACT_EMAIL_VERIFICATION_RESENT,
-                200
-            );
+            return sendSuccess(res, { balance: result }, 200);
         }
     ),
-
-    checkWallet: asyncWrapper(async (req, res) => {
-        const userId = req.user.id;
-        const result = await userService.checkWallet({userId});
-
-        return sendSuccess(res, { balance: result }, 200);
-    }),
 
     verifyOrganizerContactEmail: asyncWrapper(
         /**
@@ -99,7 +80,7 @@ const userController = {
          */
         async (req, res) => {
             const userId = req.user.id;
-            await organizerService.verifyOrganizerContactEmail(userId, req.body);
+            await organizerService.verifyContactEmail(userId, req.body);
 
             return sendSuccess(res, OrganizerSuccessMessages.ORGANIZER_CONTACT_EMAIL_VERIFIED, 200);
         }
@@ -128,6 +109,36 @@ const userController = {
             const result = await userService.getInterestedEvents({ userId });
 
             return sendSuccess(res, { events: result }, 200);
+        }
+    ),
+
+    followOrganizer: asyncWrapper(
+        /**
+         * @param {import('express').Request & { user: { id: string }, params: { organizerId: string } }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const userId = req.user.id;
+            const { organizerId } = req.params;
+
+            await userService.followOrganizer(userId, organizerId);
+
+            return sendSuccess(res, OrganizerSuccessMessages.ORGANIZER_FOLLOWED);
+        }
+    ),
+
+    unfollowOrganizer: asyncWrapper(
+        /**
+         * @param {import('express').Request & { user: { id: string }, params: { organizerId: string } }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const userId = req.user.id;
+            const { organizerId } = req.params;
+
+            await userService.unfollowOrganizer(userId, organizerId);
+
+            return sendSuccess(res, OrganizerSuccessMessages.ORGANIZER_UNFOLLOWED);
         }
     ),
 };
