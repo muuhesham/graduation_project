@@ -538,25 +538,44 @@ class AdminService {
     /**
      * @param {number} id
      * @param {AdminListEventsOptionsDTO} [options]
-     */
-    async listEvents(id, options = { page: 1, limit: 20 }) {
-        await this.#assertApprovedAdmin(id);
-        return this.#eventService.list({
-            ...options,
-            include: {
-                ...(options.include || {}),
-                category: true,
-                eventTags: {
-                    include: {
-                        tag: {
-                            select: {
-                                name: true,
-                            },
-                        },
-                    },
-                },
-                ticketTypes: {
-                    select: {
+     async listEvents(id, options = { page: 1, limit: 20 }) {
+         await this.#assertApprovedAdmin(id);
+
+         const { withTrashed, status, ...rest } = options;
+         const where = {};
+
+         if (status) {
+             where.status = status;
+         }
+
+         if (withTrashed) {
+             // If listing deleted events, exclude cancelled ones as they cannot be restored
+             where.deletedAt = { not: null };
+             where.status = { not: 'cancelled' };
+         }
+
+         return this.#eventService.list({
+             ...rest,
+             where: {
+                 ...(rest.where || {}),
+                 ...where,
+             },
+             include: {
+                 ...(options.include || {}),
+                 category: true,
+                 eventTags: {
+                     include: {
+                         tag: {
+                             select: {
+                                 name: true,
+                             },
+                         },
+                     },
+                 },
+             },
+             withTrashed,
+         });
+     }
                         sold: true,
                         orderItems: {
                             select: {

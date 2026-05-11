@@ -9,6 +9,7 @@ import orderService from './orderService.js';
 import NotFoundError from '../errors/NotFoundError.js';
 import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
+import EventStatus from '../constants/enums/eventStatus.js';
 import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
@@ -508,6 +509,11 @@ const eventService = {
                 },
             ]);
         }
+
+        if (event.status === EventStatus.CANCELLED) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_RESTORE_CANCELLED]);
+        }
+
         return eventRepository.restoreDeleted(id);
     },
 
@@ -1803,7 +1809,11 @@ const eventService = {
         }
 
         await eventSessionRepository.cancelSessions(id, tx);
-        return eventRepository.softDeleteById(id, tx);
+        
+        return eventRepository.update({
+            where: { id },
+            data: { status: EventStatus.CANCELLED, deletedAt: new Date() }
+        }, tx);
     },
 };
 

@@ -78,6 +78,8 @@
  * @property {string} [q]
  * @property {import('@prisma/client').$Enums.EventType} [type]
  * @property {import('@prisma/client').$Enums.EventMode} [mode]
+ * @property {import('@prisma/client').$Enums.EventStatus} [status]
+ * @property {boolean} [withTrashed]
  * @property {string} [organizerId]
  * @property {number} [venueId]
  * @property {number} [categoryId]

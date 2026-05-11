@@ -265,8 +265,19 @@ class AdminController {
          */
         async (req, res) => {
             const adminId = req.user.id;
-            const { page, limit, q, type, mode, organizerId, venueId, categoryId, hasSeatMap } =
-                req.query;
+            const {
+                page,
+                limit,
+                q,
+                type,
+                mode,
+                status,
+                withTrashed,
+                organizerId,
+                venueId,
+                categoryId,
+                hasSeatMap,
+            } = req.query;
 
             const data = await this.#adminService.listEvents(adminId, {
                 page,
@@ -274,6 +285,8 @@ class AdminController {
                 q,
                 type,
                 mode,
+                status,
+                withTrashed,
                 organizerId,
                 venueId,
                 categoryId,
@@ -437,7 +450,7 @@ class AdminController {
             const data = await this.#adminService.approveOrganizer(adminId, organizerId);
 
             return sendSuccess(res, {
-                message: OrganizerSuccessMessages.ORGANIZER_APPROVED.message,
+                ...OrganizerSuccessMessages.ORGANIZER_APPROVED,
                 organizer: AdminOrganizerResource.make(data),
             });
         }
@@ -456,7 +469,7 @@ class AdminController {
             const data = await this.#adminService.rejectOrganizer(adminId, organizerId, reason);
 
             return sendSuccess(res, {
-                message: OrganizerSuccessMessages.ORGANIZER_REJECTED.message,
+                ...OrganizerSuccessMessages.ORGANIZER_REJECTED,
                 organizer: AdminOrganizerResource.make(data),
             });
         }
@@ -475,7 +488,7 @@ class AdminController {
             const data = await this.#adminService.suspendOrganizer(adminId, organizerId, reason);
 
             return sendSuccess(res, {
-                message: OrganizerSuccessMessages.ORGANIZER_SUSPENDED.message,
+                ...OrganizerSuccessMessages.ORGANIZER_SUSPENDED,
                 organizer: AdminOrganizerResource.make(data),
             });
         }
@@ -493,7 +506,7 @@ class AdminController {
             const data = await this.#adminService.reactivateOrganizer(adminId, organizerId);
 
             return sendSuccess(res, {
-                message: OrganizerSuccessMessages.ORGANIZER_REACTIVATED.message,
+                ...OrganizerSuccessMessages.ORGANIZER_REACTIVATED,
                 organizer: AdminOrganizerResource.make(data),
             });
         }
@@ -627,7 +640,7 @@ class AdminController {
             return sendSuccess(
                 res,
                 {
-                    message: CategorySuccessMessages.CATEGORY_CREATED,
+                    ...CategorySuccessMessages.CATEGORY_CREATED,
                     category: CategoryResource.make(data),
                 },
                 201

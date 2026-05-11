@@ -64,6 +64,11 @@ const EventErrors = Object.freeze({
         message:
             'This event cannot be cancelled due to its current status or associated conditions.',
     },
+
+    EVENT_RESTORE_CANCELLED: {
+        code: 'EVENT_RESTORE_CANCELLED',
+        message: 'Cannot restore a cancelled and refunded event.',
+    },
 });
 
 export default EventErrors;
