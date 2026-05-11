@@ -115,6 +115,14 @@ Fa3liat is an event management and ticketing platform built with modern web tech
     npm run dev
     ```
 
+### Quick Setup
+
+Alternatively, you can run the following command to automate all the installation steps above:
+
+```bash
+npm run setup
+```
+
 ---
 
 ## ✨ Features
