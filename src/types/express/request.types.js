@@ -7,7 +7,7 @@
  *
  * @template Body
  * @typedef {ExpressRequest & {
- *     user: import('./common.types.js').AuthUser;
+ *     user: import('./common.types').AuthUser;
  *     body: Body;
  * }} AuthenticatedRequest
  */
@@ -17,7 +17,7 @@
  *
  * @template Body
  * @typedef {AuthenticatedRequest<Body> & {
- *     file?: import('./common.types.js').MulterFile;
+ *     file?: import('./common.types').MulterFile;
  * }} AuthenticatedFileRequest
  */
 

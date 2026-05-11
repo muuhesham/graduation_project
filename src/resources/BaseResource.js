@@ -3,7 +3,7 @@
 import { makePagination } from './helpers/pagination.js';
 
 /**
- * @typedef {import('./../types/shared/common.types.js').PaginationMeta} PaginationMeta
+ * @typedef {import('./../types/shared').PaginationMeta} PaginationMeta
  */
 
 /**

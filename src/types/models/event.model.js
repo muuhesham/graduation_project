@@ -9,8 +9,8 @@
  * @typedef {import('@prisma/client').Prisma.EventSelect} EventSelect
  * @typedef {import('@prisma/client').Prisma.EventInclude} EventInclude
  * @typedef {import('@prisma/client').Prisma.EventDefaultArgs} EventDefaultArgs
- * @typedef {import('./../shared/common.types.js').RepositoryProjection<EventSelect, EventInclude, EventDefaultArgs['omit']>} EventProjection
- * @typedef {import('./../shared/common.types.js').RepositoryReadOptions<EventWhere, EventSelect, EventInclude, EventDefaultArgs['omit']>} EventReadOptions
+ * @typedef {import('./../shared/common.types').RepositoryProjection<EventSelect, EventInclude, EventDefaultArgs['omit']>} EventProjection
+ * @typedef {import('./../shared/common.types').RepositoryReadOptions<EventWhere, EventSelect, EventInclude, EventDefaultArgs['omit']>} EventReadOptions
  * @typedef {EventReadOptions & { 
  *  q?: string,
  *  type?: import('@prisma/client').$Enums.EventType,
@@ -23,7 +23,7 @@
  */
 
 /** @typedef {import('@prisma/client').Prisma.EventGetPayload<{ include: { category: true, venue: true, organizer: true, ticketTypes: true, eventTags: { include: { tag: true } } } }>} EventWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/Event.js').default>} EventLogic */
+/** @typedef {InstanceType<typeof import('./../../models/Event').default>} EventLogic */
 /** @typedef {EventWithRelations & EventLogic} Event */
 /** @typedef {Event} EventHydrated */
 
@@ -39,8 +39,8 @@
  * @property {string | null} bannerUrl
  * @property {import('@prisma/client').$Enums.EventType | null} type
  * @property {import('@prisma/client').$Enums.EventMode | null} mode
- * @property {import('./category.model.js').CategoryResourceData | null} [category]
- * @property {import('./venue.model.js').VenueResourceData | null} [venue]
+ * @property {import('./category.model').CategoryResourceData | null} [category]
+ * @property {import('./venue.model').VenueResourceData | null} [venue]
  * @property {string[]} [tags]
  * @property {boolean} hasSeatMap
  * @property {Date | null} deletedAt
@@ -54,12 +54,12 @@
  * @property {Date | null} updatedAt
  */
 
-/** @typedef {import('./../shared/common.types.js').PaginatedResult<EventResourceData>} EventPaginatedResource */
+/** @typedef {import('./../shared/common.types').PaginatedResult<EventResourceData>} EventPaginatedResource */
 
 /**
  * @typedef {object} AdminEventPaginatedResource
  * @property {EventResourceData[]} events
- * @property {import('./../shared/common.types.js').PaginationMeta} pagination
+ * @property {import('./../shared/common.types').PaginationMeta} pagination
  * @property {object} summary
  * @property {number} summary.totalCandidates
  * @property {number} summary.returned

@@ -9,12 +9,12 @@
  * @typedef {import('@prisma/client').Prisma.OrderSelect} OrderSelect
  * @typedef {import('@prisma/client').Prisma.OrderInclude} OrderInclude
  * @typedef {import('@prisma/client').Prisma.OrderDefaultArgs} OrderDefaultArgs
- * @typedef {import('./../shared/common.types.js').RepositoryProjection<OrderSelect, OrderInclude, OrderDefaultArgs['omit']>} OrderProjection
- * @typedef {import('./../shared/common.types.js').RepositoryReadOptions<OrderWhere, OrderSelect, OrderInclude, OrderDefaultArgs['omit']>} OrderReadOptions
+ * @typedef {import('./../shared/common.types').RepositoryProjection<OrderSelect, OrderInclude, OrderDefaultArgs['omit']>} OrderProjection
+ * @typedef {import('./../shared/common.types').RepositoryReadOptions<OrderWhere, OrderSelect, OrderInclude, OrderDefaultArgs['omit']>} OrderReadOptions
  */
 
 /** @typedef {import('@prisma/client').Prisma.OrderGetPayload<{ include: { orderItems: { include: { ticketType: { include: { event: { include: { organizer: true } } } } } } } }>} OrderWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/Order.js').default>} OrderLogic */
+/** @typedef {InstanceType<typeof import('./../../models/Order').default>} OrderLogic */
 /** @typedef {OrderWithRelations & OrderLogic} Order */
 /** @typedef {Order} OrderHydrated */
 
@@ -26,7 +26,7 @@
  */
 
 /** @typedef {import('@prisma/client').Prisma.OrderItemGetPayload<{ include: { ticketType: { include: { event: { include: { organizer: true } } } } } }>} OrderItemWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/OrderItem.js').default>} OrderItemLogic */
+/** @typedef {InstanceType<typeof import('./../../models/OrderItem').default>} OrderItemLogic */
 /** @typedef {OrderItemWithRelations & OrderItemLogic} OrderItem */
 
 export {};

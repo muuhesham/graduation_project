@@ -9,11 +9,11 @@
  * @typedef {import('@prisma/client').Prisma.PayoutSelect} PayoutSelect
  * @typedef {import('@prisma/client').Prisma.PayoutInclude} PayoutInclude
  * @typedef {import('@prisma/client').Prisma.PayoutDefaultArgs} PayoutDefaultArgs
- * @typedef {import('./../shared/common.types.js').RepositoryProjection<PayoutSelect, PayoutInclude, PayoutDefaultArgs['omit']>} PayoutProjection
+ * @typedef {import('./../shared/common.types').RepositoryProjection<PayoutSelect, PayoutInclude, PayoutDefaultArgs['omit']>} PayoutProjection
  */
 
 /** @typedef {import('@prisma/client').Prisma.PayoutGetPayload<{ include: { items: true, orders: true, admin: true } }>} PayoutWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/Payout.js').default>} PayoutLogic */
+/** @typedef {InstanceType<typeof import('./../../models/Payout').default>} PayoutLogic */
 /** @typedef {PayoutWithRelations & PayoutLogic} Payout */
 
 /**

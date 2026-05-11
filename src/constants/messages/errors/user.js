@@ -15,9 +15,14 @@ const UserErrors = Object.freeze({
         message: 'User email is not verified',
     },
 
-    ALREADY_ORGANIZER: {
-        code: 'ALREADY_ORGANIZER',
-        message: 'User is already an organizer',
+    ALREADY_FOLLOWING: {
+        code: 'USER_ALREADY_FOLLOWING',
+        message: 'You are already following this organizer.',
+    },
+
+    NOT_FOLLOWING: {
+        code: 'USER_NOT_FOLLOWING',
+        message: 'You are not following this organizer.',
     },
 });
 

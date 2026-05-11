@@ -9,7 +9,7 @@
  * @typedef {import('@prisma/client').Prisma.CategorySelect} CategorySelect
  * @typedef {import('@prisma/client').Prisma.CategoryInclude} CategoryInclude
  * @typedef {import('@prisma/client').Prisma.CategoryAggregateArgs} CategoryAggregate
- * @typedef {InstanceType<typeof import('./../../models/Category.js').default>} CategoryModel
+ * @typedef {InstanceType<typeof import('./../../models/Category').default>} CategoryModel
  * @typedef {CategoryData & CategoryModel} Category
  * @typedef {CategoryData & CategoryModel} CategoryHydrated
  *

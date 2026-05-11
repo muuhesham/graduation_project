@@ -14,18 +14,35 @@
  * @typedef {import('@prisma/client').Prisma.OrganizerDefaultArgs} OrganizerDefaultArgs
  */
 
-/** @typedef {import('./../shared/common.types.js').RepositoryProjection<OrganizerSelect, OrganizerInclude, OrganizerDefaultArgs['omit']>} OrganizerProjection */
-/** @typedef {import('./../shared/common.types.js').RepositoryReadOptions<OrganizerWhere, OrganizerSelect, OrganizerInclude, OrganizerDefaultArgs['omit']>} OrganizerReadOptions */
-/** @typedef {OrganizerReadOptions & { 
- *  q?: string, 
- *  status?: import('@prisma/client').$Enums.OrganizerStatus, 
- *  verificationStatus?: import('@prisma/client').$Enums.OrganizerVerificationStatus 
+/** @typedef {import('./../shared/common.types').RepositoryProjection<OrganizerSelect, OrganizerInclude, OrganizerDefaultArgs['omit']>} OrganizerProjection */
+/** @typedef {import('./../shared/common.types').RepositoryReadOptions<OrganizerWhere, OrganizerSelect, OrganizerInclude, OrganizerDefaultArgs['omit']>} OrganizerReadOptions */
+/** @typedef {OrganizerReadOptions & {
+ *  q?: string,
+ *  status?: import('@prisma/client').$Enums.OrganizerStatus,
+ *  verificationStatus?: import('@prisma/client').$Enums.OrganizerVerificationStatus
  * }} OrganizerFilters */
 
 /** @typedef {import('@prisma/client').Prisma.OrganizerGetPayload<{ include: { user: true, hobbyist: true, business: true, company: true } }>} OrganizerWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/Organizer.js').default>} OrganizerLogic */
+/** @typedef {InstanceType<typeof import('./../../models/Organizer').default>} OrganizerLogic */
 /** @typedef {OrganizerWithRelations & OrganizerLogic} Organizer */
 /** @typedef {Organizer} OrganizerHydrated */
+/**
+ * @typedef {object} HobbyistResourceData
+ * @property {string | null} nationalId
+ */
+
+/**
+ * @typedef {object} BusinessResourceData
+ * @property {string | null} commercialRegistration
+ * @property {string | null} taxId
+ */
+
+/**
+ * @typedef {object} CompanyResourceData
+ * @property {string | null} registrationNumber
+ * @property {string | null} taxId
+ * @property {string | null} officialDocumentsPath
+ */
 
 /**
  * @typedef {object} OrganizerResourceData
@@ -43,14 +60,17 @@
  * @property {string | null} suspendReason
  * @property {Date | null} createdAt
  * @property {Date | null} updatedAt
+ * @property {HobbyistResourceData | null} [hobbyist]
+ * @property {BusinessResourceData | null} [business]
+ * @property {CompanyResourceData | null} [company]
  */
 
-/** @typedef {import('./../shared/common.types.js').PaginatedResult<OrganizerResourceData>} OrganizerPaginatedResource */
+/** @typedef {import('./../shared/common.types').PaginatedResult<OrganizerResourceData>} OrganizerPaginatedResource */
 
 /**
  * @typedef {object} AdminOrganizerPaginatedResource
  * @property {OrganizerResourceData[]} organizers
- * @property {import('./../shared/common.types.js').PaginationMeta} pagination
+ * @property {import('./../shared/common.types').PaginationMeta} pagination
  */
 
 /**
@@ -65,11 +85,11 @@
 export class IOrganizer {
     /**
      * @param {string} organizerId
-     * @param {object} data
+     * @param {OrganizerUpdate} data
      * @param {PrismaClient | TransactionClient} tx
      * @returns {Promise<any>}
      */
-    async create(organizerId, data, tx) {
+    static async create(organizerId, data, tx) {
         throw new Error('Method not implemented');
     }
 }

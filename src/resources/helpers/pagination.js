@@ -1,7 +1,7 @@
 //@ts-check
 
 /**
- * @typedef {import('./../../types/shared/common.types.js').PaginationMeta} PaginationMeta
+ * @typedef {import('./../../types/shared').PaginationMeta} PaginationMeta
  */
 
 /**

@@ -53,6 +53,17 @@ const EventErrors = Object.freeze({
         code: 'INVALID_EVENT_STATUS',
         message: 'The event status provided is invalid.',
     },
+
+    EVENT_TITLE_CONFLICT: {
+        code: 'EVENT_TITLE_CONFLICT',
+        message: 'An event with the same title already exists.',
+    },
+
+    EVENT_CANNOT_BE_CANCELLED: {
+        code: 'EVENT_CANNOT_BE_CANCELLED',
+        message:
+            'This event cannot be cancelled due to its current status or associated conditions.',
+    },
 });
 
 export default EventErrors;

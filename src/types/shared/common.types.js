@@ -22,7 +22,7 @@
  */
 
 /**
- * @template TWhere
+ * @template [TWhere=any]
  * @template [TSelect=any]
  * @template [TInclude=any]
  * @template [TOmit=any]
@@ -50,7 +50,7 @@
  */
 
 /**
- * @template TWhere
+ * @template [TWhere=any]
  * @template [TSelect=any]
  * @template [TInclude=any]
  * @template [TOmit=any]
@@ -58,7 +58,7 @@
  */
 
 /**
- * @template TWhere
+ * @template [TWhere=any]
  * @template [TSelect=any]
  * @template [TInclude=any]
  * @template [TOmit=any]
@@ -66,21 +66,21 @@
  */
 
 /**
- * @template TWhere = any
+ * @template [TWhere=any]
  * @typedef {object} RepositoryPageQuery
  * @property {TWhere} [where]
  * @property {PaginationQuery} [pagination]
  */
 
 /**
- * @template TWhere = any
+ * @template [TWhere=any]
  * @typedef {object} RepositoryCountOptions
  * @property {TWhere} [where]
  */
 
 /**
- * @template TWhere = any
- * @template TData = any
+ * @template [TWhere=any]
+ * @template [TData=any]
  * @typedef {object} RepositoryMutationOptions
  * @property {TWhere} where
  * @property {TData} data
@@ -102,6 +102,11 @@
  * @property {number | null} nextPage
  * @property {number | null} prevPage
 */
+
+/**
+ * @template [T=any]
+ * @typedef {T} TransactionClient
+ */
 
 /**
  * @template TItem

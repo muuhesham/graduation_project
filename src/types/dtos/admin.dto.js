@@ -1,8 +1,8 @@
 //@ts-check
 
 /**
- * @typedef {import('./../shared/common.types.js').PaginationQuery} PaginationQuery
- * @typedef {import('./../models/event.model.js').EventProjection} EventProjectionOptions
+ * @typedef {import('./../shared/common.types').PaginationQuery} PaginationQuery
+ * @typedef {import('./../models/event.model').EventProjection} EventProjectionOptions
  */
 
 /**

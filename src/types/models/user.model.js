@@ -12,20 +12,21 @@ import { Auth } from 'googleapis';
  * @typedef {import('@prisma/client').Prisma.UserSelect} UserSelect
  * @typedef {import('@prisma/client').Prisma.UserInclude} UserInclude
  * @typedef {import('@prisma/client').Prisma.UserDefaultArgs} UserDefaultArgs
- * @typedef {import('./../shared/common.types.js').RepositoryProjection<UserSelect, UserInclude, UserDefaultArgs['omit']>} UserProjection
- * @typedef {import('./../shared/common.types.js').RepositoryReadOptions<UserWhere, UserSelect, UserInclude, UserDefaultArgs['omit']>} UserReadOptions
+ * @typedef {import('./../shared/common.types').RepositoryProjection<UserSelect, UserInclude, UserDefaultArgs['omit']>} UserProjection
+ * @typedef {import('./../shared/common.types').RepositoryReadOptions<UserWhere, UserSelect, UserInclude, UserDefaultArgs['omit']>} UserReadOptions
  * @typedef {UserReadOptions & { 
  *  q?: string,
  *  gender?: import('@prisma/client').$Enums.Gender,
  *  isVerified?: boolean,
  *  languagePreference?: import('@prisma/client').$Enums.Language,
  *  isCompleted?: boolean,
- *  createdAt?: import('@prisma/client').Prisma.DateTimeFilter
+ *  createdAt?: import('@prisma/client').Prisma.DateTimeFilter,
+ *  withDeleted?: boolean
  * }} UserFilters
  */
 
 /** @typedef {import('@prisma/client').Prisma.UserGetPayload<{ include: { organizer: true, tickets: true, refreshTokens: true, interestedEvents: true, favoriteCategories: true } }>} UserWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/User.js').default>} UserLogic */
+/** @typedef {InstanceType<typeof import('./../../models/User').default>} UserLogic */
 /** @typedef {UserWithRelations & UserLogic} User */
 /** @typedef {User} UserHydrated */
 
@@ -46,12 +47,12 @@ import { Auth } from 'googleapis';
  * @property {Date | null} updatedAt
  */
 
-/** @typedef {import('./../shared/common.types.js').PaginatedResult<UserResourceData>} UserPaginatedResource */
+/** @typedef {import('./../shared/common.types').PaginatedResult<UserResourceData>} UserPaginatedResource */
 
 /**
  * @typedef {object} AdminUserPaginatedResource
  * @property {UserResourceData[]} users
- * @property {import('./../shared/common.types.js').PaginationMeta} pagination
+ * @property {import('./../shared/common.types').PaginationMeta} pagination
  */
 
 /**

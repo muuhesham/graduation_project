@@ -10,24 +10,20 @@ import BaseResource from './BaseResource.js';
 /**
  * @extends {BaseResource}
  */
-export default class CategoryResource extends BaseResource {
+class CategoryResource extends BaseResource {
     /**
-     * @param {Category | any} category
-     * @returns {CategoryResourceData | null}
-     */
-    static make(category) {
-        return super.make(category);
-    }
-
-    /**
-     * @param {Category | any} category
-     * @returns {CategoryResourceData}
+     * @param {import('./../types/models').Category} category
      */
     static toArray(category) {
+        if (!category) return null;
+
         return {
-            id: category.id ?? null,
-            name: category.name ?? null,
-            imageUrl: category.imageUrl ?? null,
+            id: category.id,
+            name: category.name,
+            imageUrl: category.imageUrl,
+            createdAt: category.createdAt,
         };
     }
 }
+
+export default CategoryResource;

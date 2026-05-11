@@ -1,7 +1,9 @@
 //@ts-check
 
 import BaseResource from './BaseResource.js';
-import { makePagination } from './helpers/pagination.js';
+import HobbyistResource from './HobbyistResource.js';
+import BusinessResource from './BusinessResource.js';
+import CompanyResource from './CompanyResource.js';
 
 /**
  * @typedef {import('./../types/models').Organizer} Organizer
@@ -25,13 +27,25 @@ export default class OrganizerResource extends BaseResource {
      * @returns {OrganizerResourceData}
      */
     static toArray(organizer) {
-        return {
+        /** @type {OrganizerResourceData} */
+        const data = {
             id: organizer.id ?? null,
             userId: organizer.userId ?? null,
             name: organizer.name ?? null,
+            description: organizer.description ?? null,
             type: organizer.type ?? null,
             contactEmail: organizer.contactEmail ?? null,
             contactPhone: organizer.contactPhone ?? null,
+            websiteUrl: organizer.websiteUrl ?? null,
+            instagramUrl: organizer.instagramUrl ?? null,
+            facebookUrl: organizer.facebookUrl ?? null,
+            twitterUrl: organizer.twitterUrl ?? null,
+            linkedinUrl: organizer.linkedinUrl ?? null,
+            youtubeUrl: organizer.youtubeUrl ?? null,
+            logoUrl: organizer.logoUrl ?? null,
+            coverUrl: organizer.coverUrl ?? null,
+            isContactPhoneVerified: organizer.isContactPhoneVerified ?? false,
+            isContactEmailVerified: organizer.isContactEmailVerified ?? false,
             status: organizer.status ?? null,
             verificationStatus: organizer.verificationStatus ?? null,
             reviewedBy: organizer.reviewedBy ?? null,
@@ -41,6 +55,20 @@ export default class OrganizerResource extends BaseResource {
             createdAt: organizer.createdAt ?? null,
             updatedAt: organizer.updatedAt ?? null,
         };
+
+        if (organizer.hobbyist) {
+            data.hobbyist = HobbyistResource.make(organizer.hobbyist);
+        }
+
+        if (organizer.business) {
+            data.business = BusinessResource.make(organizer.business);
+        }
+
+        if (organizer.company) {
+            data.company = CompanyResource.make(organizer.company);
+        }
+
+        return data;
     }
 
     /**

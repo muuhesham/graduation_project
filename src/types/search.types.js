@@ -26,7 +26,7 @@
  */
 
 /**
- * @typedef {import('./models/event.model.js').Event & {
+ * @typedef {import('./models/event.model').Event & {
  *     slug?: string | null;
  *     description?: string | null;
  *     createdAt?: string | Date | null;
