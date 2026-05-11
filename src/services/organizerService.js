@@ -752,9 +752,7 @@ const organizerService = {
      * @returns {Promise<Organizer | null>}
      */
     async findByUserId(userId) {
-        return organizerRepository.findUnique({
-            where: { userId },
-        });
+        return organizerRepository.findByUserId(userId);
     },
     async listEvents(userId) {
         const organizer = await organizerService.getByUserId(userId);
@@ -1042,7 +1040,7 @@ const organizerService = {
         if (files.logo) {
             const saved = await fileService.save(files.logo, `organizers/${organizer.id}/logo`);
             updateData.logoDisk = saved.disk;
-            updateData.logoPath = saved.url;
+            updateData.logoPath = saved.path;
 
             if (organizer.logoPath) {
                 await fileService.delete(organizer.logoPath, organizer.logoDisk).catch(() => {});
@@ -1052,7 +1050,7 @@ const organizerService = {
         if (files.cover) {
             const saved = await fileService.save(files.cover, `organizers/${organizer.id}/cover`);
             updateData.coverDisk = saved.disk;
-            updateData.coverPath = saved.url;
+            updateData.coverPath = saved.path;
 
             if (organizer.coverPath) {
                 await fileService.delete(organizer.coverPath, organizer.coverDisk).catch(() => {});

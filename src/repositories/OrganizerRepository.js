@@ -103,7 +103,10 @@ export default class OrganizerRepository extends BaseRepository {
      */
     findByVerificationStatus(status, options = {}) {
         return super.paginate({
-            where: { verificationStatus: status },
+            where: {
+                verificationStatus: status,
+                isContactEmailVerified: true,
+            },
             pagination: options,
         });
     }
@@ -130,6 +133,11 @@ export default class OrganizerRepository extends BaseRepository {
      * @param {OrganizerVerificationStatus} status
      */
     countByVerificationStatus(status) {
-        return super.count({ where: { verificationStatus: status } });
+        return super.count({
+            where: {
+                verificationStatus: status,
+                isContactEmailVerified: true,
+            },
+        });
     }
 }
