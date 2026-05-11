@@ -47,28 +47,7 @@ const categoryService = {
             .omit(exclude || categoryService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
-        const categories = await prismaClient.category.findMany(query);
-        return categoryService.getImageAbsUrl(categories);
-    },
-
-    getImageAbsUrl(categories) {
-        if (!categories) return null;
-        if (categories && !Array.isArray(categories)) {
-            categories = [categories];
-        }
-
-        return categories.map((category) => {
-            const { imageDisk, imagePath } = category;
-
-            const absUrl = imagePath ? fileService.getAbsUrl(imagePath, imageDisk) : null;
-
-            const { imageDisk: _, imagePath: __, updatedAt: ___, ...categoryData } = category;
-
-            return {
-                ...categoryData,
-                imageUrl: absUrl,
-            };
-        });
+        return categoryRepository.findMany(query);
     },
 
     async getPreferences({ userId, tx = prismaClient }) {

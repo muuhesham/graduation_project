@@ -63,10 +63,11 @@ const organizerDashboardController = {
 
         const organizer = await organizerService.updateSettings(userId, req.body, files);
 
-        return sendSuccess(res, { 
-            message: OrganizerSuccessMessages.ORGANIZER_SETTINGS_UPDATED,
-            organizer: OrganizerResource.make(organizer) 
+        return sendSuccess(res, {
+            ...OrganizerSuccessMessages.ORGANIZER_SETTINGS_UPDATED,
+            organizer: OrganizerResource.make(organizer),
         });
+
     }),
 
     /**
@@ -90,9 +91,9 @@ const organizerDashboardController = {
 
         const organizer = await organizerService.verifyPhoneOtp(userId, otp);
 
-        return sendSuccess(res, { 
-            message: OrganizerSuccessMessages.ORGANIZER_CONTACT_PHONE_VERIFIED,
-            organizer: OrganizerResource.make(organizer) 
+        return sendSuccess(res, {
+            ...OrganizerSuccessMessages.ORGANIZER_CONTACT_PHONE_VERIFIED,
+            organizer: OrganizerResource.make(organizer),
         });
     }),
 };

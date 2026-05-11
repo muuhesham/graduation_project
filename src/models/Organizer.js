@@ -95,15 +95,25 @@ class Organizer extends BaseModel {
     }
 
     get logoUrl() {
-        return this.logoPath && this.logoDisk
-            ? fileService.getAbsUrl(this.logoPath, this.logoDisk)
-            : null;
+        const path = this.logoPath;
+        if (!path) return null;
+        
+        const normalizedPath = (!path.startsWith('/') && !path.startsWith('http')) 
+            ? `/uploads/${path}` 
+            : path;
+            
+        return fileService.getAbsUrl(normalizedPath, this.logoDisk);
     }
 
     get coverUrl() {
-        return this.coverPath && this.coverDisk
-            ? fileService.getAbsUrl(this.coverPath, this.coverDisk)
-            : null;
+        const path = this.coverPath;
+        if (!path) return null;
+        
+        const normalizedPath = (!path.startsWith('/') && !path.startsWith('http')) 
+            ? `/uploads/${path}` 
+            : path;
+            
+        return fileService.getAbsUrl(normalizedPath, this.coverDisk);
     }
 
     /**

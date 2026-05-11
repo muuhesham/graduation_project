@@ -31,9 +31,14 @@ class Category extends BaseModel {
 
     get imageUrl() {
         const categoryData = /** @type {any} */ (this);
-        return categoryData.imagePath
-            ? fileService.getAbsUrl(categoryData.imagePath, categoryData.imageDisk)
-            : null;
+        if (!categoryData.imagePath) return null;
+
+        let path = categoryData.imagePath;
+        if (!path.startsWith('/') && !path.startsWith('http')) {
+            path = `/uploads/${path}`;
+        }
+
+        return fileService.getAbsUrl(path, categoryData.imageDisk);
     }
 
     static get resourceName() {
