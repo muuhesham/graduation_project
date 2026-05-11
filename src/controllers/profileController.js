@@ -19,8 +19,16 @@ const profileController = {
 
     updateMyProfile: asyncHandler(async (req, res) => {
         const userId = req.user.id;
-        const { name, phone, gender, location, languagePreference, birthDate } = req.body;
-        const allowedData = { name, phone, gender, location, languagePreference, birthDate };
+        const { name, phone, gender, location, languagePreference, birthDate, governorate } = req.body;
+        const allowedData = {
+            name,
+            phone,
+            gender,
+            location,
+            languagePreference,
+            birthDate,
+            governorate,
+        };
         const updateUser = await profileService.updateMyProfile({userId, allowedData});
         sendSuccess(res, updateUser, 200);
     }),
@@ -39,13 +47,14 @@ const profileController = {
             await cacheService.set(cacheKey, true, ttl);
         }
 
-        //logout
         sendSuccess(res, { message: 'Profile deleted successfully. please login again.' }, 200);
     }),
 
     updateEmail: asyncHandler(async (req, res) => {
         const userId = req.user.id;
         const { newEmail, confirmEmail, password } = req.body;
+
+        await profileService.checkAuthMethod({userId});
 
         await profileService.isPasswordValid({userId, password});
 
@@ -82,6 +91,8 @@ const profileController = {
         const userId = req.user.id;
         const { oldPassword, newPassword, confirmPassword } = req.body;
 
+        await profileService.checkAuthMethod({userId});
+
         await profileService.getMyProfile({userId});
 
         await profileService.checkPassword({userId, oldPassword, newPassword, confirmPassword});
@@ -96,7 +107,6 @@ const profileController = {
             await cacheService.set(cacheKey, true, ttl);
         }
 
-        //logout 
         sendSuccess(res, { message: 'Password updated successfully. Please login again.' }, 200);
     }),
 

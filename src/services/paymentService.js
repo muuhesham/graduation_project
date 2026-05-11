@@ -6,19 +6,20 @@ import {
     APP_CURRENCY,
     STRIPE_WEBHOOK_SECRET,
 } from '../config/env.js';
-
 import { prisma as prismaClient } from '../config/db.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
 import ticketTypeService from './ticketTypeService.js';
 import orderService from './orderService.js';
+import notificationService from './notificationService.js';
+import mailService from './mailService.js';
+import fileService from './fileService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 import { getIO } from '../config/socketInstance.js';
 
 const paymentService = {
     stripe: new Stripe(STRIPE_SECRET_KEY),
 
-    // CREATE CHECKOUT SESSION
     async createCheckoutSession(
         paymentMethods = ['card'],
         mode = 'payment',
@@ -34,6 +35,9 @@ const paymentService = {
             cancel_url: CANCEL_URL,
             customer_email: customerEmail,
             metadata,
+            payment_intent_data: {
+                metadata
+            },
             allow_promotion_codes: true,
         });
     },
@@ -56,7 +60,7 @@ const paymentService = {
     /**
      * Executes a batch of transfers to various accounts.
      * Use this for processing organizer payouts after an event or settlement period.
-     * 
+     *
      * @param {Array<{ amount: number, accountId: string, referenceId: string|number }>} transfers
      */
     async executePayoutBatch(transfers) {
@@ -75,7 +79,9 @@ const paymentService = {
             failed: results.filter((r) => r.status === 'rejected').length,
         };
 
-        console.log(`[Finance] Batch payout completed. Success: ${summary.success}, Failed: ${summary.failed}`);
+        console.log(
+            `[Finance] Batch payout completed. Success: ${summary.success}, Failed: ${summary.failed}`
+        );
         return summary;
     },
 
@@ -99,7 +105,6 @@ const paymentService = {
         }
     },
 
-    // WEBHOOK HANDLER
     async handleWebhookEvent(signature, rawBody) {
         let event;
         try {
@@ -124,7 +129,6 @@ const paymentService = {
         }
     },
 
-    // COMPLETED CHECKOUT HANDLER
     async handleCheckoutCompleted(session) {
         const orderId = session.metadata.orderId;
         const userId = session.metadata.userId;
@@ -138,14 +142,29 @@ const paymentService = {
                 (item) =>
                     `reservation:event:${item.eventId}:seat:${item.rowIndex}-${item.seatIndex}`
             );
+
+        let eventInfo = null;
+        let totalTickets = 0;
+
         await prismaClient.$transaction(
             async (tx) => {
                 const order = await tx.order.findUnique({
                     where: { id: orderId },
-                    include: { orderItems: true },
+                    include: {
+                        orderItems: true,
+                        user: true,
+                    },
                 });
 
                 if (!order || order.status === OrderStatus.COMPLETED) return;
+
+                if (order.orderItems.length > 0) {
+                    eventInfo = await tx.ticketType.findUnique({
+                        where: { id: order.orderItems[0].ticketTypeId },
+                        include: { event: { include: { organizer: true } } },
+                    });
+                    totalTickets = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+                }
 
                 await tx.order.update({
                     where: { id: orderId },
@@ -182,6 +201,98 @@ const paymentService = {
             }
         );
 
+        if (eventInfo) {
+            const buyer = await prismaClient.user.findFirst({ where: { id: userId } });
+
+            const order = await prismaClient.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    orderItems: {
+                        include: {
+                            ticketType: true,
+                        },
+                    },
+                },
+            });
+
+            const eventDetails = await prismaClient.event.findUnique({
+                where: { id: eventInfo.event.id },
+                include: {
+                    venue: true,
+                    eventSessions: {
+                        orderBy: { startDate: 'asc' },
+                        take: 1,
+                    },
+                },
+            });
+
+            const ticketDetails = order.orderItems.map((item) => ({
+                type: item.ticketType.name,
+                quantity: item.quantity,
+                price: (item.price / 100).toFixed(2),
+            }));
+
+            const eventDateTime = eventDetails.eventSessions?.[0];
+            const eventDate = eventDateTime
+                ? new Date(eventDateTime.startDate).toLocaleDateString()
+                : 'TBD';
+            const eventTime = eventDateTime
+                ? new Date(eventDateTime.startDate).toLocaleTimeString()
+                : 'TBD';
+
+            const allTickets = await prismaClient.ticket.findMany({
+                where: { orderId },
+                include: {
+                    qrCode: {
+                        select: { codePath: true },
+                    },
+                },
+            });
+
+            const qrCodes = allTickets
+                .map((ticket) => {
+                    if (ticket.qrCode?.codePath) {
+                        return fileService.getAbsUrl(ticket.qrCode.codePath);
+                    }
+                    return null;
+                })
+                .filter((url) => url !== null);
+
+            await mailService.sendPurchaseConfirmationJob(
+                buyer,
+                {
+                    title: eventDetails.title,
+                    description: eventDetails.description,
+                    date: eventDate,
+                    time: eventTime,
+                    venueName: eventDetails.venue.name,
+                    venueAddress: eventDetails.venue.address,
+                },
+                ticketDetails,
+                finalAmountPaid.toFixed(2),
+                orderId,
+                qrCodes
+            );
+
+            await Promise.all([
+                notificationService.notifyPurchaseSuccess(
+                    userId,
+                    eventInfo.event.id,
+                    orderId,
+                    eventInfo.event.title,
+                    totalTickets
+                ),
+                notificationService.notifyNewTicketPurchase(
+                    eventInfo.event.organizerId,
+                    eventInfo.event.id,
+                    eventInfo.event.title,
+                    buyer?.name || 'someone',
+                    totalTickets,
+                    orderId
+                ),
+            ]);
+        }
+
         if (reservedSeatKeys.length > 0) {
             await redis.del(...reservedSeatKeys);
         }
@@ -195,12 +306,30 @@ const paymentService = {
         }
     },
 
-    // CANCELED CHECKOUT HANDLER
     async handlePaymentFailed(session) {
         const orderId = session.metadata.orderId;
+        const userId = session.metadata.userId;
+
+        const order = await prismaClient.order.findUnique({
+            where: { id: orderId },
+            include: {
+                orderItems: {
+                    include: {
+                        ticketType: {
+                            include: { event: true },
+                        },
+                    },
+                },
+            },
+        });
+
         await orderService.updateOrderStatus(orderId, OrderStatus.CANCELED);
+
+        if (order && order.orderItems.length > 0) {
+            const eventTitle = order.orderItems[0].ticketType.event.title;
+            await notificationService.notifyPurchaseFailed(userId, eventTitle, orderId);
+        }
     },
 };
 
 export default paymentService;
-

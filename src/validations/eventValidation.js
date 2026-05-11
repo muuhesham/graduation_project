@@ -28,33 +28,37 @@ const eventValidation = {
             .withMessage('Ticket quantity must be a positive integer'),
 
         body('tickets.*.seatInfo')
-            .optional({nullable: true})
+            .optional({ nullable: true, checkFalsy: true })
             .isObject()
             .withMessage('seatInfo must be an object'),
 
         body('tickets.*.seatInfo.row')
-            .if(body('tickets.*.seatInfo').exists())
+            .if(body('tickets.*.seatInfo').exists({ checkFalsy: true }))
+            .notEmpty()
+            .withMessage('Row index is required')
             .isInt({ min: 0 })
-            .withMessage('Row index is required and must be an integer'),
+            .withMessage('Row index must be an integer'),
 
         body('tickets.*.seatInfo.number')
-            .if(body('tickets.*.seatInfo').exists())
+            .if(body('tickets.*.seatInfo').exists({ checkFalsy: true }))
+            .notEmpty()
+            .withMessage('Seat number is required')
             .isInt({ min: 0 })
-            .withMessage('Seat number is required and must be an integer'),
+            .withMessage('Seat number must be an integer'),
 
         body('tickets.*.seatInfo.tierId')
-            .if(body('tickets.*.seatInfo').exists())
+            .if(body('tickets.*.seatInfo').exists({ checkFalsy: true }))
             .notEmpty()
             .withMessage('tierId is required')
             .isString()
             .withMessage('tierId must be string'),
 
         body('tickets.*.seatInfo.tierName')
-            .if(body('tickets.*.seatInfo').exists())
+            .if(body('tickets.*.seatInfo').exists({ checkFalsy: true }))
             .notEmpty()
             .withMessage('tierName is required')
             .isString()
-            .withMessage('tierName must be string')
+            .withMessage('tierName must be string'),
     ],
 
     reserve: [
@@ -100,7 +104,7 @@ const eventValidation = {
             .isInt({ gt: 0 })
             .withMessage('Event ID must be a positive integer'),
     ],
-    
+
     removeFromInterested: [
         param('id')
             .exists()

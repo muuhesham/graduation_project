@@ -19,6 +19,7 @@ import AppError from '../errors/AppError.js';
 
 const authService = {
     JWT_EXPIRATION: 15 * 60, // 15 minutes
+    JWT_MOBILE_EXPIRATION: "1d", // 1 day
     REFRESH_EXPIRATION: 7 * 24 * 60 * 60, // 7 days
     PASSWORD_RESET_EXPIRATION: 60 * 60, // 1 hour
     OTP_EXPIRATION: 10 * 60, // 10 minutes
@@ -31,7 +32,7 @@ const authService = {
             return createdUser;
         }
 
-        const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
+        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(createdUser);
         const [refreshToken] = await Promise.all([
             authService.generateRefreshToken(createdUser),
             authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
@@ -45,6 +46,7 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
+                language: language,
             },
         };
     },
@@ -77,7 +79,7 @@ const authService = {
             };
         }
 
-        const { accessToken, type, expiresIn } = authService.generateAccessToken(exists);
+        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(exists);
         const refreshToken = await authService.generateRefreshToken(exists);
 
         return {
@@ -88,6 +90,7 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
+                language: language,
             },
         };
     },
@@ -98,6 +101,7 @@ const authService = {
             name: user.name,
             email: user.email,
             role: user.role,
+            languagePreference: user.languagePreference,
         };
 
         const token = jwt.sign(payload, JWT_KEY, { expiresIn: authService.JWT_EXPIRATION });
@@ -106,7 +110,23 @@ const authService = {
             accessToken: token,
             type: 'Bearer',
             expiresIn: authService.JWT_EXPIRATION,
+            language: user.languagePreference,
         };
+    },
+
+    generateAccessTokenMobile(user) {
+        const payload = {
+            id: user.id,
+            role: user.role,
+        };
+
+        const token = jwt.sign(payload, JWT_KEY, { expiresIn: authService.JWT_MOBILE_EXPIRATION });
+
+        return {
+            accessToken: token,
+            type: 'Bearer',
+            expiresIn: authService.JWT_MOBILE_EXPIRATION,
+        }
     },
 
     async generateRefreshToken(user) {

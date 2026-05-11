@@ -118,7 +118,7 @@ ${colors.cyan}${colors.bright}╔═══════════════�
 
     log.step('Step 1: Installing dependencies');
     if (!isNonInteractive) {
-        if (!runCommand('npm install', 'Installing npm packages')) {
+        if (!runCommand('npm install --legacy-peer-deps', 'Installing npm packages')) {
             log.error('Failed to install dependencies. Please check your npm installation.');
             process.exit(1);
         }

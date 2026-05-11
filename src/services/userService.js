@@ -23,6 +23,7 @@ import OrganizerErrors from './../constants/messages/errors/organizer.js';
  * @typedef {import('./../types/models').UserWhere} UserWhere
  * @typedef {import('./../policies/UserPolicy').default} UserPolicy
  * @typedef {import('./../types/shared').RepositoryReadOptions<UserWhere, UserDefaultArgs['select'], UserDefaultArgs['include'], UserDefaultArgs['omit']> & PaginationQuery & UserWhere} UserListOptions
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
  * @typedef {import('./../types/dtos').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO
  */
 
@@ -87,12 +88,6 @@ const userService = {
         });
     },
 
-    /**
-     * @param {string} userId
-     * @param {UpgradeToOrganizerDTO} organizerData
-     * @param {any} [file]
-     * @returns {Promise<Organizer>}
-     */
     /**
      * @param {string} userId
      * @param {UpgradeToOrganizerDTO} organizerData
@@ -204,8 +199,14 @@ const userService = {
     async getUser(userId) {
         const user = await prismaClient.user.findFirst({
             where: { id: userId },
+            include: {
+                governorate: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
             omit: {
-                id: true,
                 password: true,
                 idInProviderDB: true,
                 governorateId: true,
@@ -214,7 +215,11 @@ const userService = {
                 isVerified: true,
             },
         });
-        return user;
+        return {
+            ...user,
+            location: user.location || "",
+            governorate: user.governorate?.name || "",
+        };
     },
 
     async isEmailAvailable({ newEmail, confirmEmail }) {

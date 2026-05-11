@@ -18,6 +18,7 @@ const profileValidations = {
                 'location',
                 'languagePreference',
                 'birthDate',
+                'governorate',
             ];
             const updates = Object.keys(req.body);
             const invalidFields = updates.filter((field) => {
@@ -40,12 +41,14 @@ const profileValidations = {
             .withMessage('Name cannot be empty')
             .matches(/^[\p{L}\s\-]+$/u)
             .withMessage('Name can only contain letters, spaces, and hyphens')
-            .isLength({max: 25})
+            .isLength({ max: 25 })
             .withMessage('Name cannot be that long'),
 
         body('phone')
             .optional()
             .trim()
+            .isLength({ min: 11 })
+            .withMessage('Phone number must be at least 11 characters long')
             .notEmpty()
             .withMessage('Phone number cannot be empty')
             .isMobilePhone()
@@ -56,13 +59,12 @@ const profileValidations = {
             .isIn(Object.values(Gender))
             .withMessage('Gender must be male or female'),
 
-        // frontend 
         body('location')
             .optional()
-            .toUpperCase()
             .trim()
-            .isIn(Object.values(GovernoratesNames))
-            .withMessage('Location must be from governorates of egypt only'),
+            .isString()
+            .isLength({ max: 500 })
+            .withMessage('Location must be valid string'),
 
         body('languagePreference')
             .optional()
@@ -83,6 +85,15 @@ const profileValidations = {
                 }
                 return true;
             }),
+
+        body('governorate')
+            .optional()
+            .trim()
+            .toUpperCase()
+            .notEmpty()
+            .withMessage('Governorate cannot be empty')
+            .isIn(Object.values(GovernoratesNames))
+            .withMessage('Invalid governorate'),
     ],
 
     updateEmail: [
@@ -110,6 +121,11 @@ const profileValidations = {
             .withMessage('Email cannot be that long')
             .isEmail()
             .withMessage('Invalid email format'),
+        
+        body('password')
+            .trim()
+            .notEmpty()
+            .withMessage('Password cannot be empty'),
     ],
 
     updatePassword: [
@@ -139,7 +155,7 @@ const profileValidations = {
                 'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
             ),
     ],
-    
+
     confirmEmail: [query('token').notEmpty().withMessage('Token is required')],
 
     updatePreferences: [

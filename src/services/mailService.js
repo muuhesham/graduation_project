@@ -8,6 +8,7 @@ import { FRONT_URL } from '../config/env.js';
 import updateEmailTemplate from '../mails/templates/updateEmailMail.js';
 import organizerApprovedMail from '../mails/templates/organizerApprovedMail.js';
 import AppError from '../errors/AppError.js';
+import purchaseTicketMailTemplate from '../mails/templates/purchaseTicketMail.js';
 
 /** @typedef {(variables: Record<string, any>) => string} MailTemplateFn */
 
@@ -226,6 +227,48 @@ const mailService = {
             {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 5000 },
+                removeOnComplete: true,
+                removeOnFail: false,
+            }
+        );
+    },
+
+    async sendPurchaseConfirmationJob(
+        user,
+        eventDetails,
+        ticketDetails,
+        totalAmount,
+        orderId,
+        qrCodes = []
+    ) {
+        const html = purchaseTicketMailTemplate({
+            userName: user.name,
+            eventTitle: eventDetails.title,
+            eventDescription: eventDetails.description,
+            eventDate: eventDetails.date,
+            eventTime: eventDetails.time,
+            venueName: eventDetails.venueName,
+            venueAddress: eventDetails.venueAddress,
+            ticketDetails,
+            totalAmount,
+            orderId,
+            qrCodes,
+        });
+
+        await mailQueue.add(
+            'sendPurchaseConfirmationMail',
+            {
+                to: user.email,
+                subject: `Your tickets for "${eventDetails.title}" are confirmed!`,
+                html,
+                text: `Hi ${user.name},\n\nYour purchase has been confirmed! You have successfully booked tickets for "${eventDetails.title}".\n\nOrder ID: ${orderId}\nTotal Amount: $${totalAmount}\n\nThank you for using our service!`,
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000,
+                },
                 removeOnComplete: true,
                 removeOnFail: false,
             }

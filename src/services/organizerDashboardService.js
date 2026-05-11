@@ -51,7 +51,6 @@ const organizerDashboardService = {
         };
     },
 
-    // TICKET BAR CHART
     async getTicketsData(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -87,7 +86,6 @@ const organizerDashboardService = {
         };
     },
 
-    // ORDER BAR CHART
     async getOrdersData(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -161,7 +159,6 @@ const organizerDashboardService = {
         };
     },
 
-    // EVENT STATS
     async getEventsStats(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -225,7 +222,6 @@ const organizerDashboardService = {
         };
     },
 
-    // TICKETS STATS
     async getTicketStats(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -257,7 +253,6 @@ const organizerDashboardService = {
         };
     },
 
-    // ORDER STATS
     async getOrderStats(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -312,7 +307,6 @@ const organizerDashboardService = {
         };
     },
 
-    // REVENUE STATS
     async getRevenueStats(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;

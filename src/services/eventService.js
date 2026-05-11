@@ -346,7 +346,6 @@ const eventService = {
         return eventRepository.softDeleteById(eventId, tx);
     },
 
-    //UPDATE EVENT
     async update(
         eventId,
         organizerId,
@@ -685,6 +684,7 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
@@ -734,6 +734,7 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
@@ -778,6 +779,7 @@ const eventService = {
         }
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
             delete event.interestedEvents;
         });
 
@@ -898,7 +900,6 @@ const eventService = {
     },
 
     async availability(eventId) {
-        // first check if the event exists and has seat map,
         const event = await eventService.getById(eventId, {
             relations: {
                 eventSeat: {
@@ -926,7 +927,6 @@ const eventService = {
                 data: { message: 'Event does not support seat map' },
             };
         }
-        // second get seats reserved from redis and modify seats from main DB to have reserved seats also
         const reservedSeats = await redis.keys(`reservation:event:${eventId}:seat:*`);
         const reservedSeatSet = new Set(reservedSeats.map((key) => key.split(':').slice(-1)[0]));
         const seats = event.eventSeat.map((seat) => {
@@ -988,7 +988,6 @@ const eventService = {
         return event.organizer.userId === userId;
     },
 
-    // VALDIATION AND FETCH TICKETS FOR CHECKOUT
     async validateAndFetchTickets(id, requestedTickets, userId) {
         const event = await eventService.getById(id, {
             relations: {
@@ -1049,35 +1048,29 @@ const eventService = {
 
                 const key = `${row}-${number}`;
 
-                //  Prevent duplicate seat in same request
                 if (usedSeats.has(key)) {
                     throw new ConflictError('Duplicate seat selection');
                 }
                 usedSeats.add(key);
 
-                //  Check seat exists
                 const dbSeat = seatMap.get(key);
                 if (!dbSeat) {
                     throw new NotFoundError('Seat does not exist');
                 }
 
-                //  Check seat not sold
                 if (dbSeat.isSold) {
                     throw new ConflictError('Seat already sold');
                 }
 
-                //  Check tier matches
                 if (dbSeat.tierNumber !== Number(tierId)) {
                     throw new ConflictError('Seat tier mismatch');
                 }
 
-                //  Get tier price
                 const dbTier = tierMap.get(Number(tierId));
                 if (!dbTier) {
                     throw new NotFoundError('Tier not found');
                 }
 
-                // check seats reserved in redis by the same user
                 const reservationKey = `reservation:event:${id}:seat:${key}`;
                 const reservation = await redis.get(reservationKey);
                 if (reservation) {
@@ -1086,7 +1079,6 @@ const eventService = {
                         throw new ConflictError('Seat already reserved by another user');
                     }
                 } else {
-                    // if not reserved, throw error to force frontend to reserve it first before checkout
                     throw new ConflictError(
                         'Seat not reserved, please reserve the seat before checkout'
                     );
@@ -1123,7 +1115,6 @@ const eventService = {
 
             return { event, verifiedItems, totalPrice, itemsCount, lineItems };
         }
-        // else for general admission tickets
         const dbTicketMap = new Map(event.ticketTypes.map((t) => [t.name, t]));
         const verifiedItems = [];
         const lineItems = [];
@@ -1166,7 +1157,6 @@ const eventService = {
         return { event, verifiedItems, totalPrice, itemsCount, lineItems };
     },
 
-    // CHECKOUT PROCESS
     async checkout(id, userId, userEmail, tickets) {
         const { event, verifiedItems, totalPrice, itemsCount, lineItems } =
             await eventService.validateAndFetchTickets(id, tickets, userId);
@@ -1240,7 +1230,6 @@ const eventService = {
     },
 
     async reserve(eventId, userId, tickets, io) {
-        // first check if the event exists and has seat map,
         const event = await eventService.getById(eventId, {
             relations: {
                 eventSeat: {
@@ -1281,8 +1270,6 @@ const eventService = {
             };
         }
 
-        // then validate the requested seats,
-        // Build lookup object
         const seatMap = {};
 
         for (const seat of event.eventSeat) {
@@ -1291,7 +1278,6 @@ const eventService = {
         }
 
         let seatsRequest = {};
-        // Validate tickets
         for (const ticket of tickets) {
             const { row, number } = ticket.seatInfo;
             const key = `${row}-${number}`;
@@ -1324,7 +1310,6 @@ const eventService = {
             }
         }
 
-        // then try to reserve them in redis with a TTL,
         let reservedSeatsKeys = [];
         try {
             for (const ticket of tickets) {

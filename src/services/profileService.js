@@ -5,23 +5,39 @@ import userService from './userService.js';
 import AuthProvider from '../constants/enums/authProvider.js';
 
 const profileService = {
-    async getMyProfile({userId}) {
+    async getMyProfile({ userId }) {
         const user = await userService.getUser(userId);
 
         if (!user) {
             throw new AppError('User not found', 404);
         }
-        if (user.authProvider !== AuthProvider.LOCAL) {
-            throw new AppError(`Email or Password can't be changed for google login users`, 400);
-        }
 
         return user;
     },
 
-    async updateMyProfile({userId, allowedData}) {
+    async updateMyProfile({ userId, allowedData }) {
+        if (allowedData.governorate) {
+            const governorateRecord = await prismaClient.governorate.findUnique({
+                where: { name: allowedData.governorate },
+            });
+
+            if (!governorateRecord) {
+                throw new AppError('Governorate not found', 404);
+            }
+
+            allowedData.governorateId = governorateRecord.id;
+            delete allowedData.governorate;
+        }
+
         const updatedUser = await prismaClient.user.update({
             where: { id: userId },
             data: allowedData,
+            include: {
+                governorate: {
+                    select: {
+                        name: true,
+                }}
+            },
             omit: {
                 id: true,
                 email: true,
@@ -37,7 +53,7 @@ const profileService = {
         return updatedUser;
     },
 
-    async deleteMyProfile({userId, password}) {
+    async deleteMyProfile({ userId, password }) {
         const user = await userService.findUser(userId);
         if (!user) {
             throw new AppError('User not found or already deleted', 404);
@@ -51,7 +67,7 @@ const profileService = {
         await userService.softDelete(userId);
     },
 
-    async updateEmail({userId, newEmail}) {
+    async updateEmail({ userId, newEmail }) {
         if (!userId || !newEmail) {
             throw new Error('Missing userId or newEmail for update');
         }
@@ -60,18 +76,18 @@ const profileService = {
             data: { email: newEmail, isVerified: false },
             select: { email: true },
         });
-         
+
         return updatedEmail;
     },
 
-    async updatePassword({userId, newPassword}) {
+    async updatePassword({ userId, newPassword }) {
         await prismaClient.user.update({
             where: { id: userId },
             data: { password: newPassword },
         });
     },
 
-    async isPasswordValid({userId, password}) {
+    async isPasswordValid({ userId, password }) {
         const user = await userService.findUser(userId);
         const isPasswordMatch = matchPassword(password, user.password);
         if (!isPasswordMatch) {
@@ -79,17 +95,23 @@ const profileService = {
         }
     },
 
-    async checkPassword({userId, oldPassword, newPassword, confirmPassword}){
-        if(newPassword !== confirmPassword){
+    async checkPassword({ userId, oldPassword, newPassword, confirmPassword }) {
+        if (newPassword !== confirmPassword) {
             throw new AppError(`Passwords don't match`, 400);
         }
         const user = await userService.findUser(userId);
-         const isPasswordMatch = matchPassword(oldPassword, user.password);
-         if (!isPasswordMatch) {
-             throw new AppError('Current password is incorrect', 400);
-         }
+        const isPasswordMatch = matchPassword(oldPassword, user.password);
+        if (!isPasswordMatch) {
+            throw new AppError('Current password is incorrect', 400);
+        }
     },
 
+    async checkAuthMethod({ userId }) {
+        const user = await userService.findUser(userId);
+        if (user.authProvider !== AuthProvider.LOCAL) {
+            throw new AppError(`Email or Password can't be changed for google login users`, 400);
+        }
+    },
 };
 
 export default profileService;

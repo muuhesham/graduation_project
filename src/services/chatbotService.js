@@ -55,33 +55,53 @@ const chatbotService = {
     },
 
     async generateContext({ userId }) {
-        const [userData, events] = await Promise.all([
-            await prismaClient.user.findUnique({
-                where: { id: userId },
-                select: {
-                    name: true,
-                    email: true,
-                    wallet: true,
-                    location: true,
-                    languagePreference: true,
-                    role: true,
-                    isVerified: true,
-                },
-            }),
+        let userData = null;
+        let events = [];
 
-            await prismaClient.event.findMany({
-                where: { deletedAt: null },
-                take: 10,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    venue: { select: { name: true, city: true, address: true } },
-                    ticketTypes: { select: { name: true, price: true } },
-                    category: { select: { name: true } },
-                    eventSessions: true,
-                    eventRules: true,
-                },
-            }),
-        ]);
+        if(userId) {
+            const [userDataResult, eventsResult] = await Promise.all([
+                await prismaClient.user.findUnique({
+                    where: { id: userId },
+                    select: {
+                        name: true,
+                        email: true,
+                        wallet: true,
+                        location: true,
+                        languagePreference: true,
+                        role: true,
+                        isVerified: true,
+                    },
+                }),
+    
+                await prismaClient.event.findMany({
+                    where: { deletedAt: null },
+                    take: 10,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        venue: { select: { name: true, city: true, address: true } },
+                        ticketTypes: { select: { name: true, price: true } },
+                        category: { select: { name: true } },
+                        eventSessions: true,
+                        eventRules: true,
+                    },
+                }),
+            ]);
+            userData = userDataResult;
+            events = eventsResult;
+        } else {
+            events = await prismaClient.event.findMany({
+                    where: { deletedAt: null },
+                    take: 10,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        venue: { select: { name: true, city: true, address: true } },
+                        ticketTypes: { select: { name: true, price: true } },
+                        category: { select: { name: true } },
+                        eventSessions: true,
+                        eventRules: true,
+                    },
+                });
+        }
 
         const formattedEvents = events.map((event) => {
             const prices = event.ticketTypes.map((t) => `${t.name}: ${t.price} ج.م`).join(' - ');

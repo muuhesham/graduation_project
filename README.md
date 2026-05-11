@@ -1,117 +1,102 @@
-# Fa3liat
+# Fa3liat — Event Management & E-Ticketing Web Application
 
-Fa3liat is an event ticketing and event management platform built with Node.js, Express, Prisma, PostgreSQL, and Redis. The system supports attendee registration, organizer onboarding, event publishing, ticket purchases, seat-based booking flows, newsletter subscriptions, background workers, and optional AI-assisted event discovery.
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js">
+  <img src="https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma">
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
+</p>
 
-This repository is submitted as a source-code deliverable. It includes full setup, database, and run instructions for local execution and Docker-based execution.
+**Fa3liat** is a comprehensive web application platform for creating events, managing tickets, and handling online payments. The platform supports both general-admission and seat-based events with multiple ticket tiers, organizer onboarding workflows, and AI-assisted event discovery.
 
-## Repository Structure
+---
 
-```text
-.
-├── src/                  Source code
-├── exe/                  Notes for executable delivery
-├── docs/                 Supporting technical documentation
-├── prisma/               Database schema, migrations, and seed data
-├── README.md             Main setup and usage guide
-├── NOTION_DOCS.md        Draft content for the Notion documentation space
-├── ARCHITECTURE.md       Architecture overview
-├── docker-compose.yml    Container-based development environment
-└── Dockerfile            Application image definition
-```
+## 📋 Table of Contents
 
-## Project Overview
+- [Overview](#-overview)
+- [Main Features](#-main-features)
+- [Tech Stack](#-tech-stack)
+- [Installation & Setup](#-installation--setup)
+- [Docker Setup](#-docker-setup)
+- [Project Structure](#-project-structure)
+- [API Endpoints](#-api-endpoints)
+- [Database Schema](#-database-schema)
+- [Environment Variables](#-environment-variables)
+- [Available Scripts](#-available-scripts)
+- [Technical Documentation](#-technical-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-### Goals
+---
 
-- Provide a backend platform for discovering, publishing, and managing events.
-- Support multiple organizer types through a structured onboarding process.
-- Prevent overselling through transaction-safe order and seat management.
-- Offload background work such as email, SMS, and embedding generation to workers.
-- Offer optional AI-based search and chatbot capabilities.
+## 📖 Overview
 
-### Target Audience
+Fa3liat is an event management and ticketing platform built with modern web technologies. It enables organizers to create events, sell tickets online, manage venues, and handle payments through integrated payment gateways. The platform supports:
 
-- Attendees looking for events and purchasing tickets.
-- Organizers managing events and ticket inventory.
-- Administrators reviewing organizers and moderating platform operations.
+- 🎫 **General Admission Tickets** - Standard ticketed events.
+- 💺 **Seat-Based Events** - Events with assigned seating and flexible seat management.
+- 👤 **User Authentication** - Email, phone (OTP), and social login (Google) with soft delete support.
+- 📱 **QR Code Tickets** - Mobile ticket validation with QR code generation.
+- 💳 **Payment Integration** - Stripe payment processing and payout management.
+- 📧 **Background Workers** - Reliable email, SMS, and AI processing using BullMQ.
+- 📍 **Venue & Location Core** - Detailed location hierarchy and seating map configurations.
+- 📱 **Mobile API** - Specialized endpoints for mobile ticket scanning.
 
-## Main Features
+---
 
-- JWT-based authentication with email and phone verification support.
-- Organizer onboarding with approval workflow.
-- Event creation, event browsing, and category-based discovery.
-- Order placement and ticket generation.
-- Seat-tier and venue management.
-- Newsletter subscription flow.
-- Background workers for mail, SMS, and embedding jobs.
-- Stripe payment integration.
-- Optional semantic search using Ollama and pgvector.
+## ✨ Main Features
 
-## Technology Stack
+- **Organizer Onboarding**: Multi-stage approval workflow for hobbyists, businesses, and companies.
+- **Seat Map Locking**: Transaction-safe seat reservations to prevent overbooking.
+- **Semantic Search**: (Optional) AI-powered event discovery using Ollama and pgvector.
+- **Real-time Notifications**: Socket.io integration for instant updates.
+- **Coupon System**: Event-specific and platform-wide discount codes.
+- **Newsletter**: Subscription flow with double opt-in confirmation.
+- **Admin Dashboard**: Comprehensive monitoring and moderation tools.
 
-| Area | Technology |
+---
+
+## 🛠 Tech Stack
+
+| Category | Technology |
 | :--- | :--- |
-| Runtime | Node.js 20.x |
-| Backend Framework | Express 5 |
-| ORM | Prisma |
-| Database | PostgreSQL 16 with `pgvector` |
-| Cache / Queue | Redis 7 |
-| Background Jobs | BullMQ |
-| Payments | Stripe |
-| Mail | Nodemailer, MailHog for local testing |
-| SMS | Twilio |
-| AI / Search | Ollama, LangChain, PGVector |
-| Testing | Jest, Supertest |
-| Containerization | Docker, Docker Compose |
+| **Runtime** | Node.js 20.x |
+| **Framework** | Express.js 5 |
+| **Database** | PostgreSQL 16 (with `pgvector`) |
+| **ORM** | Prisma |
+| **Caching / Queue** | Redis 7, BullMQ |
+| **Authentication** | JWT, bcryptjs |
+| **Payments** | Stripe |
+| **SMS** | Twilio |
+| **AI / ML** | Ollama, LangChain |
+| **Testing** | Jest, Supertest |
+| **Containerization** | Docker, Docker Compose |
 
-## Prerequisites and Dependencies
+---
 
-### Required Software
+## 🚀 Installation & Setup
 
-- Node.js 20.x
-- npm 10.x or later
-- PostgreSQL 16 or later
-- Redis 7 or later
-- A POSIX-compatible shell for local npm scripts on Windows, such as Git Bash or WSL
+### Prerequisites
 
-### Recommended Software
+- Node.js (v18+)
+- PostgreSQL (v14+)
+- Redis 7+
 
-- Docker Desktop with Docker Compose
-- Postman or a similar API client for endpoint testing
-
-### External Services
-
-- Stripe account and webhook secret for payment flows
-- Google OAuth credentials for social login
-- Twilio credentials for SMS delivery
-- Ollama for local embedding generation
-- OpenAI API key for chatbot functionality
-
-### System Requirements
-
-- Operating system: Windows 10/11, Linux, or macOS
-- Minimum RAM: 4 GB for the core API stack
-- Recommended RAM: 8 GB or more when running PostgreSQL, Redis, workers, and optional AI services together
-- Disk space: enough for `node_modules`, PostgreSQL data, uploads, logs, and optional Ollama models
-
-## Source Code Compilation and Setup
-
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
-git clone <your-repository-url>
-cd Event-Ticketing
+git clone https://github.com/muuhesham/graduation_project.git
+cd graduation_project
 ```
 
-Replace `<your-repository-url>` with the final GitHub repository URL before submission.
-
-### 2. Install Dependencies
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Configure the Environment
+### 3. Configure environment variables
 
 Create a local environment file from the provided template:
 
@@ -119,182 +104,149 @@ Create a local environment file from the provided template:
 cp .env.example .env
 ```
 
-Update `.env` before running the project.
+*Update `.env` with your actual database, Redis, and external service credentials.*
 
-### 4. Minimum Environment Variables
+### 4. Guided Setup
 
-The full template is provided in `.env.example`. The following groups must be reviewed:
-
-| Group | Variables |
-| :--- | :--- |
-| App | `APP_NAME`, `NODE_ENV`, `HOSTNAME`, `PUBLIC_HOST`, `BIND_HOST`, `PROTOCOL`, `PORT`, `APP_URL`, `FRONT_URL`, `APP_CURRENCY`, `STORAGE_TYPE` |
-| Authentication | `JWT_KEY`, `JWT_REKEY` |
-| Database | `DATABASE_URL` |
-| Redis | `REDIS_URL` |
-| Mail | `MAIL_SERVER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM` |
-| Newsletter | `NEWSLETTER_CONFIRMATION_SUCCESS_URL`, `NEWSLETTER_CONFIRMATION_ALREADY_SUBSCRIBED_URL`, `NEWSLETTER_CONFIRMATION_FAILURE_URL`, `NEWSLETTER_JWT_KEY`, `NEWSLETTER_JWT_EXPIRY` |
-| Google OAuth | `CLIENT_ID`, `CLIENT_SECRET`, `CALLBACK_URL`, `GOOGLE_REDIRECT_URL` |
-| Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_API_KEY`, `SUCCESS_ROUTE`, `CANCEL_ROUTE` |
-| AI / Search | `AI_API_KEY`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_DIMENSION` |
-
-### 5. Database Setup
-
-Make sure PostgreSQL is running and that the database in `DATABASE_URL` exists.
-
-The project migrations include creation of the `pgvector` extension. Use:
-
-```bash
-npm run prisma:generate
-npm run prisma:migrate
-```
-
-### 6. Seed the Database
-
-```bash
-npm run prisma:seed
-```
-
-### 7. Convenience Setup Script
-
-As an alternative to running the commands manually, the repository includes a guided setup script:
+Alternatively, use the built-in setup script to automate folder creation and basic configuration:
 
 ```bash
 npm run setup
 ```
 
-This script can:
-
-- create `.env` from `.env.example`
-- create local `logs/` and `uploads/` directories
-- generate the Prisma client
-- run migrations
-- seed the database
-
-## Compilation Steps
-
-This project does not require a separate frontend bundling step. The effective build and compilation steps for the backend are:
+### 5. Database Initialization
 
 ```bash
 npm run prisma:generate
 npm run prisma:migrate
-```
-
-If you want seeded sample data:
-
-```bash
 npm run prisma:seed
 ```
 
-## Run Instructions
-
-### Local Development
-
-Start the API server:
+### 6. Start the server
 
 ```bash
 npm run dev
 ```
 
-The local API server runs on:
+---
 
-- `http://localhost:8000`
+## 🐳 Docker Setup
 
-For full functionality, start the background workers in separate terminals:
-
-```bash
-npm run queue:mail-worker
-npm run queue:sms-worker
-npm run queue:embedding-worker
-```
-
-Notes:
-
-- `queue:embedding-worker` is only needed when AI embedding features are enabled.
-- The API routes are mounted under `/api/v1`.
-
-### Production-Style Start
-
-```bash
-npm start
-```
-
-### Running Tests
-
-```bash
-npm test
-```
-
-## Docker Setup
-
-Docker is the recommended way to run the full stack because it starts the main services with consistent configuration.
+Docker is the recommended way to run the full stack with consistent configuration.
 
 ### Standard Stack
-
 ```bash
 docker compose up --build
 ```
 
-This starts:
-
-- PostgreSQL with `pgvector`
-- Redis
-- MailHog
-- API container
-- Mail worker
-
-Default Docker endpoints:
-
-- API: `http://localhost:3000`
-- MailHog UI: `http://localhost:8026`
-
-### AI Profile
-
-To include Ollama and the embedding worker:
-
+### AI Profile (Ollama + Embedding Worker)
 ```bash
 docker compose --profile ai up --build
 ```
 
 ### Stripe Webhook Forwarding
-
-To start the Stripe CLI container in addition to the main stack:
-
 ```bash
 docker compose --profile stripe up --build
 ```
 
-## User Guide Summary
+---
 
-Typical system usage follows this sequence:
+## 📂 Project Structure
 
-1. A user registers and authenticates.
-2. An organizer submits onboarding data and waits for approval.
-3. An approved organizer creates venues, events, and ticket configurations.
-4. An attendee browses events and places an order.
-5. Workers process asynchronous jobs such as emails, SMS, and embeddings.
-6. Administrators review organizer applications and monitor platform activity.
+```text
+.
+├── src/
+│   ├── config/            # Configuration (DB, Redis, Mail, Stripe)
+│   ├── controllers/       # Route handlers
+│   ├── models/            # Core business models
+│   ├── services/          # Business logic layer
+│   ├── repositories/      # Data access layer
+│   ├── routes/            # API endpoint definitions
+│   ├── middlewares/       # Auth, validation, error handling
+│   ├── workers/           # BullMQ background workers
+│   ├── resources/         # API response transformers
+│   └── utils/             # Utility helpers
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   ├── seed.js            # Main seeder
+│   └── seeders/           # Modular data seeders
+├── docs/                  # Detailed technical documentation
+├── data/                  # Static JSON data (e.g. governorates)
+├── scripts/               # Setup and maintenance utilities
+├── tests/                 # Integration and unit tests
+├── Dockerfile             # App image definition
+└── docker-compose.yml     # Orchestration
+```
 
-The Notion documentation should expand these flows into step-by-step user instructions.
+---
 
-## Technical Documentation
+## 🔗 API Endpoints
 
-Supporting technical documents are available in the repository:
+The API is versioned and mounted under `/api/v1`.
 
+| Module | Base Path | Description |
+| :--- | :--- | :--- |
+| **Auth** | `/api/v1/auth` | Login, Register, OTP, Social Login |
+| **User** | `/api/v1/user` | Profile management, Onboarding |
+| **Events** | `/api/v1/events` | Browsing, Checkout, Interests |
+| **Organizer** | `/api/v1/organizer` | Event management, Venue setup |
+| **Admin** | `/api/v1/admin` | Reviews, Payouts, System stats |
+| **Mobile** | `/api/v1/mobile` | Ticket scanning and validation |
+
+---
+
+## 🗄 Database Schema
+
+### Core Models
+- **User** & **Organizer** (Hobbyist, Business, Company)
+- **Event**, **Venue**, **Category**, **Tag**
+- **Order**, **OrderItem**, **Ticket**, **TicketType**
+- **EventSeat**, **EventSeatTier** (Assigned seating)
+
+### Supporting Models
+- **Otp**, **PhoneOtp**, **RefreshToken**, **ResetPasswordToken**
+- **NewsletterSubscriber**, **InterestedEvent**, **EventReview**
+- **Payout**, **PayoutItem**, **Coupon**, **QrCode**
+
+---
+
+## 📜 Available Scripts
+
+| Script | Description |
+| :--- | :--- |
+| `npm run setup` | Run full project setup utility |
+| `npm run dev` | Start development server with nodemon |
+| `npm start` | Start production server |
+| `npm run prisma:migrate` | Run database migrations |
+| `npm run prisma:seed` | Seed database with sample data |
+| `npm test` | Run test suite with Jest |
+| `npm run queue:mail-worker` | Start mail processing worker |
+
+---
+
+## 📚 Technical Documentation
+
+Detailed guides are available in the `/docs` folder:
 - [Architecture Overview](./ARCHITECTURE.md)
 - [API Design](./docs/api_design.md)
-- [Deployment Guide](./docs/deployment_guide.md)
 - [Database ERD](./docs/database_erd.md)
+- [Deployment Guide](./docs/deployment_guide.md)
 - [Security Notes](./docs/security.md)
-- [Validation and Error Handling](./docs/validation_error_handling.md)
-- [Service Layer Deep Dive](./docs/services_deep_dive.md)
-- [Notion Documentation Draft](./NOTION_DOCS.md)
 
-## Submission Notes
+---
 
-- This repository satisfies the source-code submission path.
-- The `/exe` folder is included for completeness; no pre-built executable is distributed in the current submission.
-- Before final submission, confirm that the public Notion link is accessible in an incognito browser window.
+## 🤝 Contributing
 
-## License
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This project is released under the MIT License.
+---
+
+## 📄 License
+
+MIT License - see the [LICENSE](LICENSE) file for details.
+
+<p align="center">Built with ❤️ by the Fa3liat Team</p>

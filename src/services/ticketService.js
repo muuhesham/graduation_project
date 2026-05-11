@@ -4,7 +4,7 @@ import AppError from '../errors/AppError.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 
 const ticketService = {
-    async getSingleTicket({ticketId, userId}) {
+    async getSingleTicket({ ticketId, userId }) {
         const ticket = await prismaClient.ticket.findFirst({
             where: {
                 id: ticketId,
@@ -21,38 +21,31 @@ const ticketService = {
                     select: {
                         event: {
                             select: {
-                                organizerId:true,
                                 title: true,
                                 bannerPath: true,
-                                type: true,
-                                mode: true,
-                                category: { select: { name: true } },
+                                organizer: {
+                                    select: { user: { select: { name: true } } },
+                                },
                                 eventSessions: { select: { startDate: true, endDate: true } },
                                 venue: {
                                     select: {
                                         name: true,
                                         address: true,
                                         city: true,
-                                        country: true,
                                     },
                                 },
                             },
                         },
                     },
                 },
-                qrCode: { select: { codePath: true, status: true } },
                 orderItem: {
                     select: {
                         price: true,
                         quantity: true,
-                        ticketType: { select: { name: true } },
                         order: {
                             select: {
                                 id: true,
-                                status: true,
                                 totalPrice: true,
-                                itemsCount: true,
-                                createdAt: true,
                             },
                         },
                     },
@@ -64,41 +57,60 @@ const ticketService = {
             throw new AppError('Ticket not found', 404);
         }
 
-        if (ticket?.qrCode?.codePath) {
-            ticket.qrCode.qrAbsUrl = fileService.getAbsUrl(ticket.qrCode.codePath);
+        const bannerAbsUrl = ticket.ticketType?.event?.bannerPath
+            ? fileService.getAbsUrl(ticket.ticketType.event.bannerPath)
+            : null;
+
+        const event = ticket.ticketType?.event;
+
+        let seat = null;
+        if (ticket.eventSeat && (ticket.eventSeat.rowIndex !== null || ticket.eventSeat.seatIndex !== null) ) {
+            seat = {
+                row: String.fromCharCode(65 + ticket.eventSeat.rowIndex),
+                seat: ticket.eventSeat.seatIndex + 1,
+                tier: ticket.eventSeat.tier?.name,
+            };
         }
 
-        if (ticket?.ticketType?.event?.bannerPath) {
-            ticket.ticketType.event.bannerAbsUrl = fileService.getAbsUrl(ticket.ticketType.event.bannerPath);
-        }
-
-        if (ticket.eventSeat?.rowIndex || ticket.eventSeat?.seatIndex) {
-            const rowLetter = String.fromCharCode(65 + ticket.eventSeat.rowIndex);
-            const displaySeatNumber = ticket.eventSeat.seatIndex + 1;
-            ticket.eventSeat.rowLabel = rowLetter;
-            ticket.eventSeat.seatLabel = displaySeatNumber;
-        }
-
-        return ticket;
+        return {
+            ticketId: ticket.id,
+            orderId: ticket.orderItem?.order?.id,
+            title: event?.title,
+            bannerUrl: bannerAbsUrl,
+            date: event?.eventSessions?.[0]?.startDate || null,
+            numberOfTickets: ticket.orderItem?.quantity || 1,
+            location: event?.venue
+                ? {
+                      name: event.venue.name,
+                      address: event.venue.address,
+                      city: event.venue.city?.name,
+                  }
+                : null,
+            status: ticket.status,
+            organizer: event?.organizer?.user?.name || null,
+            seat,
+            price: ticket.orderItem?.price,
+            totalPrice: ticket.orderItem?.order?.totalPrice,
+        };
     },
 
-    async getTicketsCreated({userId, orderItems, tx = prismaClient}) {
+    async getTicketsCreated({ userId, orderItems, tx = prismaClient }) {
         return tx.ticket.findMany({
             where: {
                 userId,
                 orderItemId: { in: orderItems.map((item) => item.id) },
             },
-            include:{
+            include: {
                 ticketType: {
                     select: {
-                        event: { select : { slug: true } }
-                    }
-                }
-            }
+                        event: { select: { slug: true } },
+                    },
+                },
+            },
         });
     },
 
-    async getUserTickets({userId}) {
+    async getUserTickets({ userId }) {
         const tickets = await prismaClient.ticket.findMany({
             where: {
                 userId,
@@ -108,33 +120,87 @@ const ticketService = {
                 id: true,
                 status: true,
                 orderId: true,
-                eventSeat: { select: {rowIndex: true, seatIndex: true, tier: { select: { name: true } } } },
-                ticketType: { select: { event: { select: { title: true, bannerPath: true } } } },
-                qrCode: { select: { codePath: true, status: true } },
+                eventSeat: {
+                    select: {
+                        rowIndex: true,
+                        seatIndex: true,
+                        tier: { select: { name: true } },
+                    },
+                },
+                ticketType: {
+                    select: {
+                        name: true,
+                        event: {
+                            select: {
+                                title: true,
+                                organizer: {
+                                    select: { user: { select: { name: true } } },
+                                },
+                                eventSessions: {
+                                    select: { startDate: true, endDate: true },
+                                    orderBy: { startDate: 'asc' },
+                                    take: 1,
+                                },
+                                venue: {
+                                    select: {
+                                        name: true,
+                                        address: true,
+                                        city: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                orderItem: {
+                    select: {
+                        order: true,
+                        quantity: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        const ticketsWithAbsQr = await Promise.all(
-            tickets.map(async (ticket) => {
-                if (ticket.qrCode?.codePath) {
-                    ticket.qrCode.qrAbsUrl = fileService.getAbsUrl(ticket.qrCode.codePath);
-                }
-                if (ticket.ticketType?.event?.bannerPath) {
-                    ticket.ticketType.event.bannerAbsUrl = fileService.getAbsUrl(ticket.ticketType.event.bannerPath);
-                }
-                if (ticket.eventSeat?.rowIndex || ticket.eventSeat?.seatIndex) {
-                    const rowLetter = String.fromCharCode(65 + ticket.eventSeat.rowIndex);
-                    const displaySeatNumber = ticket.eventSeat.seatIndex + 1;
-                    ticket.eventSeat.rowLabel = rowLetter; 
-                    ticket.eventSeat.seatLabel = displaySeatNumber; 
-                }
-                return ticket;
-            })
-        );
-        return ticketsWithAbsQr;
-    },
+        const transformedTickets = tickets.map((ticket) => {
+            const event = ticket.ticketType?.event;
+            const session = event?.eventSessions?.[0];
+            const venue = event?.venue;
+            const organizer = event?.organizer?.user;
+            const eventSeat = ticket.eventSeat;
 
+            let seat = null;
+            if (eventSeat && (eventSeat?.rowIndex !== null || eventSeat?.seatIndex !== null)) {
+                const rowLetter = String.fromCharCode(65 + eventSeat.rowIndex);
+                const displaySeatNumber = eventSeat.seatIndex + 1;
+                seat = {
+                    row: rowLetter,
+                    seat: displaySeatNumber,
+                    tier: eventSeat.tier?.name,
+                };
+            }
+
+            return {
+                ticketId: ticket.id,
+                orderId: ticket.orderItem?.order?.id,
+                title: event?.title,
+                date: session?.startDate ? new Date(session.startDate).toISOString() : null,
+                numberOfTickets: ticket.orderItem?.quantity || 1,
+                location: venue
+                    ? {
+                          name: venue.name,
+                          address: venue.address,
+                          city: venue.city,
+                      }
+                    : null,
+                status: ticket.status,
+                organizer: organizer?.name || "Organizer",
+                seat,
+            };
+        });
+
+        return transformedTickets;
+    },
 };
 
 export default ticketService;

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -34,16 +28,14 @@ model User {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
   deletedAt          DateTime?
-  //* TODO: UPDATE 'refreshToken' to 'refreshTokens'
   refreshToken       RefreshToken[]
-  //* TODO: UPDATE 'Organizer' to 'organizer'
   Organizer          Organizer?
   categories         AttendeeFavoriteCategory[]
   tickets            Ticket[]
   orders             Order[]
-
   interestedEvents   InterestedEvent[]
   followedOrganizers OrganizerFollower[]
+  eventReviews       EventReview[]
 }
 
 model NewsletterSubscriber {
@@ -111,7 +103,6 @@ model Governorate {
   latitude  Float
   longitude Float
 
-  // JSON array of nearest governorates IDs in order (e.g. [3, 20, 17, ...]) asc. nearest w.r.t the row's governorate
   otherGovsIdsSorted Json?
 
   users  User[]
@@ -306,6 +297,7 @@ model Event {
   ticketTypes      TicketType[]
   eventRules       EventRule[]
   interestedEvents InterestedEvent[]
+  eventReviews     EventReview[]
 
   eventSeatTier EventSeatTier[]
   eventSeat     EventSeat[]
@@ -319,8 +311,6 @@ model EventSession {
   id        Int           @id @default(autoincrement())
   eventId   Int
   status    SessionStatus @default(active)
-  //* TODO: ADD capcaity field
-  // capacity Int
   startDate DateTime
   endDate   DateTime
   createdAt DateTime      @default(now())
@@ -369,6 +359,21 @@ model EventTag {
   tag   Tag   @relation(fields: [tagId], references: [id])
 
   @@id([eventId, tagId])
+}
+
+model EventReview {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  eventId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
 }
 
 model Venue {
@@ -548,9 +553,6 @@ model OrderItem {
   ticketTypeId Int
   price        Decimal  @db.Decimal(10, 2)
   quantity     Int
-  //seatRowIndex  Int?
-  //seatIndex     Int?
-  //eventId       Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -576,33 +578,6 @@ model InterestedEvent {
 
   @@id([userId, eventId])
 }
-
-// model Payment {
-//   id            String        @id @default(uuid())
-//   orderId       String        @unique
-//   paymentMethod PaymentMethod
-//   amount        Decimal       @db.Decimal(10, 2)
-//   currency      String
-//   status        PaymentStatus @default(pending)
-//   transactionId String        @unique
-//   createdAt     DateTime      @default(now())
-//   updatedAt     DateTime      @updatedAt
-//
-//   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-// }
-//
-// enum PaymentMethod {
-//   credit_card
-//   paypal
-//   stripe
-// }
-//
-// enum PaymentStatus {
-//   pending
-//   completed
-//   failed
-//   refunded
-//}
 
 model QrCode {
   id        String   @id @default(uuid())

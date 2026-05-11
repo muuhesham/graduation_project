@@ -1,33 +1,26 @@
 import { prisma as prismaClient } from '../config/db.js';
-
 import EventType from '../constants/enums/eventType.js';
-
 import OrganizerErrors from './../constants/messages/errors/organizer.js';
 import CategoryErrors from './../constants/messages/errors/category.js';
 import EventErrors from './../constants/messages/errors/event.js';
-
 import { pluck } from './../helpers/pluck.js';
-
 import eventService from './eventService.js';
 import ticketTypeService from './ticketTypeService.js';
 import venueService from './venueService.js';
 import fileService from './fileService.js';
 import categoryService from '../services/categoryService.js';
+import notificationService from './notificationService.js';
 import seatService from './seatService.js';
 import SessionStatus from '../constants/enums/sessionStatus.js';
 import locationService from './locationService.js';
 import mailService from './mailService.js';
 import otpService from './otpService.js';
 import orderService from './orderService.js';
-
 import { organizerRepository, organizerFollowerRepository } from './../repositories/index.js';
-
+import AppError from '../errors/AppError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 import ConflictError from './../errors/ConflictError.js';
-import AppError from '../errors/AppError.js';
-
 import organizerPolicy from './../policies/OrganizerPolicy.js';
-
 import OrganizerFactory from './../factories/OrganizerFactory.js';
 import OrganizerVerificationStatus from './../constants/enums/organizerVerificationStatus.js';
 import OrganizerStatus from './../constants/enums/organizerStatus.js';
@@ -135,7 +128,6 @@ const organizerService = {
         'reviewedAt',
     ],
 
-    // CREATE
     /**
      * @param {string} userId
      * @param {OrganizerCreateDTO} dto
@@ -257,7 +249,6 @@ const organizerService = {
         }
     },
 
-    // CREATE EVENT
     async createEvent(
         userId,
         {
@@ -372,6 +363,14 @@ const organizerService = {
                     timeout: 50000,
                 }
             );
+
+            await notificationService.notifyEventCreated(
+                organizer.id,
+                result.event.id,
+                result.event.title,
+                categoryName
+            );
+
             return {
                 status: 'success',
                 data: result,
@@ -587,6 +586,13 @@ const organizerService = {
                     .catch((e) => console.log('Old banner delete failed', e));
             }
 
+            const interestedUsers = await prismaClient.interestedEvent.findMany({
+                where: {eventId},
+                select: { userId: true },
+            });
+            const userIds = interestedUsers.map((user) => user.userId);
+            await notificationService.notifyEventUpdated(eventId, result.updatedEvent.title, userIds);
+
             return {
                 status: 'success',
                 data: {
@@ -750,7 +756,6 @@ const organizerService = {
             where: { userId },
         });
     },
-
     async listEvents(userId) {
         const organizer = await organizerService.getByUserId(userId);
 
@@ -808,24 +813,19 @@ const organizerService = {
             include: { venue: { select: { name: true } } },
         });
     },
-
+    /**
+     * @param {object} params
+     * @param {string} params.userId
+     * @param {number} params.eventId
+     * @param {TransactionClient} params.tx
+     */
     async cancelEvent({ userId, eventId, tx }) {
-        const organizer = await organizerService.getByUserId(userId);
+        const organizer = await this.findByUserId(userId);
         if (!organizer) {
-            throw new AppError('Organizer not found');
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
-        await tx.event.update({
-            where: { id: eventId, organizerId: organizer.id },
-            data: {
-                deletedAt: new Date(),
-                eventSessions: {
-                    updateMany: {
-                        where: {},
-                        data: { status: SessionStatus.CANCELLED },
-                    },
-                },
-            },
-        });
+
+        return eventService.cancelEvent(eventId, tx);
     },
 
     /**

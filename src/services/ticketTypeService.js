@@ -136,7 +136,6 @@ const ticketTypeService = {
         return totalTickets._sum.quantity || 0;
     },
 
-    // GET ALL TICKET TYPES FOR EVENT
     async getAllTicketTypes(eventId) {
         return ticketTypeRepository.findMany({
             where: { eventId },
