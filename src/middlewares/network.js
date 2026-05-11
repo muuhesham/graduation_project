@@ -3,7 +3,7 @@
 import ForbiddenError from './../errors/ForbiddenError.js';
 
 /**
- * @typedef {import('./../types/express/request.types.js').ExpressRequest} Request
+ * @typedef {import('./../types/express').ExpressRequest} Request
  * @typedef {import('express').Response} Response
  * @typedef {import('express').NextFunction} NextFunction
  */

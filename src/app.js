@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 const app = express();
 import { UPLOADS_ROOT } from './services/storage/localDriver.js';
+import './observers/registry.js';
 
 //! BEFORE MIDDLEWARES
 import { cors, corsOptions } from './config/cors.js';
