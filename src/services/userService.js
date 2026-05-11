@@ -290,6 +290,15 @@ const userService = {
             throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
+        if (organizer.userId === userId) {
+            throw new ConflictError(undefined, undefined, [
+                {
+                    message: 'You cannot follow your own organizer profile',
+                    code: 'CANNOT_FOLLOW_SELF',
+                },
+            ]);
+        }
+
         const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
         if (isFollowing) {
             throw new ConflictError(undefined, undefined, [UserErrors.ALREADY_FOLLOWING]);
@@ -312,12 +321,10 @@ const userService = {
             throw new NotFoundError(undefined, undefined, [UserErrors.NOT_FOLLOWING]);
         }
 
-        await organizerFollowerRepository.delete({
+        await organizerFollowerRepository.deleteMany({
             where: {
-                userId_organizerId: {
-                    userId,
-                    organizerId,
-                },
+                userId,
+                organizerId,
             },
         });
     },

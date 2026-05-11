@@ -57,16 +57,16 @@ Router.post(
     '/organizers/:organizerId/follow',
     apiLimiterHandler,
     auth,
-    param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+    userValidation.followOrganizer,
     validate,
     userController.followOrganizer
 );
 
-Router.delete(
-    '/organizers/:organizerId/follow',
+Router.post(
+    '/organizers/:organizerId/unfollow',
     apiLimiterHandler,
     auth,
-    param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+    userValidation.unfollowOrganizer,
     validate,
     userController.unfollowOrganizer
 );

@@ -1,4 +1,4 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import organizerTypes from './../constants/enums/organizerTypes.js';
 
 class UserValidation {
@@ -221,7 +221,16 @@ class UserValidation {
             .isNumeric()
             .withMessage('OTP must contain only numbers'),
     ];
+
+    followOrganizer = [
+        param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+    ];
+
+    unfollowOrganizer = [
+        param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+    ];
 }
 
 export default new UserValidation();
 export { UserValidation };
+
