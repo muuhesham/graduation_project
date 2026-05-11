@@ -4,14 +4,14 @@ import BaseRepository from './BaseRepository.js';
 import { Payout } from './../models/index.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models/payout.model.js').Payout} PayoutType
- * @typedef {import('./../types/models/payout.model.js').PayoutCreate} PayoutCreate
- * @typedef {import('./../types/models/payout.model.js').PayoutUpdate} PayoutUpdate
- * @typedef {import('./../types/models/payout.model.js').PayoutWhereUnique} PayoutWhereUnique
- * @typedef {import('./../types/models/payout.model.js').PayoutSelect} PayoutSelect
- * @typedef {import('./../types/models/payout.model.js').PayoutInclude} PayoutInclude
- * @typedef {import('./../types/models/payout.model.js').PayoutProjection} PayoutProjection
+ * @typedef {import('./drivers/IDriver').default} IDriver
+ * @typedef {import('./../types/models').Payout} PayoutType
+ * @typedef {import('./../types/models').PayoutCreate} PayoutCreate
+ * @typedef {import('./../types/models').PayoutUpdate} PayoutUpdate
+ * @typedef {import('./../types/models').PayoutWhereUnique} PayoutWhereUnique
+ * @typedef {import('./../types/models').PayoutSelect} PayoutSelect
+ * @typedef {import('./../types/models').PayoutInclude} PayoutInclude
+ * @typedef {import('./../types/models').PayoutProjection} PayoutProjection
  */
 
 /**

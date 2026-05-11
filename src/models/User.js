@@ -1,10 +1,11 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { Organizer, Governorate } from './index.js';
 import { booleanCast, dateCast, numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/user.model.js').UserData} UserDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').UserData} UserDataType */
 
 /**
  * @extends {BaseModel<UserDataType>}
@@ -42,6 +43,16 @@ class User extends BaseModel {
 
     static get resourceName() {
         return 'user';
+    }
+
+    /**
+     * @returns {Record<string, any>}
+     */
+    static get relations() {
+        return {
+            Organizer: Organizer,
+            governorate: Governorate,
+        };
     }
 
     /**

@@ -1,10 +1,11 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { Organizer } from './index.js';
 import { dateCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/index.js').Hobbyist} HobbyistType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').Hobbyist} HobbyistType */
 
 /** @extends {BaseModel<HobbyistType>} */
 class Hobbyist extends BaseModel {
@@ -18,17 +19,12 @@ class Hobbyist extends BaseModel {
     }
 
     /**
-     * @param {string} organizerId
-     * @param {object} data
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     * @returns {Record<string, any>}
      */
-    create(organizerId, data, tx) {
-        return tx.hobbyist.create({
-            data: {
-                organizerId,
-                nationalId: data.nationalId,
-            },
-        });
+    static get relations() {
+        return {
+            organizer: Organizer,
+        };
     }
 
     /**

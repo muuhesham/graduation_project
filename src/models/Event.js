@@ -6,12 +6,16 @@ import Category from './Category.js';
 import Venue from './Venue.js';
 import Organizer from './Organizer.js';
 import TicketType from './TicketType.js';
+import EventSession from './EventSession.js';
+import EventTag from './EventTag.js';
+import EventRule from './EventRule.js';
 import { booleanCast, dateCast, numberCast, stringCast } from './casts.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
 /**
- * @typedef {import('./../types/models/event.model.js').EventData} EventDataType
+ * @typedef {import('./../types/models').EventData} EventDataType
+ * @typedef {import('./../types/models').Event} FullEventModel
  * @typedef {EventDataType & {
  *     pendingOrders?: number;
  *     completedOrders?: number;
@@ -61,6 +65,9 @@ class Event extends BaseModel {
             venue: Venue,
             organizer: Organizer,
             ticketTypes: [TicketType],
+            eventSessions: [EventSession],
+            eventTags: [EventTag],
+            eventRules: [EventRule],
         };
     }
 
@@ -80,8 +87,25 @@ class Event extends BaseModel {
             .filter((name) => typeof name === 'string');
     }
 
+    get ruleNames() {
+        const eventData = /** @type {any} */ (this);
+        if (!Array.isArray(eventData.eventRules)) return [];
+
+        return eventData.eventRules
+            .map((rule) => rule?.rule ?? null)
+            .filter((value) => typeof value === 'string');
+    }
+
     static get resourceName() {
         return 'event';
+    }
+
+    /**
+     * @param {string} [slug]
+     * @returns {string}
+     */
+    static getUploadPath(slug) {
+        return slug ? `events/${slug}` : 'events';
     }
 
     /**
@@ -120,6 +144,19 @@ class Event extends BaseModel {
     /** @this {EventDeletionState & Event} */
     canBeModified() {
         return this.canBeDeleted();
+    }
+
+    canBeCancelled() {
+        const pendingOrders =
+            typeof this.pendingOrders === 'number'
+                ? this.pendingOrders
+                : this.#countDistinctOrdersByStatus(OrderStatus.PENDING);
+        const completedOrders =
+            typeof this.completedOrders === 'number'
+                ? this.completedOrders
+                : this.#countDistinctOrdersByStatus(OrderStatus.COMPLETED);
+
+        return !this.deletedAt && pendingOrders === 0 && completedOrders === 0;
     }
 
     /**
@@ -163,6 +200,6 @@ class Event extends BaseModel {
     }
 }
 
-/** @type {typeof Event & (new (data: EventDeletionState) => Event & EventDeletionState)} */
+/** @type {typeof Event & (new (data: any) => FullEventModel)} */
 const EventExport = /** @type {any} */ (Event);
 export default EventExport;

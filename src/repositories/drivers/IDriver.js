@@ -1,9 +1,9 @@
 //@ts-check
 
 /**
- * @typedef {import('./../../types/shared/common.types.js').DriverFindQuery<object, any, any, any>} DriverFindQuery
- * @typedef {import('./../../types/shared/common.types.js').RepositoryFindUniqueOptions<object, any, any, any>} RepositoryFindUniqueOptions
- * @typedef {import('./../../types/shared/common.types.js').RepositoryCountOptions<object>} RepositoryCountOptions
+ * @typedef {import('./../../types/shared').DriverFindQuery<object, any, any, any>} DriverFindQuery
+ * @typedef {import('./../../types/shared').RepositoryFindUniqueOptions<object, any, any, any>} RepositoryFindUniqueOptions
+ * @typedef {import('./../../types/shared').RepositoryCountOptions<object>} RepositoryCountOptions
  * @typedef {{ count: number }} BatchResult
  *
  * @interface
@@ -133,6 +133,16 @@ export default class IDriver {
      * @returns {Promise<BatchResult>}
      */
     async deleteMany(resource, where, tx) {
+        throw new Error('Not implemented');
+    }
+
+    /**
+     * @param {string} resource
+     * @param {{ where: object, update: object, create: object }} options
+     * @param {any} [tx]
+     * @returns {Promise<any>}
+     */
+    async upsert(resource, options, tx) {
         throw new Error('Not implemented');
     }
 

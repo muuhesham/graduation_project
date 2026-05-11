@@ -5,7 +5,7 @@ import { Order } from './../models/index.js';
 import OrderStatus from './../constants/enums/orderStatus.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
+ * @typedef {import('./drivers/IDriver').default} IDriver
  * @typedef {import('./../types/models').Order} OrderType
  * @typedef {import('./../types/models').OrderCreate} OrderCreate
  * @typedef {import('./../types/models').OrderUpdate} OrderUpdate

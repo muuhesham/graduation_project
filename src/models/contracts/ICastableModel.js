@@ -1,7 +1,7 @@
 //@ts-check
 
-/** @typedef {import('./ICast.js').default} ICast */
-/** @typedef {typeof import('./ICast.js').default} CastClass */
+/** @typedef {import('./ICast').default} ICast */
+/** @typedef {typeof import('./ICast').default} CastClass */
 
 /**
  * @typedef {object} CastDefinition

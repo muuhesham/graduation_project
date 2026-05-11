@@ -7,7 +7,7 @@ import { TicketType } from './../models/index.js';
 import OrderStatus from './../constants/enums/orderStatus.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
+ * @typedef {import('./drivers/IDriver').default} IDriver
  * @typedef {import('@prisma/client').Prisma.TicketTypeDefaultArgs} TicketTypeDefaultArgs
  * @typedef {import('./../types/models').TicketType} TicketTypeHydrated
   * @typedef {import('./../types/models').TicketTypeCreate} TicketTypeCreate

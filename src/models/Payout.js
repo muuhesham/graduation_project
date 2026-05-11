@@ -4,9 +4,10 @@ import BaseModel from './BaseModel.js';
 import { dateCast, numberCast } from './casts.js';
 import Admin from './Admin.js';
 import Order from './Order.js';
+import PayoutItem from './PayoutItem.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/payout.model.js').PayoutData} PayoutDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').PayoutData} PayoutDataType */
 
 /** 
  * @extends {BaseModel<PayoutDataType>} 
@@ -44,6 +45,7 @@ class Payout extends BaseModel {
         return {
             admin: Admin,
             orders: [Order],
+            items: [PayoutItem],
         };
     }
 }

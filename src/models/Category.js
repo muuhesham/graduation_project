@@ -5,8 +5,8 @@ import fileService from './../services/fileService.js';
 
 import { dateCast, numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/category.model.js').CategoryData} CategoryDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').CategoryData} CategoryDataType */
 
 /** @extends {BaseModel<CategoryDataType>} */
 class Category extends BaseModel {

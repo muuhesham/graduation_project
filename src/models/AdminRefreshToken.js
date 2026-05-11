@@ -3,7 +3,7 @@
 import BaseModel from './BaseModel.js';
 import { numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
 /** @typedef {import('@prisma/client').AdminRefreshToken} RefreshTokenType */
 
 /** @extends {BaseModel<RefreshTokenType>} */

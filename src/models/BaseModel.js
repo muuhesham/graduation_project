@@ -1,8 +1,8 @@
 //@ts-check
 
 /**
- * @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition
- * @typedef {import('./contracts/ICastableModel.js').CastClass} CastClass
+ * @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition
+ * @typedef {import('./contracts/ICastableModel').CastClass} CastClass
  */
 
 /**

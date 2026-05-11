@@ -1,10 +1,11 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { Organizer } from './index.js';
 import { dateCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/index.js').Business} BusinessType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').Business} BusinessType */
 
 /** @extends {BaseModel<BusinessType>} */
 class Business extends BaseModel {
@@ -18,18 +19,12 @@ class Business extends BaseModel {
     }
 
     /**
-     * @param {string} organizerId
-     * @param {object} data
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     * @returns {Record<string, any>}
      */
-    create(organizerId, data, tx) {
-        return tx.business.create({
-            data: {
-                organizerId,
-                commercialRegistration: data.commercialRegistration,
-                taxId: data.taxId,
-            },
-        });
+    static get relations() {
+        return {
+            organizer: Organizer,
+        };
     }
 
     /**

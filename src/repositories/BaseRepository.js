@@ -3,19 +3,41 @@
 import { buildPagination } from '../utils/pagination.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
- * @typedef {import('./../types/shared/common.types.js').RepositoryModelClass<any>} RepositoryModelClass
- * @typedef {import('./../types/shared/common.types.js').RepositoryReadOptions<any>} RepositoryReadOptions
- * @typedef {import('./../types/shared/common.types.js').RepositoryFindUniqueOptions<any>} RepositoryFindUniqueOptions
+ * @typedef {import('./drivers/IDriver').default} IDriver
+ * @typedef {import('./../types/shared').PaginationQuery} PaginationQuery
+ * @typedef {import('./../types/shared').RepositorySort} RepositorySort
+ * @typedef {import('./../types/shared').PaginationMeta} PaginationMeta
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
+ * @typedef {import('./../types/shared').RepositoryProjection<any, any, any>} RepositoryProjection
+ */
+
+/**
+ * @template TInstance
+ * @typedef {import('./../types/shared').RepositoryModelClass<TInstance>} RepositoryModelClass
+ */
+
+/**
+ * @template TWhere, TSelect, TInclude, TOmit
+ * @typedef {import('./../types/shared').RepositoryReadOptions<TWhere, TSelect, TInclude, TOmit>} ReadOptions
+ */
+
+/**
+ * @template TWhere, TSelect, TInclude, TOmit
+ * @typedef {import('./../types/shared').RepositoryFindUniqueOptions<TWhere, TSelect, TInclude, TOmit>} FindUniqueOptions
+ */
+
+/**
+ * @template TItem
+ * @typedef {import('./../types/shared').PaginatedResult<TItem>} PaginatedResult
  */
 
 /**
  * @typedef {object} RepositoryConfig
  * @property {string} [modelName]
- * @property {import('./../types/shared/common.types.js').RepositorySort} [defaultSort]
+ * @property {RepositorySort} [defaultSort]
  * @property {PaginationQuery} [defaultPagination]
  * @property {string[]} [searchFields]
+ * @property {RepositoryProjection} [mutationInclude]
  */
 
 /**
@@ -29,26 +51,55 @@ import { buildPagination } from '../utils/pagination.js';
  * @template [TOmit=any] - Omit type (Prisma.ModelOmit)
  */
 export default class BaseRepository {
+    /** @type {import('../observers/BaseObserver').default<T>[]} */
+    #observers = [];
+
     /**
      * @param {IDriver} driver
-     * @param {RepositoryModelClass} ModelClass
+     * @param {RepositoryModelClass<T>} ModelClass
      * @param {RepositoryConfig} [options]
      */
     constructor(driver, ModelClass, options = {}) {
         /** @type {IDriver} */
         this.driver = driver;
-        /** @type {RepositoryModelClass} */
+        /** @type {RepositoryModelClass<T>} */
         this.ModelClass = ModelClass;
         this.resource = options.modelName || this.ModelClass.resourceName;
         this.defaultSort = options.defaultSort || { field: 'createdAt', order: 'desc' };
         this.defaultPagination = options.defaultPagination || { page: 1, limit: 10 };
         this.searchFields = Array.isArray(options.searchFields) ? options.searchFields : [];
+        /** @type {RepositoryProjection | null} */
+        this.mutationInclude = options.mutationInclude || null;
         this.trashField = ModelClass.softDeleteField;
         this._withTrashed = false;
     }
 
     /**
-     * Include soft-deleted records in the next query.
+     * @param {import('../observers/BaseObserver').default<T>} observer
+     */
+    observe(observer) {
+        this.#observers.push(observer);
+    }
+
+    /**
+     * @protected
+     * @param {'creating'|'created'|'updating'|'updated'|'deleting'|'deleted'|'saving'|'saved'} event
+     * @param {C|U|T|null} model
+     * @param {TransactionClient} [tx]
+     */
+    async _notify(event, model, tx) {
+        if (!model) return;
+        for (const observer of this.#observers) {
+            const handler = /** @type {((model: any, tx?: any) => any) | undefined} */ (
+                observer[event]
+            );
+            if (typeof handler === 'function') {
+                await handler.call(observer, model, tx);
+            }
+        }
+    }
+
+    /**
      * @returns {this}
      */
     withTrashed() {
@@ -92,7 +143,7 @@ export default class BaseRepository {
 
     /**
      * @protected
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object>} [options]
+     * @param {ReadOptions<any, any, any, any>} [options]
      * @returns {{ page?: number, limit?: number } | undefined}
      */
     _paginationAliases(options = {}) {
@@ -108,7 +159,7 @@ export default class BaseRepository {
 
     /**
      * @protected
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object>} [options]
+     * @param {ReadOptions<any, any, any, any>} [options]
      * @returns {object | undefined}
      */
     _implicitWhere(options = {}) {
@@ -116,7 +167,20 @@ export default class BaseRepository {
             return options.where;
         }
 
-        const { select, include, omit, sort, pagination, page, limit, q, where, ...rest } = options;
+        const {
+            select,
+            include,
+            omit,
+            sort,
+            pagination,
+            page,
+            limit,
+            q,
+            where,
+            withDeleted,
+            withTrashed,
+            ...rest
+        } = options;
 
         const filtered = Object.fromEntries(
             Object.entries(rest).filter(([, value]) => value !== undefined)
@@ -127,13 +191,17 @@ export default class BaseRepository {
 
     /**
      * @protected
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object>} [options]
+     * @param {ReadOptions<any, any, any, any>} [options]
      * @param {{ applyDefaultSort?: boolean }} [config]
-     * @returns {import('./../types/shared/common.types.js').RepositoryReadOptions<object>}
+     * @returns {ReadOptions<any, any, any, any>}
      */
     _normalizeQueryOptions(options = {}, config = {}) {
-        /** @type {import('./../types/shared/common.types.js').RepositoryReadOptions<object>} */
+        /** @type {ReadOptions<any, any, any, any>} */
         const query = {};
+
+        if (options.withDeleted || options.withTrashed) {
+            this.withTrashed();
+        }
 
         const where = this._searchWhere(this._implicitWhere(options), options.q);
         if (where) {
@@ -168,9 +236,9 @@ export default class BaseRepository {
 
     /**
      * @protected
-     * @param {object | undefined} where
+     * @param {Record<string, any> | undefined} where
      * @param {string | undefined} q
-     * @returns {object | undefined}
+     * @returns {Record<string, any> | undefined}
      */
     _searchWhere(where, q) {
         if (!q || !this.searchFields.length) {
@@ -197,8 +265,8 @@ export default class BaseRepository {
 
     /**
      * @protected
-     * @param {object} [where]
-     * @return {object}
+     * @param {Record<string, any>} [where]
+     * @return {Record<string, any>}
      */
     _applyScopes(where = {}) {
         if (!this.trashField) {
@@ -220,17 +288,25 @@ export default class BaseRepository {
 
     /**
      * @param {C} data
-     * @param {any} [tx]
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T>}
      */
     async create(data, tx = null) {
-        const result = await this.driver.create(this.resource, data, tx);
-        return /** @type {T} */ (this._hydrate(result));
+        await this._notify('creating', data, tx);
+        await this._notify('saving', data, tx);
+
+        const result = await this.driver.create(this.resource, data, tx, this.mutationInclude);
+        const model = /** @type {T} */ (this._hydrate(result));
+
+        await this._notify('created', model, tx);
+        await this._notify('saved', model, tx);
+
+        return model;
     }
 
     /**
      * @param {{ data: C[], skipDuplicates?: boolean }} options
-     * @param {any} [tx]
+     * @param {TransactionClient} [tx]
      */
     async bulkInsert(options, tx = null) {
         return this.driver.createMany(
@@ -244,62 +320,59 @@ export default class BaseRepository {
     }
 
     /**
-     * @param {import('./../types/shared/common.types.js').RepositoryFindUniqueOptions<W, TSelect, TInclude, TOmit>} options
+     * @param {FindUniqueOptions<any, TSelect, TInclude, TOmit>} options
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T | null>}
      */
-    async findUnique(options) {
+    async findUnique(options, tx = null) {
         const query = this._normalizeQueryOptions(options);
-
         query.where = this._applyScopes(query.where);
 
-        const result = await this.driver.findUnique(
-            this.resource,
-            /** @type {import('./../types/shared/common.types.js').RepositoryFindUniqueOptions<object, any, any>} */ (
-                query
-            )
-        );
+        const result = await this.driver.findUnique(this.resource, /** @type {any} */ (query), tx);
         return this._hydrate(result);
     }
 
     /**
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object, TSelect, TInclude, TOmit>} [options]
+     * @param {ReadOptions<any, TSelect, TInclude, TOmit>} [options]
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T | null>}
      */
-    async findOne(options = {}) {
+    async findOne(options = {}, tx = null) {
         const query = this._normalizeQueryOptions(options);
         query.where = this._applyScopes(query.where);
 
-        const result = await this.driver.findOne(this.resource, query);
+        const result = await this.driver.findOne(this.resource, query, tx);
         return this._hydrate(result);
     }
 
     /**
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object, TSelect, TInclude, TOmit>} [options]
+     * @param {ReadOptions<any, TSelect, TInclude, TOmit>} [options]
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T[]>}
      */
-    async findMany(options = {}) {
+    async findMany(options = {}, tx = null) {
         const query = this._normalizeQueryOptions(options);
         query.where = this._applyScopes(query.where);
 
-        const results = await this.driver.findMany(this.resource, query);
+        const results = await this.driver.findMany(this.resource, query, tx);
         return this._hydrateMany(results);
     }
 
     /**
-     * @param {import('./../types/shared/common.types.js').RepositoryReadOptions<object, TSelect, TInclude, TOmit>} [options]
-     * @returns {Promise<{ data: T[], pagination: import('./../types/shared/common.types.js').PaginationMeta }>}
+     * @param {ReadOptions<any, TSelect, TInclude, TOmit>} [options]
+     * @param {TransactionClient} [tx]
+     * @returns {Promise<PaginatedResult<T>>}
      */
-    async paginate(options = {}) {
+    async paginate(options = {}, tx = null) {
         const pagination = this._resolvePagination(
             options.pagination || this._paginationAliases(options)
         );
         const query = this._normalizeQueryOptions(options, { applyDefaultSort: true });
-
         query.where = this._applyScopes(query.where);
 
         const [data, total] = await Promise.all([
-            this.driver.findMany(this.resource, query),
-            this.driver.count(this.resource, { where: query.where }),
+            this.driver.findMany(this.resource, query, tx),
+            this.driver.count(this.resource, { where: query.where }, tx),
         ]);
 
         return {
@@ -314,32 +387,48 @@ export default class BaseRepository {
 
     /**
      * @param {object} [args]
+     * @param {TransactionClient} [tx]
      * @returns {Promise<any>}
      */
-    async aggregate(args = {}) {
-        return this.driver.aggregate(this.resource, args);
+    async aggregate(args = {}, tx = null) {
+        return this.driver.aggregate(this.resource, args, tx);
     }
 
     /**
-     * @param {import('./../types/shared/common.types.js').RepositoryCountOptions<object>} [options]
+     * @param {import('./../types/shared').RepositoryCountOptions<any>} [options]
+     * @param {TransactionClient} [tx]
      * @returns {Promise<number>}
      */
-    async count(options = {}) {
-        return this.driver.count(this.resource, { where: options.where });
+    async count(options = {}, tx = null) {
+        return this.driver.count(this.resource, { where: options.where }, tx);
     }
 
     /**
      * @param {{ where: W, data: U }} options
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T>}
      */
-    async update(options) {
-        const result = await this.driver.update(this.resource, options.where, options.data);
-        return /** @type {T} */ (this._hydrate(result));
+    async update(options, tx = null) {
+        const { where, data } = /** @type {any} */ (options);
+
+        const model = await this.findUnique({ where }, tx);
+        if (model) {
+            await this._notify('updating', model, tx);
+            await this._notify('saving', model, tx);
+        }
+
+        const result = await this.driver.update(this.resource, where, data, tx, this.mutationInclude);
+        const updatedModel = /** @type {T} */ (this._hydrate(result));
+
+        await this._notify('updated', updatedModel, tx);
+        await this._notify('saved', updatedModel, tx);
+
+        return updatedModel;
     }
 
     /**
      * @param {{ where: object, data: U }} options
-     * @param {any} [tx]
+     * @param {TransactionClient} [tx]
      */
     async updateMany(options, tx = null) {
         return this.driver.updateMany(this.resource, options.where, options.data, tx);
@@ -347,23 +436,52 @@ export default class BaseRepository {
 
     /**
      * @param {{ where: W }} options
+     * @param {TransactionClient} [tx]
      * @returns {Promise<T>}
      */
-    async delete(options) {
-        const result = await this.driver.delete(this.resource, options.where);
-        return /** @type {T} */ (this._hydrate(result));
+    async delete(options, tx = null) {
+        const model = await this.findUnique(/** @type {any} */ (options), tx);
+        await this._notify('deleting', model, tx);
+
+        const result = await this.driver.delete(this.resource, options.where, tx);
+        const hydrated = /** @type {T} */ (this._hydrate(result));
+
+        await this._notify('deleted', model || hydrated, tx);
+
+        return hydrated;
     }
 
     /**
      * @param {{ where: object }} options
+     * @param {TransactionClient} [tx]
      */
-    async deleteMany(options) {
-        return this.driver.deleteMany(this.resource, options.where);
+    async deleteMany(options, tx = null) {
+        return this.driver.deleteMany(this.resource, options.where, tx);
+    }
+
+    /**
+     * @param {{ where: W, update: U, create: C }} options
+     * @param {TransactionClient} [tx]
+     * @returns {Promise<T>}
+     */
+    async upsert(options, tx = null) {
+        const driverOptions = {
+            where: /** @type {object} */ (options.where),
+            update: /** @type {object} */ (options.update),
+            create: /** @type {object} */ (options.create),
+        };
+
+        const result = await this.driver.upsert(this.resource, driverOptions, tx);
+        const model = /** @type {T} */ (this._hydrate(result));
+
+        await this._notify('saved', model, tx);
+
+        return model;
     }
 
     /**
      * @template TR
-     * @param {(tx: any) => Promise<TR>} work
+     * @param {(tx: TransactionClient) => Promise<TR>} work
      * @returns {Promise<TR>}
      */
     async runInTransaction(work) {
