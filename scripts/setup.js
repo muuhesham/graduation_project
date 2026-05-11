@@ -108,6 +108,8 @@ function askQuestion(question) {
 }
 
 async function setup() {
+    const isNonInteractive = process.argv.includes('--non-interactive');
+
     console.log(`
 ${colors.cyan}${colors.bright}╔═══════════════════════════════════════════════╗
 ║   Event Ticketing System - Setup Script      ║
@@ -115,9 +117,11 @@ ${colors.cyan}${colors.bright}╔═══════════════�
 `);
 
     log.step('Step 1: Installing dependencies');
-    if (!runCommand('npm install --legacy-peer-deps', 'Installing npm packages')) {
-        log.error('Failed to install dependencies. Please check your npm installation.');
-        process.exit(1);
+    if (!isNonInteractive) {
+        if (!runCommand('npm install --legacy-peer-deps', 'Installing npm packages')) {
+            log.error('Failed to install dependencies. Please check your npm installation.');
+            process.exit(1);
+        }
     }
 
     log.step('Step 2: Setting up environment variables');
@@ -132,9 +136,12 @@ ${colors.cyan}${colors.bright}╔═══════════════�
     }
 
     log.step('Step 5: Running database migrations');
-    const runMigrations = await askQuestion(
-        `${colors.yellow}Do you want to run database migrations now? (y/n): ${colors.reset}`
-    );
+    let runMigrations = 'y';
+    if (!isNonInteractive) {
+        runMigrations = await askQuestion(
+            `${colors.yellow}Do you want to run database migrations now? (y/n): ${colors.reset}`
+        );
+    }
 
     if (runMigrations === 'y' || runMigrations === 'yes') {
         if (!runScript('scripts/migrate.js', 'Running database migrations')) {
@@ -145,9 +152,12 @@ ${colors.cyan}${colors.bright}╔═══════════════�
     }
 
     log.step('Step 6: Seeding database');
-    const runSeed = await askQuestion(
-        `${colors.yellow}Do you want to seed the database with sample data? (y/n): ${colors.reset}`
-    );
+    let runSeed = 'y';
+    if (!isNonInteractive) {
+        runSeed = await askQuestion(
+            `${colors.yellow}Do you want to seed the database with sample data? (y/n): ${colors.reset}`
+        );
+    }
 
     if (runSeed === 'y' || runSeed === 'yes') {
         if (!runScript('scripts/seed.js', 'Seeding database')) {
@@ -166,11 +176,11 @@ ${colors.cyan}Next steps:${colors.reset}
   1. Update your .env file with actual configuration values
   2. Make sure your database is running
   3. Make sure Redis is running
-  4. Run: ${colors.bright}npm run run:dev${colors.reset} to start the development server
+  4. Run: ${colors.bright}npm run dev${colors.reset} to start the development server
 
 ${colors.cyan}Available commands:${colors.reset}
-  ${colors.bright}npm run run:dev${colors.reset}         - Start development server
-  ${colors.bright}npm run run:start${colors.reset}       - Start production server
+  ${colors.bright}npm run dev${colors.reset}             - Start development server
+  ${colors.bright}npm start${colors.reset}               - Start production server
   ${colors.bright}node scripts/migrate.js${colors.reset}    - Run database migrations
   ${colors.bright}node scripts/seed.js${colors.reset}       - Seed database with data
   ${colors.bright}node scripts/generate.js${colors.reset}   - Generate Prisma Client
@@ -183,4 +193,3 @@ setup().catch((error) => {
     log.error(`Setup failed: ${error.message}`);
     process.exit(1);
 });
-

@@ -2,7 +2,7 @@
 
 /**
  * @typedef {Object} AuthUser
- * @property {string | number} id
+ * @property {string} id
  * @property {string} [email]
  * @property {string} [role]
  */

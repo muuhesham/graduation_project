@@ -8,13 +8,13 @@ import TimeoutError from '../errors/TimeoutError.js';
 import { makePagination } from '../resources/helpers/pagination.js';
 
 /**
- * @typedef {import('../types/search.types.js').SearchResult} SearchResult
- * @typedef {import('../types/search.types.js').SearchFilters} SearchFilters
- * @typedef {import('../types/search.types.js').SearchOptions} SearchOptions
- * @typedef {typeof import('./aiService.js').default} AIService
- * @typedef {typeof import('./cacheService.js').default} CacheService
- * @typedef {typeof import('./eventService.js').default} EventService
- * @typedef {typeof import('./eventEmbeddingService.js').default} EventEmbeddingService
+ * @typedef {import('../types/search.types').SearchResult} SearchResult
+ * @typedef {import('../types/search.types').SearchFilters} SearchFilters
+ * @typedef {import('../types/search.types').SearchOptions} SearchOptions
+ * @typedef {typeof import('./aiService').default} AIService
+ * @typedef {typeof import('./cacheService').default} CacheService
+ * @typedef {typeof import('./eventService').default} EventService
+ * @typedef {typeof import('./eventEmbeddingService').default} EventEmbeddingService
  */
 
 /**

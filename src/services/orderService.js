@@ -1,257 +1,182 @@
-import { prisma as prismaClient } from '../config/db.js';
-import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
-import AppError from '../errors/AppError.js';
-import fileService from './fileService.js';
-import orderItemService from './orderItemService.js';
-import TicketStatus from '../constants/enums/ticketStatus.js';
+import { orderRepository } from '../repositories/index.js';
+import { prisma as prismaClient } from '../config/db.js';
 import notificationService from './notificationService.js';
-import { orderRepository } from './../repositories/index.js';
 
 const orderService = {
-    MAX_LIMIT: 100,
-    DEFAULT_SELECTIONS: {
-        id: true,
-        userId: true,
-        totalPrice: true,
-        itemsCount: true,
-        status: true,
-        createdAt: true,
+    /**
+     * @param {string} orderId
+     * @param {TransactionClient} [tx]
+     */
+    async findById(orderId, tx) {
+        return orderRepository.findUnique({ where: { id: orderId } }, tx);
     },
 
-    DEFAULT_EXCLUDE_FIELDS: {
-        updatedAt: true,
+    /**
+     * @param {string} userId
+     * @param {object} pagination
+     */
+    async listUserOrders(userId, pagination) {
+        return orderRepository.list({
+            where: { userId },
+            pagination,
+            include: { orderItems: { include: { ticketType: true } } },
+        });
     },
 
-    DEFAULT_RELATIONS: {
-        orderItems: true,
+    /**
+     * @param {string} userId
+     * @param {string} orderId
+     */
+    async getUserOrderDetails(userId, orderId) {
+        return orderRepository.findUnique({
+            where: { id: orderId, userId },
+            include: { orderItems: { include: { ticketType: true } } },
+        });
     },
 
-    ALLOWED_RELATIONS: ['user', 'orderItems'],
-
-    async create(
-        userId,
-        totalPrice,
-        itemsCount,
-        status = OrderStatus.PENDING,
-        { selections, relations, exclude, filters } = {},
-        tx = prismaClient
-    ) {
-        const query = new PrismaQueryBuilder({
-            allowedRelations: orderService.ALLOWED_RELATIONS,
-            maxLimit: orderService.MAX_LIMIT,
-        })
-            .select(selections || orderService.DEFAULT_SELECTIONS)
-            .include(relations || orderService.DEFAULT_RELATIONS)
-            .omit(exclude || orderService.DEFAULT_EXCLUDE_FIELDS)
-            .where(filters || {}).value;
-
-        return await tx.order.create({
-            data: {
-                userId,
-                totalPrice,
-                itemsCount,
-                status,
+    /**
+     * @param {object} params
+     * @param {number} params.eventId
+     * @param {Date} params.startDate
+     * @param {Date} params.endDate
+     * @param {TransactionClient} [params.tx]
+     */
+    async getFinanceSummary({ eventId, startDate, endDate, tx }) {
+        const orders = await (tx || prismaClient).order.findMany({
+            where: {
+                status: OrderStatus.COMPLETED,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+                orderItems: {
+                    some: { ticketType: { eventId } },
+                },
             },
-            ...query,
+            select: { totalPrice: true },
         });
+
+        const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
+        const totalOrders = orders.length;
+
+        return { totalRevenue, totalOrders };
     },
 
-    async findById(id, { selections, relations, exclude, filters } = {}) {
-        const query = new PrismaQueryBuilder({
-            allowedRelations: orderService.ALLOWED_RELATIONS,
-            maxLimit: orderService.MAX_LIMIT,
-        })
-            .select(selections || orderService.DEFAULT_SELECTIONS)
-            .include(relations || orderService.DEFAULT_RELATIONS)
-            .omit(exclude || orderService.DEFAULT_EXCLUDE_FIELDS)
-            .where({ id, ...filters }).value;
-
-        return prismaClient.order.findFirst(query);
-    },
-
-    async delete(id, tx = prismaClient) {
-        return tx.order.delete({
-            where: { id },
+    /**
+     * @param {object} params
+     * @param {Date} params.startDate
+     * @param {Date} params.endDate
+     * @param {TransactionClient} [params.tx]
+     */
+    async getPlatformFinanceSummary({ startDate, endDate, tx }) {
+        const orders = await (tx || prismaClient).order.findMany({
+            where: {
+                status: OrderStatus.COMPLETED,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+            },
+            select: { totalPrice: true },
         });
+
+        const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
+        const totalOrders = orders.length;
+
+        return { totalRevenue, totalOrders };
     },
 
-    async getUserOrders(
-        userId,
-        { selections, relations, exclude, filters, pagination, sort } = {}
-    ) {
-        const query = new PrismaQueryBuilder({
-            allowedRelations: orderService.ALLOWED_RELATIONS,
-            maxLimit: orderService.MAX_LIMIT,
-        })
-            .select(selections || orderService.DEFAULT_SELECTIONS)
-            .include(relations || orderService.DEFAULT_RELATIONS)
-            .omit(exclude || orderService.DEFAULT_EXCLUDE_FIELDS)
-            .where({ userId, ...filters })
-            .paginate(pagination)
-            .sort(sort).value;
-
-        return prismaClient.order.findMany(query);
-    },
-
-    async updateOrderStatus(orderId, status, tx = prismaClient) {
-        return tx.order.update({
-            where: { id: orderId },
-            data: { status },
+    /**
+     * @param {object} params
+     * @param {number} params.eventId
+     * @param {TransactionClient} [params.tx]
+     */
+    async getTicketsSoldByEvent({ eventId, tx }) {
+        const result = await (tx || prismaClient).orderItem.aggregate({
+            where: { ticketType: { eventId } },
+            _sum: { quantity: true },
         });
+
+        return result._sum.quantity || 0;
     },
 
-    async status(id, userId) {
-        const relations = {};
-        const selections = {
-            status: true,
-        };
-
-        return await orderService.findById(id, {
-            selections,
-            relations,
-            filters: { userId },
+    /**
+     * @param {object} params
+     * @param {number} params.eventId
+     * @param {TransactionClient} [params.tx]
+     */
+    async getRevenueByEvent({ eventId, tx }) {
+        const orders = await (tx || prismaClient).order.findMany({
+            where: {
+                status: OrderStatus.COMPLETED,
+                orderItems: {
+                    some: { ticketType: { eventId } },
+                },
+            },
+            select: { totalPrice: true },
         });
+
+        return orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
     },
 
-    async countByStatus(status) {
-        return orderRepository.countByStatus(status);
-    },
-
-    async countAllOrders() {
-        return orderRepository.countAllOrders();
-    },
-
-    async revenueByStatus(status) {
-        return orderRepository.revenueByStatus(status);
-    },
-
-    async createOrderItemsBulk(id, items, tx = prismaClient) {
-        return tx.orderItem.createManyAndReturn({
-            data: items.map((item) => ({
-                orderId: id,
-                ticketTypeId: item.ticketTypeId,
-                price: parseFloat(item.price),
-                quantity: parseInt(item.quantity),
-            })),
-        });
-    },
-
-    async getOrderTickets({ orderId, userId }) {
-        const order = await prismaClient.order.findFirst({
-            where: { userId, id: orderId, status: OrderStatus.COMPLETED },
-            select: {
-                totalPrice: true,
-                itemsCount: true,
-                status: true,
-                user: { select: { name: true, email: true } },
-                tickets: {
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        status: true,
-                        eventSeat: {
-                            select: {
-                                rowIndex: true,
-                                seatIndex: true,
-                                tier: { select: { name: true } },
-                            },
-                        },
-                        orderItem: {
-                            select: {
-                                quantity: true,
-                                ticketType: {
-                                    select: {
-                                        name: true,
-                                        price: true,
-                                        event: { select: { title: true, organizerId: true } },
+    /**
+     * @param {object} params
+     * @param {Date} params.startDate
+     * @param {Date} params.endDate
+     * @param {TransactionClient} [params.tx]
+     */
+    async getCompletedOrdersInRange({ startDate, endDate, tx }) {
+        return (tx || prismaClient).order.findMany({
+            where: {
+                status: OrderStatus.COMPLETED,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+                isPaidOut: false,
+            },
+            include: {
+                orderItems: {
+                    include: {
+                        ticketType: {
+                            include: {
+                                event: {
+                                    include: {
+                                        organizer: true,
                                     },
                                 },
                             },
                         },
-                        qrCode: { select: { codePath: true, status: true } },
                     },
                 },
             },
         });
-
-        if (!order) {
-            throw new AppError('Order not found or not completed', 404);
-        }
-
-        const ticketsWithQrCodes = await Promise.all(
-            order.tickets.map(async (ticket) => {
-                if (ticket.qrCode?.codePath) {
-                    ticket.qrCode.qrAbsUrl = fileService.getAbsUrl(ticket.qrCode.codePath);
-                }
-                if (ticket.eventSeat?.rowIndex || ticket.eventSeat?.seatIndex) {
-                    const rowLetter = String.fromCharCode(65 + ticket.eventSeat.rowIndex);
-                    const displaySeatNumber = ticket.eventSeat.seatIndex + 1;
-                    ticket.eventSeat.rowLabel = rowLetter;
-                    ticket.eventSeat.seatLabel = displaySeatNumber;
-                }
-                return ticket;
-            })
-        );
-
-        return {
-            totalPrice: order.totalPrice,
-            itemsCount: order.itemsCount,
-            user: order.user,
-            ticketType: order.orderItems,
-            tickets: ticketsWithQrCodes,
-        };
-    },
-
-    async totalByEvent(eventId) {
-        return orderRepository.totalByEvent(eventId);
-    },
-
-    async ticketsSoldByEvent(eventId) {
-        return orderItemService.ticketsSoldByEvent(eventId);
-    },
-
-    async revenueByEvent(eventId) {
-        return orderItemService.revenueByEvent(eventId);
-    },
-
-    async countByEventAndStatus(eventId, status) {
-        return orderRepository.countByEventAndStatus(eventId, status);
-    },
-
-    async countIssuedTicketsByEvent(eventId) {
-        return orderRepository.countIssuedTicketsByEvent(eventId);
     },
 
     /**
-     * @param {{ since: Date }} options
-     */
-    async getPendingPayoutOrders({ since }) {
-        return orderRepository.getPendingPayoutOrders(since);
-    },
-
-    /**
-     * @param {Date} since
+     * @param {number[]} orderIds
      * @param {number} payoutId
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     * @param {TransactionClient} tx
      */
-    async markOrdersAsPaid(since, payoutId, tx) {
-        return orderRepository.updateMany(
-            {
-                where: {
-                    status: OrderStatus.COMPLETED,
-                    createdAt: { gte: since },
-                    isPaidOut: false,
-                },
-                data: {
-                    isPaidOut: true,
-                    payoutId: payoutId,
-                },
+    async markOrdersAsPaidOut(orderIds, payoutId, tx) {
+        return tx.order.updateMany({
+            where: {
+                id: { in: orderIds },
+                status: OrderStatus.COMPLETED,
+                isPaidOut: false,
             },
-            tx
-        );
+            data: {
+                isPaidOut: true,
+                payoutId: payoutId,
+            },
+        });
     },
 
+    /**
+     * @param {{ eventId: number, tx: TransactionClient }} params
+     * @returns {Promise<void>}
+     */
     async refundOrders({ eventId, tx }) {
         const orders = await tx.order.findMany({
             where: {
@@ -269,28 +194,34 @@ const orderService = {
         if (orders.length === 0) return;
 
         for (const order of orders) {
+            const eventPrice = order.orderItems
+                .filter((item) => item.ticketType.eventId === eventId)
+                .reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+
             await tx.user.update({
                 where: { id: order.userId },
-                data: { wallet: { increment: order.totalPrice } },
+                data: { wallet: { increment: eventPrice } },
             });
 
             await tx.order.update({
                 where: { id: order.id },
-                data: { status: OrderStatus.REFUNDED },
+                data: {
+                    status: OrderStatus.REFUNDED,
+                    totalPrice: { decrement: eventPrice },
+                },
             });
 
             await tx.ticket.updateMany({
-                where: { orderId: order.id },
-                data: { status: TicketStatus.EXPIRED },
+                where: { orderId: order.id, ticketType: { eventId } },
+                data: { status: 'expired' },
             });
-        
+
             if (order.orderItems.length > 0) {
                 const eventTitle = order.orderItems[0].ticketType.event.title;
-                const refundAmount = parseFloat(order.totalPrice);
                 await notificationService.notifyRefundProcessed(
                     order.userId,
                     eventTitle,
-                    refundAmount,
+                    eventPrice,
                     order.id
                 );
             }

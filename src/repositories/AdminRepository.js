@@ -5,7 +5,7 @@ import BaseRepository from './BaseRepository.js';
 import { Admin } from './../models/index.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
+ * @typedef {import('./drivers/IDriver').default} IDriver
  * @typedef {import('./../types/models').AdminHydrated} AdminType
  * @typedef {import('./../types/models').AdminRefreshTokenRecord} AdminRefreshTokenRecord
  * @typedef {import('./../types/models').AdminCreate} AdminCreate

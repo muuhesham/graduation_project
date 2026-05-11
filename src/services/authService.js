@@ -46,7 +46,6 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
-                language: language,
             },
         };
     },
@@ -79,7 +78,7 @@ const authService = {
             };
         }
 
-        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(exists);
+        const { accessToken, type, expiresIn } = authService.generateAccessToken(exists);
         const refreshToken = await authService.generateRefreshToken(exists);
 
         return {
@@ -90,7 +89,6 @@ const authService = {
                     expiresIn: expiresIn,
                 },
                 refreshToken: refreshToken,
-                language: language,
             },
         };
     },
@@ -101,7 +99,6 @@ const authService = {
             name: user.name,
             email: user.email,
             role: user.role,
-            languagePreference: user.languagePreference,
         };
 
         const token = jwt.sign(payload, JWT_KEY, { expiresIn: authService.JWT_EXPIRATION });
@@ -110,7 +107,6 @@ const authService = {
             accessToken: token,
             type: 'Bearer',
             expiresIn: authService.JWT_EXPIRATION,
-            language: user.languagePreference,
         };
     },
 
@@ -159,7 +155,10 @@ const authService = {
             };
         }
 
-        return authService.generateAccessToken(tokenRecord.user);
+        return {
+            status: 'success',
+            data: authService.generateAccessToken(tokenRecord.user),
+        };
     },
 
     async logout({ user, accessToken, refreshToken }) {
@@ -342,12 +341,12 @@ const authService = {
         const user = await userService.findById(userId);
         if (!user) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
 
-        if (user.isPhoneVerified && user.phone === phone) {
+        if (organizer.isContactPhoneVerified && organizer.contactPhone === phone) {
             throw new AppError('Phone already verified', 400, 'PHONE_ALREADY_VERIFIED');
         }
 
-        if (user.phone !== phone) {
-            await userService.updatePhone(userId, phone);
+        if (organizer.contactPhone !== phone) {
+            throw new AppError('Phone number mismatch', 400, 'PHONE_MISMATCH');
         }
 
         return { phone, templateName: 'phoneOtp', variables: {} };

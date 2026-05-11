@@ -489,6 +489,26 @@ const organizerValidation = {
             .isInt({ gt: 0 })
             .withMessage('EventId must be a postive number'),
     ],
+
+    updateSettings: [
+        body('name').optional().trim().isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
+        body('description').optional().trim().isLength({ max: 1000 }).withMessage('Description cannot exceed 1000 characters'),
+        body('websiteUrl').optional().trim().isURL().withMessage('Invalid website URL'),
+        body('instagramUrl').optional().trim().isURL().withMessage('Invalid Instagram URL'),
+        body('facebookUrl').optional().trim().isURL().withMessage('Invalid Facebook URL'),
+        body('twitterUrl').optional().trim().isURL().withMessage('Invalid Twitter URL'),
+        body('linkedinUrl').optional().trim().isURL().withMessage('Invalid LinkedIn URL'),
+        body('youtubeUrl').optional().trim().isURL().withMessage('Invalid YouTube URL'),
+        body('address').optional().trim().isLength({ max: 255 }).withMessage('Address too long'),
+    ],
+
+    verifyPhoneOtp: [
+        body('otp').trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage('OTP must be a 6-digit number'),
+    ],
+
+    organizerIdParam: [
+        param('id').trim().isUUID().withMessage('Invalid organizer ID'),
+    ],
 };
 
 export default organizerValidation;

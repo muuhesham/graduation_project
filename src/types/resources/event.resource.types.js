@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @typedef {import('../models/event.model.js').Event & {
+ * @typedef {import('../models/event.model').Event & {
  *     organizerId: string;
  *     title?: string | null;
  *     slug?: string | null;

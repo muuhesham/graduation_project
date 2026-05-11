@@ -4,7 +4,7 @@ import BaseResource from './BaseResource.js';
 import CategoryResource from './CategoryResource.js';
 import VenueResource from './VenueResource.js';
 
-/** @typedef {import('../models/Event.js').default} EventModel */
+/** @typedef {import('../models/Event').default} EventModel */
 
 /**
  * @extends {BaseResource}
@@ -29,6 +29,7 @@ export default class EventResource extends BaseResource {
             category: CategoryResource.make(event.category),
             venue: VenueResource.make(event.venue),
             tags: event.tagNames,
+            rules: event.ruleNames,
             hasSeatMap: event.hasSeatMap,
             deletedAt: event.deletedAt,
             createdAt: event.createdAt,
@@ -41,5 +42,14 @@ export default class EventResource extends BaseResource {
             ...(typeof event.canBeDeleted === 'function' && { canBeDeleted: event.canBeDeleted() }),
             ...(typeof event.canBeModified === 'function' && { canBeModified: event.canBeModified() }),
         };
+    }
+
+    /**
+     * @param {any} result
+     * @param {string} [dataKey]
+     * @returns {any}
+     */
+    static paginate(result, dataKey = 'events') {
+        return super.paginate(result, dataKey);
     }
 }

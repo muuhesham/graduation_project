@@ -3,8 +3,8 @@
 import BaseModel from './BaseModel.js';
 import { numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/tag.model.js').TagData} TagType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').TagData} TagType */
 
 /** @extends {BaseModel<TagType>} */
 class Tag extends BaseModel {

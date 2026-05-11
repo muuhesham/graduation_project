@@ -1,10 +1,11 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { Event, Governorate } from './index.js';
 import { dateCast, numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/venue.model.js').VenueData} VenueDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').VenueData} VenueDataType */
 
 /** @extends {BaseModel<VenueDataType>} */
 class Venue extends BaseModel {
@@ -23,6 +24,7 @@ class Venue extends BaseModel {
     static getCastDefinitions() {
         return [
             { field: 'id', cast: numberCast },
+            { field: 'googlePlaceId', cast: stringCast },
             { field: 'name', cast: stringCast },
             { field: 'address', cast: stringCast },
             { field: 'city', cast: stringCast },
@@ -31,9 +33,20 @@ class Venue extends BaseModel {
             { field: 'zipCode', cast: stringCast },
             { field: 'latitude', cast: numberCast },
             { field: 'longitude', cast: numberCast },
+            { field: 'governorateId', cast: numberCast },
             { field: 'createdAt', cast: dateCast },
             { field: 'updatedAt', cast: dateCast },
         ];
+    }
+
+    /**
+     * @returns {Record<string, any>}
+     */
+    static get relations() {
+        return {
+            events: [Event],
+            governorate: Governorate,
+        };
     }
 
     /**

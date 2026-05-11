@@ -7,9 +7,9 @@ import IDriver from './IDriver.js';
  * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
  * @typedef {keyof import('@prisma/client').Prisma.TypeMap['model']} ModelName
  * @typedef {Uncapitalize<ModelName>} ResourceName
- * @typedef {import('./../../types/shared/common.types.js').DriverFindQuery<object, any, any, any>} DriverFindQuery
- * @typedef {import('./../../types/shared/common.types.js').RepositoryFindUniqueOptions<object, any, any, any>} RepositoryFindUniqueOptions
- * @typedef {import('./../../types/shared/common.types.js').RepositoryCountOptions<object>} RepositoryCountOptions
+ * @typedef {import('./../../types/shared').DriverFindQuery<object, any, any, any>} DriverFindQuery
+ * @typedef {import('./../../types/shared').RepositoryFindUniqueOptions<object, any, any, any>} RepositoryFindUniqueOptions
+ * @typedef {import('./../../types/shared').RepositoryCountOptions<object>} RepositoryCountOptions
  * @typedef {Record<string, unknown>} DriverRecord
  * @typedef {{ skipDuplicates?: boolean }} CreateManyOptions
  * @typedef {{ count: number }} AffectedRows
@@ -96,15 +96,20 @@ export default class PrismaDriver extends IDriver {
      * @param {ResourceName} resource
      * @param {DriverRecord} data
      * @param {PrismaClient | TransactionClient | null} [tx]
+     * @param {any} [include]
      */
-    async create(resource, data, tx = this.client) {
+    async create(resource, data, tx = this.client, include = null) {
         const db = tx || this.client;
-        return this._model(db, resource).create({ data });
+        const args = { data };
+        if (include) {
+            args.include = include;
+        }
+        return this._model(db, resource).create(args);
     }
 
     /**
      * @param {ResourceName} resource
-     * @param {DriverRecord[]} data
+     * @param {DriverRecord} data
      * @param {CreateManyOptions} [options]
      * @param {PrismaClient | TransactionClient | null} [tx]
      * @returns {Promise<AffectedRows>}
@@ -175,10 +180,16 @@ export default class PrismaDriver extends IDriver {
      * @param {DriverRecord} where
      * @param {DriverRecord} data
      * @param {PrismaClient | TransactionClient | null} [tx]
+     * @param {any} [include]
+     * @returns {Promise<any>}
      */
-    async update(resource, where, data, tx = null) {
+    async update(resource, where, data, tx = null, include = null) {
         const db = tx || this.client;
-        return this._model(db, resource).update({ where, data });
+        const args = { where, data };
+        if (include) {
+            args.include = include;
+        }
+        return this._model(db, resource).update(args);
     }
 
     /**
@@ -214,6 +225,20 @@ export default class PrismaDriver extends IDriver {
         const db = tx || this.client;
         const result = await this._model(db, resource).deleteMany({ where });
         return { count: result.count };
+    }
+
+    /**
+     * @param {ResourceName} resource
+     * @param {{ where: DriverRecord, update: DriverRecord, create: DriverRecord }} options
+     * @param {PrismaClient | TransactionClient | null} [tx]
+     */
+    async upsert(resource, options, tx = null) {
+        const db = tx || this.client;
+        return this._model(db, resource).upsert({
+            where: options.where,
+            update: options.update,
+            create: options.create,
+        });
     }
 
     /**

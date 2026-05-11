@@ -16,14 +16,6 @@ import { RateLimiterRedis } from 'rate-limiter-flexible';
  * @param {function} [options.keyGenerator] - Function to generate unique keys for each request
  * @returns {function} - Express middleware function for rate limiting
  *
- * @example
- * // Create a rate limiter that allows 100 requests per 15 minutes
- * const apiLimiter = rateLimiter({
- *     windowMs: 15 * 60 * 1000, // 15 minutes
- *     max: 100,
- *     message: 'Too many requests from this IP, please try again later.'
- * });
- *
  */
 function rateLimiter({
     windowMs,
@@ -35,6 +27,10 @@ function rateLimiter({
         return typeof ipResult === 'string' ? ipResult : (ipResult.ip ?? 'unknown');
     },
 }) {
+    if (NODE_ENV === 'testing') {
+        return (req, res, next) => next();
+    }
+
     return rateLimit({
         store: new RedisStore({
             sendCommand: (...args) => redisClient.call(...args),
@@ -182,17 +178,20 @@ const reserveLimiter = rateLimiter({
     windowMs: 10 * 60 * 1000,
     max: 3,
     message: 'Too many reservation attempts. Please try again later.',
-    keyGenerator: (req) => `reserve:${req.user.id}`, // rate limit based on user ID for reservations
+    keyGenerator: (req) => `reserve:${req.user?.id || 'guest'}`,
     prefix: 'reserve',
 });
 
-const chatLimiter = new RateLimiterRedis({
-    storeClient: redisClient,
-    keyPrefix: 'chatbot',
-    points: 5, // 5 messages
-    duration: 10, // per 10 seconds
-    message: 'Too many chat messages. Please try again later.',
-});
+const chatLimiter =
+    NODE_ENV === 'testing'
+        ? (req, res, next) => next()
+        : new RateLimiterRedis({
+              storeClient: redisClient,
+              keyPrefix: 'chatbot',
+              points: 5, // 5 messages
+              duration: 10, // per 10 seconds
+              message: 'Too many chat messages. Please try again later.',
+          });
 
 export {
     rateLimiter,

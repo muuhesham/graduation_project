@@ -7,8 +7,8 @@ import { User } from './../models/index.js';
 import OrderStatus from './../constants/enums/orderStatus.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models').User} UserType
+ * @typedef {import('./drivers/IDriver').default} IDriver
+ * @typedef {InstanceType<typeof User>} UserType
  * @typedef {import('./../types/models').UserCreate} UserCreate
  * @typedef {import('./../types/models').UserUpdate} UserUpdate
  * @typedef {import('./../types/models').UserWhereUnique} UserWhereUnique
@@ -42,7 +42,7 @@ export default class UserRepository extends BaseRepository {
     }
 
     /**
-     * @param {import('./../types/models/user.model.js').UserReadOptions & UserWhere} [query]
+     * @param {import('./../types/models').UserReadOptions & UserWhere} [query]
      */
     getAllUsers(query = {}) {
         const where = this._implicitWhere(query);
@@ -97,13 +97,17 @@ export default class UserRepository extends BaseRepository {
     }
 
     /**
-     * @param {UserCreate[]} users
-     * @param {import('./../types/shared/common.types.js').BulkInsertOptions} [options]
+     * @param {string} userId
+     * @param {string} role
+     * @param {import('./../types/shared').TransactionClient} [tx]
      */
-    bulkInsertUsers(users, options) {
-        return super.bulkInsert({
-            data: users,
-            ...options,
-        });
+    updateRole(userId, role, tx = null) {
+        return super.update(
+            {
+                where: { id: userId },
+                data: { role },
+            },
+            tx
+        );
     }
 }

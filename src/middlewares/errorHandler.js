@@ -3,6 +3,10 @@ import { NODE_ENV } from './../config/env.js';
 import { sendFail, sendError } from '../utils/response.js';
 
 function errorHandler(err, req, res, next) {
+    if (err.name === 'MulterError') {
+        return handleMulterError(err, req, res);
+    }
+
     if (err.code && err.code.startsWith('P')) {
         return handlePrismaError(err, req, res);
     }
@@ -18,6 +22,30 @@ function errorHandler(err, req, res, next) {
     return sendError(res, 'An unexpected error occurred', 'INTERNAL_ERROR', null, 500);
 }
 
+function handleMulterError(err, req, res) {
+    const field = err.field || 'form-data';
+    let message = err.message;
+    let code = 'VALIDATION_INVALID_FIELD';
+
+    if (err.message === 'Field name missing') {
+        message = 'A form field is missing its name attribute. Ensure all parts of the request are properly named.';
+        code = 'VALIDATION_REQUIRED'; // Aligning with the idea that the field/name is missing
+    }
+
+    return sendFail(
+        res,
+        [
+            {
+                field,
+                message,
+                code,
+            },
+        ],
+        400,
+        'VALIDATION_ERROR'
+    );
+}
+
 function handleAppError(err, req, res) {
     const statusCode = err.statusCode || 500;
     return sendFail(
@@ -29,6 +57,9 @@ function handleAppError(err, req, res) {
 }
 
 function handlePrismaError(err, req, res) {
+    if (NODE_ENV !== 'production') {
+        console.error('Prisma Error:', err);
+    }
     switch (err.code) {
         case 'P2002': {
             const field = err.meta?.target?.[0] || 'field';

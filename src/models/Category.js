@@ -5,8 +5,8 @@ import fileService from './../services/fileService.js';
 
 import { dateCast, numberCast, stringCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/category.model.js').CategoryData} CategoryDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').CategoryData} CategoryDataType */
 
 /** @extends {BaseModel<CategoryDataType>} */
 class Category extends BaseModel {
@@ -31,9 +31,14 @@ class Category extends BaseModel {
 
     get imageUrl() {
         const categoryData = /** @type {any} */ (this);
-        return categoryData.imagePath
-            ? fileService.getAbsUrl(categoryData.imagePath, categoryData.imageDisk)
-            : null;
+        if (!categoryData.imagePath) return null;
+
+        let path = categoryData.imagePath;
+        if (!path.startsWith('/') && !path.startsWith('http')) {
+            path = `/uploads/${path}`;
+        }
+
+        return fileService.getAbsUrl(path, categoryData.imageDisk);
     }
 
     static get resourceName() {

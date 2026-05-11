@@ -3,8 +3,8 @@
 import BaseModel from './BaseModel.js';
 import { dateCast, numberCast } from './casts.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/ticketType.model.js').TicketTypeData} TicketTypeDataType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').TicketTypeData} TicketTypeDataType */
 
 /**
  * @extends {BaseModel<TicketTypeDataType>}

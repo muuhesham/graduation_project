@@ -13,7 +13,7 @@ import AppError from '../../errors/AppError.js';
  *
  * @typedef {import('./../../types/shared').SMSTemplateData} SMSTemplateData
  *
- * @typedef {import('./providers/ISMSProvider.js').default} ISMSProvider
+ * @typedef {import('./providers/ISMSProvider').default} ISMSProvider
  */
 
 /** @typedef {(variables: Record<string, unknown>) => string} SMSTemplateFn */

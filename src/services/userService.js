@@ -1,38 +1,31 @@
 import { prisma as prismaClient } from '../config/db.js';
-
 import { hashPassword } from './../utils/hash.js';
-
 import userRoles from '../constants/enums/userRoles.js';
 
 import eventService from './eventService.js';
 import organizerService from './organizerService.js';
 
-import { userRepository } from './../repositories/index.js';
-
+import { userRepository, organizerFollowerRepository } from './../repositories/index.js';
 import userPolicy from './../policies/UserPolicy.js';
 
 import AppError from '../errors/AppError.js';
 import NotFoundError from './../errors/NotFoundError.js';
-
+import ConflictError from './../errors/ConflictError.js';
 import UserErrors from './../constants/messages/errors/user.js';
+import OrganizerErrors from './../constants/messages/errors/organizer.js';
 
 /**
  * @typedef {import('@prisma/client').PrismaClient} PrismaClient
- *
  * @typedef {import('@prisma/client').Prisma.TransactionClient} TransactionClient
- *
  * @typedef {import('@prisma/client').Prisma.UserDefaultArgs} UserDefaultArgs
- * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
- *
- * @typedef {import('./../types/models/index.js').Organizer} Organizer
- * @typedef {import('./../types/models/user.model.js').UserWhere} UserWhere
- *
- * @typedef {import('./../policies/UserPolicy.js').default} UserPolicy
- *
- * @typedef {import('./../types/shared/common.types.js').RepositoryReadOptions<UserWhere, UserDefaultArgs['select'], UserDefaultArgs['include'], UserDefaultArgs['omit']> & PaginationQuery & UserWhere} UserListOptions
+ * @typedef {import('./../types/shared').PaginationQuery} PaginationQuery
+ * @typedef {import('./../types/models').Organizer} Organizer
+ * @typedef {import('./../types/models').UserWhere} UserWhere
+ * @typedef {import('./../policies/UserPolicy').default} UserPolicy
+ * @typedef {import('./../types/shared').RepositoryReadOptions<UserWhere, UserDefaultArgs['select'], UserDefaultArgs['include'], UserDefaultArgs['omit']> & PaginationQuery & UserWhere} UserListOptions
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
+ * @typedef {import('./../types/dtos').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO
  */
-
-/** @typedef {import('./../types/dtos/index.js').UpgradeToOrganizerDTO} UpgradeToOrganizerDTO */
 
 const userService = {
     /**
@@ -81,24 +74,10 @@ const userService = {
         });
     },
 
-    async markPhoneVerified(userId) {
-        return prismaClient.user.update({
-            where: { id: userId },
-            data: { isPhoneVerified: true },
-        });
-    },
-
-    async markPhoneVerifiedByPhone(phone) {
-        return prismaClient.user.update({
-            where: { phone },
-            data: { isPhoneVerified: true },
-        });
-    },
-
     async updatePhone(userId, phone) {
         return prismaClient.user.update({
             where: { id: userId },
-            data: { phone, isPhoneVerified: false },
+            data: { phone },
         });
     },
 
@@ -112,50 +91,30 @@ const userService = {
     /**
      * @param {string} userId
      * @param {UpgradeToOrganizerDTO} organizerData
+     * @param {any} [file]
      * @returns {Promise<Organizer>}
      */
-    async upgradeToOrganizer(userId, organizerData) {
-        const user = await userService.findById(userId);
-        this.userPolicy.canUpgrade(user);
+    async upgradeToOrganizer(userId, organizerData, file) {
+        const user = await userRepository.findById(userId, { include: { Organizer: true } });
+        userPolicy.canUpgrade(user);
 
-        return prismaClient.$transaction(
-            /** @param {TransactionClient} tx */
-            async (tx) => {
-                await userService.updateRole(userId, userRoles.ORGANIZER, tx);
-                const organizer = await organizerService.create(
-                    userId,
-                    {
-                        ...organizerData,
-                        type: /** @type {import('@prisma/client').OrganizerType} */ (
-                            organizerData.organizerType
-                        ),
-                    },
-                    tx
-                );
-
-                return organizer;
-            }
-        );
-    },
-
-    async findById(userId) {
-        return prismaClient.user.findUnique({
-            where: { id: userId },
+        return userRepository.runInTransaction(async (tx) => {
+            await this.updateRole(userId, userRoles.ORGANIZER, tx);
+            return organizerService.createRecord(userId, organizerData, file, tx);
         });
     },
 
-    async updateRole(userId, role, tx = prismaClient) {
+    /**
+     * @param {string} userId
+     * @param {string} role
+     * @param {any} [tx]
+     */
+    async updateRole(userId, role, tx = null) {
         if (!Object.values(userRoles).includes(role)) {
-            return {
-                status: 'fail',
-                data: { error: 'Invalid role specified' },
-            };
+            throw new AppError('Invalid role specified', 400);
         }
 
-        return tx.user.update({
-            where: { id: userId },
-            data: { role: role },
-        });
+        return userRepository.updateRole(userId, role, tx);
     },
 
     async isOrganizer(id) {
@@ -298,7 +257,7 @@ const userService = {
         return user?.wallet || 0;
     },
 
-    findByPhoneNumber(number) {
+    async findByPhoneNumber(number) {
         return prismaClient.user.findUnique({
             where: {
                 phone: number,
@@ -316,8 +275,53 @@ const userService = {
     /**
      * @param {string} userId
      */
-    findById(userId) {
+    async findById(userId, projection = {}) {
         return userRepository.findById(userId);
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} organizerId
+     * @returns {Promise<void>}
+     */
+    async followOrganizer(userId, organizerId) {
+        const organizer = await organizerService.findById(organizerId);
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        if (organizer.userId === userId) {
+            throw new ConflictError(undefined, undefined, [UserErrors.CANNOT_FOLLOW_SELF]);
+        }
+
+        const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
+        if (isFollowing) {
+            throw new ConflictError(undefined, undefined, [UserErrors.ALREADY_FOLLOWING]);
+        }
+
+        await organizerFollowerRepository.create({
+            userId,
+            organizerId,
+        });
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} organizerId
+     * @returns {Promise<void>}
+     */
+    async unfollowOrganizer(userId, organizerId) {
+        const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
+        if (!isFollowing) {
+            throw new NotFoundError(undefined, undefined, [UserErrors.NOT_FOLLOWING]);
+        }
+
+        await organizerFollowerRepository.deleteMany({
+            where: {
+                userId,
+                organizerId,
+            },
+        });
     },
 };
 

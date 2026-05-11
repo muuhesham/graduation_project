@@ -6,15 +6,15 @@ import { Event } from './../models/index.js';
 import SessionStatus from '../constants/enums/sessionStatus.js';
 
 /**
- * @typedef {import('./drivers/IDriver.js').default} IDriver
- * @typedef {import('./../types/models/event.model.js').Event} EventType
- * @typedef {import('./../types/models/event.model.js').EventCreate} EventCreate
- * @typedef {import('./../types/models/event.model.js').EventUpdate} EventUpdate
- * @typedef {import('./../types/models/event.model.js').EventWhereUnique} EventWhereUnique
- * @typedef {import('./../types/models/event.model.js').EventSelect} EventSelect
- * @typedef {import('./../types/models/event.model.js').EventInclude} EventInclude
- * @typedef {import('./../types/models/event.model.js').EventProjection} EventProjection
- * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
+ * @typedef {import('./drivers/IDriver').default} IDriver
+ * @typedef {import('./../types/models').Event} EventType
+ * @typedef {import('./../types/models').EventCreate} EventCreate
+ * @typedef {import('./../types/models').EventUpdate} EventUpdate
+ * @typedef {import('./../types/models').EventWhereUnique} EventWhereUnique
+ * @typedef {import('./../types/models').EventSelect} EventSelect
+ * @typedef {import('./../types/models').EventInclude} EventInclude
+ * @typedef {import('./../types/models').EventProjection} EventProjection
+ * @typedef {import('./../types/shared').PaginationQuery} PaginationQuery
  */
 
 /**
@@ -40,19 +40,29 @@ export default class EventRepository extends BaseRepository {
     constructor(driver) {
         super(driver, Event, {
             searchFields: ['title', 'description', 'slug'],
+            mutationInclude: {
+                category: true,
+                venue: true,
+                eventRules: { select: { rule: true } },
+                eventTags: { include: { tag: { select: { name: true } } } },
+            },
         });
     }
 
     /**
      * @param {number} id
      * @param {EventProjection} [projection]
+     * @param {any} [tx]
      * @returns {Promise<EventType | null>}
      */
-    findById(id, projection = {}) {
-        return super.findUnique({
-            where: { id },
-            ...projection,
-        });
+    findById(id, projection = {}, tx = null) {
+        return super.findUnique(
+            {
+                where: { id },
+                ...projection,
+            },
+            tx
+        );
     }
 
     /**
@@ -64,7 +74,7 @@ export default class EventRepository extends BaseRepository {
     async countVectorMatches(tableName, whereClauses, parameters) {
         const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
         const sql = `SELECT COUNT(*)::int AS count FROM ${tableName} ${where}`;
-        
+
         const result = await this.rawQuery(sql, parameters);
         return Number(result[0]?.count) || 0;
     }
@@ -76,13 +86,34 @@ export default class EventRepository extends BaseRepository {
     /**
      * @param {number} id
      * @param {EventProjection} [projection]
+     * @param {any} [tx]
      * @returns {Promise<EventType | null>}
      */
-    findByIdIncludingDeleted(id, projection = {}) {
-        return this.withTrashed().findUnique({
-            where: { id },
-            ...projection,
-        });
+    findByIdIncludingDeleted(id, projection = {}, tx = null) {
+        return this.withTrashed().findUnique(
+            {
+                where: { id },
+                ...projection,
+            },
+            tx
+        );
+    }
+
+    /**
+     * @param {string} organizerId
+     * @param {string} slug
+     * @param {EventProjection} [projection]
+     * @param {any} [tx]
+     * @returns {Promise<EventType | null>}
+     */
+    findBySlug(organizerId, slug, projection = {}, tx = null) {
+        return super.findUnique(
+            {
+                ...projection,
+                where: { organizerId, slug, deletedAt: null },
+            },
+            tx
+        );
     }
 
     /**
@@ -116,7 +147,7 @@ export default class EventRepository extends BaseRepository {
      * @param {object} params
      * @param {import('@prisma/client').Prisma.EventWhereInput} params.where
      * @param {PaginationQuery} params.pagination
-     * @returns {Promise<import('../types/shared/common.types.js').PaginatedResult<EventType>>}
+     * @returns {Promise<import('../types/shared').PaginatedResult<EventType>>}
      */
     searchByKeywords({ where, pagination }) {
         return this.paginate({
@@ -129,21 +160,29 @@ export default class EventRepository extends BaseRepository {
 
     /**
      * @param {number} id
+     * @param {any} [tx]
      */
-    softDeleteById(id) {
-        return super.update({
-            where: { id, deletedAt: null },
-            data: { deletedAt: new Date() },
-        });
+    softDeleteById(id, tx = null) {
+        return super.update(
+            {
+                where: { id, deletedAt: null },
+                data: { deletedAt: new Date() },
+            },
+            tx
+        );
     }
 
     /**
      * @param {number} id
+     * @param {any} [tx]
      */
-    restoreDeleted(id) {
-        return super.update({
-            where: { id, deletedAt: { not: null } },
-            data: { deletedAt: null },
-        });
+    restoreDeleted(id, tx = null) {
+        return super.update(
+            {
+                where: { id, deletedAt: { not: null } },
+                data: { deletedAt: null },
+            },
+            tx
+        );
     }
 }

@@ -15,7 +15,7 @@
  *   sold?: number | null;
  *   orderItems?: Array<{ quantity?: number | string | null }>;
  * }} TicketTypeHydratedData
- * @typedef {InstanceType<typeof import('./../../models/TicketType.js').default>} TicketTypeModel
+ * @typedef {InstanceType<typeof import('./../../models/TicketType').default>} TicketTypeModel
  * @typedef {TicketTypeHydratedData & TicketTypeModel} TicketType
  * @typedef {TicketTypeHydratedData & TicketTypeModel} TicketTypeHydrated
  *

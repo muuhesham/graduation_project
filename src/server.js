@@ -1,4 +1,4 @@
-import { HOSTNAME, PORT } from './config/env.js';
+import { APP_URL, BIND_HOST, PORT } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { connectRedis } from './config/redis.js';
 import { initRedisExpirationListener } from './config/redisSubscriber.js';
@@ -29,8 +29,8 @@ async function startServer() {
         await initRedisExpirationListener(io);
 
         // Start server
-        server.listen(PORT, () => {
-            console.log(`🚀 APP STARTED ON http://${HOSTNAME}:${PORT}`);
+        server.listen(PORT, BIND_HOST, () => {
+            console.log(`🚀 APP STARTED ON ${APP_URL}`);
         });
     } catch (err) {
         console.error('❌ Failed to start server:', err);

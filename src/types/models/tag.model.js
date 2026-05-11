@@ -9,7 +9,7 @@
  * @typedef {import('@prisma/client').Prisma.TagSelect} TagSelect
  * @typedef {import('@prisma/client').Prisma.TagInclude} TagInclude
  * @typedef {import('@prisma/client').Prisma.TagAggregateArgs} TagAggregate
- * @typedef {InstanceType<typeof import('./../../models/Tag.js').default>} TagModel
+ * @typedef {InstanceType<typeof import('./../../models/Tag').default>} TagModel
  * @typedef {TagData & TagModel} Tag
  * @typedef {TagData & TagModel} TagHydrated
  *

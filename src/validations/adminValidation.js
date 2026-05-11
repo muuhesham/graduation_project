@@ -1,357 +1,175 @@
 //@ts-check
 
-import { param, query, body } from 'express-validator';
-
+import { body, param, query } from 'express-validator';
 import OrganizerVerficiationStatus from './../constants/enums/organizerVerificationStatus.js';
 import OrganizerStatus from './../constants/enums/organizerStatus.js';
-import EventType from './../constants/enums/eventType.js';
-import EventMode from './../constants/enums/eventMode.js';
-import Gender from './../constants/enums/userGender.js';
-import Language from './../constants/enums/userLanguage.js';
-
-/**
- * @param {{ defaultPage?: number, defaultLimit?: number }} [defaults]
- */
-const paginationQuery = ({ defaultPage = 1, defaultLimit = 20 } = {}) => [
-    query('page')
-        .optional()
-        .default(defaultPage)
-        .isInt({ min: 1 })
-        .withMessage('page must be a positive integer')
-        .toInt(),
-    query('limit')
-        .optional()
-        .default(defaultLimit)
-        .isInt({ min: 1 })
-        .withMessage('limit must be a positive integer')
-        .toInt(),
-];
-
-/**
- * @typedef {import('express-validator').ValidationChain[]} ValidationChainArray
- */
 
 class AdminValidation {
-    /**
-     * @type {ValidationChainArray}
-     */
-    eventIdParam = [
-        param('eventId')
-            .trim()
-            .notEmpty()
-            .withMessage('eventId is required')
-            .bail()
-            .isInt({ min: 1 })
-            .withMessage('eventId must be a valid positive integer')
-            .toInt(),
-    ];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    userIdParam = [
-        param('userId')
-            .trim()
-            .notEmpty()
-            .withMessage('userId is required')
-            .bail()
-            .isUUID()
-            .withMessage('userId must be a valid UUID'),
-    ];
-
-    /**
-     * @type {ValidationChainArray}
-     */
     register = [
         body('name')
+            .isString()
+            .withMessage('Name must be a string')
             .trim()
             .notEmpty()
-            .withMessage('Name is required')
-            .bail()
-            .isLength({ min: 3, max: 100 })
-            .withMessage('Name must be between 3 and 100 characters'),
-
+            .withMessage('Name is required'),
         body('email')
-            .trim()
-            .notEmpty()
-            .withMessage('Email is required')
-            .bail()
             .isEmail()
-            .withMessage('Invalid email format')
-            .toLowerCase(),
-
+            .withMessage('Invalid email address')
+            .normalizeEmail()
+            .notEmpty()
+            .withMessage('Email is required'),
         body('password')
             .isString()
+            .withMessage('Password must be a string')
             .isLength({ min: 6 })
-            .withMessage('Password must be at least 6 characters long'),
+            .withMessage('Password must be at least 6 characters long')
+            .notEmpty()
+            .withMessage('Password is required'),
     ];
 
-    /**
-     * @type {ValidationChainArray}
-     */
     login = [
         body('email')
-            .trim()
-            .notEmpty()
-            .withMessage('Email is required')
-            .bail()
             .isEmail()
-            .withMessage('Invalid email format')
-            .toLowerCase(),
-
-        body('password')
-            .isString()
-            .isLength({ min: 6 })
-            .withMessage('Password must be at least 6 characters long'),
-    ];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    refreshToken = [body('refreshToken').trim().notEmpty().withMessage('refreshToken is required')];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    logout = this.refreshToken;
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    deleteUser = [...this.userIdParam];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    restoreUser = [...this.userIdParam];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    organizerIdParam = [
-        param('organizerId')
-            .trim()
+            .withMessage('Invalid email address')
+            .normalizeEmail()
             .notEmpty()
-            .withMessage('organizerId is required')
-            .bail()
-            .isUUID()
-            .withMessage('organizerId must be a valid UUID'),
+            .withMessage('Email is required'),
+        body('password').isString().notEmpty().withMessage('Password is required'),
     ];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    rejectOrganizer = [
-        ...this.organizerIdParam,
-        body('reason')
-            .trim()
-            .notEmpty()
-            .withMessage('reason is required')
-            .bail()
-            .isLength({ min: 3, max: 500 })
-            .withMessage('reason must be between 3 and 500 characters'),
-    ];
+    refreshToken = [body('refreshToken').isString().notEmpty().withMessage('Refresh token is required')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    suspendOrganizer = [
-        ...this.organizerIdParam,
-        body('reason')
-            .trim()
-            .notEmpty()
-            .withMessage('reason is required')
-            .bail()
-            .isLength({ min: 3, max: 500 })
-            .withMessage('reason must be between 3 and 500 characters'),
-    ];
+    logout = [body('refreshToken').isString().notEmpty().withMessage('Refresh token is required')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    reactivateOrganizer = [...this.organizerIdParam];
+    deleteUser = [param('userId').isUUID().withMessage('Invalid user ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    ticketsSoldByEvent = [...this.eventIdParam];
+    restoreUser = [param('userId').isUUID().withMessage('Invalid user ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    revenueByEvent = [...this.eventIdParam];
+    userIdParam = [param('userId').isUUID().withMessage('Invalid user ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    deleteEvent = [...this.eventIdParam];
+    organizerIdParam = [param('organizerId').isUUID().withMessage('Invalid organizer ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    restoreEvent = [...this.eventIdParam];
+    eventIdParam = [param('eventId').toInt().isInt().withMessage('Invalid event ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    activeUsers = [
-        query('days')
-            .optional()
-            .isInt({ min: 1 })
-            .withMessage('days must be a positive integer')
-            .toInt(),
-    ];
+    deleteEvent = [param('eventId').toInt().isInt().withMessage('Invalid event ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    dashboardSummaryQuery = [
-        query('days')
-            .optional()
-            .default(30)
-            .isInt({ min: 1 })
-            .withMessage('days must be a positive integer')
-            .toInt(),
-    ];
+    restoreEvent = [param('eventId').toInt().isInt().withMessage('Invalid event ID')];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    reviewQueueQuery = paginationQuery({ defaultLimit: 10 });
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    dashboardOverviewQuery = [...this.dashboardSummaryQuery, ...this.reviewQueueQuery];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    listUsersQuery = [
-        ...paginationQuery(),
-        query('gender')
-            .optional()
-            .isIn(Object.values(Gender))
-            .withMessage(`gender must be ${Object.values(Gender).join(', ')}`),
-        query('isVerified')
-            .optional()
-            .isBoolean()
-            .withMessage('isVerified must be true or false')
-            .toBoolean(),
-        query('languagePreference')
-            .optional()
-            .isIn(Object.values(Language))
-            .withMessage(`languagePreference must be ${Object.values(Language).join(', ')}`),
-        query('isCompleted')
-            .optional()
-            .isBoolean()
-            .withMessage('isCompleted must be true or false')
-            .toBoolean(),
-        query('createdAt')
-            .optional()
-            .isISO8601()
-            .withMessage('createdAt must be a valid ISO date')
-            .bail()
-            .customSanitizer((value) => {
-                const start = new Date(value);
-                start.setHours(0, 0, 0, 0);
-
-                const end = new Date(start);
-                end.setDate(end.getDate() + 1);
-
-                return {
-                    gte: start,
-                    lt: end,
-                };
-            }),
-    ];
-
-    /**
-     * @type {ValidationChainArray}
-     */
-    listOrganizersQuery = [
-        ...paginationQuery(),
-        query('status')
-            .optional()
-            .isIn(Object.values(OrganizerStatus))
-            .withMessage(`status must be ${Object.values(OrganizerStatus).join(', ')}`),
-        query('verificationStatus')
-            .optional()
-            .isIn(Object.values(OrganizerVerficiationStatus))
-            .withMessage(
-                `verificationStatus must be ${Object.values(OrganizerVerficiationStatus).join(', ')}`
-            ),
-    ];
-
-    /**
-     * @type {ValidationChainArray}
-     */
     listEventsQuery = [
-        ...paginationQuery(),
-        query('q')
-            .optional()
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+        query('q').optional().isString().trim(),
+        query('type').optional().isIn(['ticketed', 'free']),
+        query('mode').optional().isIn(['single', 'recurring']),
+        query('status').optional().isIn(['active', 'cancelled']),
+        query('withTrashed').optional().toBoolean(),
+        query('organizerId').optional().isUUID(),
+        query('venueId').optional().toInt().isInt(),
+        query('categoryId').optional().toInt().isInt(),
+        query('hasSeatMap').optional().toBoolean(),
+    ];
+
+    listUsersQuery = [
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+        query('gender').optional().isIn(['male', 'female']),
+        query('isVerified').optional().toBoolean(),
+        query('languagePreference').optional().isIn(['en', 'ar']),
+        query('isCompleted').optional().toBoolean(),
+        query('createdAt').optional().isISO8601(),
+    ];
+
+    listOrganizersQuery = [
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+        query('status').optional().isIn(Object.values(OrganizerStatus)),
+        query('verificationStatus').optional().isIn(Object.values(OrganizerVerficiationStatus)),
+    ];
+
+    dashboardSummaryQuery = [query('days').optional().toInt().isInt({ min: 1 }).default(30)];
+
+    reviewQueueQuery = [
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+    ];
+
+    dashboardOverviewQuery = [
+        query('days').optional().toInt().isInt({ min: 1 }).default(30),
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+    ];
+
+    rejectOrganizer = [
+        param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+        body('reason')
+            .isString()
+            .withMessage('Reason must be a string')
             .trim()
-            .isLength({ min: 1, max: 100 })
-            .withMessage('q must be between 1 and 100 characters'),
-        query('type')
-            .optional()
-            .isIn(Object.values(EventType))
-            .withMessage(`type must be ${Object.values(EventType).join(', ')}`),
-        query('mode')
-            .optional()
-            .isIn(Object.values(EventMode))
-            .withMessage(`mode must be ${Object.values(EventMode).join(', ')}`),
-        query('organizerId')
-            .optional()
+            .notEmpty()
+            .withMessage('Rejection reason is required'),
+    ];
+
+    suspendOrganizer = [
+        param('organizerId').isUUID().withMessage('Invalid organizer ID'),
+        body('reason')
+            .isString()
+            .withMessage('Reason must be a string')
             .trim()
-            .isUUID()
-            .withMessage('organizerId must be a valid UUID'),
-        query('venueId')
-            .optional()
-            .isInt({ min: 1 })
-            .withMessage('venueId must be a valid positive integer')
-            .toInt(),
-        query('categoryId')
-            .optional()
-            .isInt({ min: 1 })
-            .withMessage('categoryId must be a valid positive integer')
-            .toInt(),
-        query('hasSeatMap')
-            .optional()
-            .isBoolean()
-            .withMessage('hasSeatMap must be true or false')
-            .toBoolean(),
+            .notEmpty()
+            .withMessage('Suspension reason is required'),
     ];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    processPayouts = [
-        body('days')
-            .optional()
-            .default(30)
-            .isInt({ min: 1 })
-            .withMessage('days must be a positive integer')
-            .toInt(),
+    reactivateOrganizer = [param('organizerId').isUUID().withMessage('Invalid organizer ID')];
+
+    ticketsSoldByEvent = [param('eventId').toInt().isInt().withMessage('Invalid event ID')];
+
+    revenueByEvent = [param('eventId').toInt().isInt().withMessage('Invalid event ID')];
+
+    activeUsers = [query('days').optional().toInt().isInt({ min: 1 }).default(30)];
+
+    processPayouts = [body('days').optional().toInt().isInt({ min: 1 }).default(30)];
+
+    financeSummaryQuery = [query('days').optional().toInt().isInt({ min: 1 }).default(30)];
+
+    payoutHistoryQuery = [
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
     ];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    financeSummaryQuery = [
-        query('days')
-            .optional()
-            .default(30)
-            .isInt({ min: 1 })
-            .withMessage('days must be a positive integer')
-            .toInt(),
+    listNewsletterSubscribersQuery = [
+        query('page').optional().toInt().isInt({ min: 1 }).default(1),
+        query('limit').optional().toInt().isInt({ min: 1, max: 100 }).default(20),
+        query('q').optional().isString().trim(),
     ];
 
-    /**
-     * @type {ValidationChainArray}
-     */
-    payoutHistoryQuery = paginationQuery();
+    categoryIdParam = [param('id').toInt().isInt().withMessage('Invalid category ID')];
+
+    createCategory = [
+        body('name')
+            .isString()
+            .withMessage('Name must be a string')
+            .trim()
+            .notEmpty()
+            .withMessage('Name is required'),
+        body('image').custom((value, { req }) => {
+            if (!req.file) {
+                throw new Error('Image is required');
+            }
+            return true;
+        }),
+    ];
+
+    updateCategory = [
+        param('id').toInt(),
+        body('name')
+            .optional()
+            .isString()
+            .withMessage('Name must be a string')
+            .trim()
+            .notEmpty()
+            .withMessage('Name cannot be empty'),
+        body('image').optional(),
+    ];
 }
 
 export default new AdminValidation();
-export { AdminValidation };

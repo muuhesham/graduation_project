@@ -8,21 +8,23 @@
   <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
 </p>
 
-**Fa3liat** is a comprehensive web application platform for creating events, managing tickets, and handling online payments. The platform supports both general-admission and seat-based events with multiple ticket tiers.
+**Fa3liat** is a comprehensive web application platform for creating events, managing tickets, and handling online payments. The platform supports both general-admission and seat-based events with multiple ticket tiers, organizer onboarding workflows, and AI-assisted event discovery.
 
 ---
 
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [Main Features](#-main-features)
 - [Tech Stack](#-tech-stack)
-- [Installation](#-installation)
-- [Features](#-features)
+- [Installation & Setup](#-installation--setup)
+- [Docker Setup](#-docker-setup)
 - [Project Structure](#-project-structure)
 - [API Endpoints](#-api-endpoints)
 - [Database Schema](#-database-schema)
 - [Environment Variables](#-environment-variables)
 - [Available Scripts](#-available-scripts)
+- [Technical Documentation](#-technical-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -32,401 +34,204 @@
 
 Fa3liat is an event management and ticketing platform built with modern web technologies. It enables organizers to create events, sell tickets online, manage venues, and handle payments through integrated payment gateways. The platform supports:
 
-- 🎫 **General Admission Tickets** - Standard ticketed events
-- 💺 **Seat-Based Events** - Events with assigned seating and flexible seat management
-- 👤 **User Authentication** - Email, phone, and social login with soft delete support
-- 📱 **QR Code Tickets** - Mobile ticket validation with QR code generation
-- 💳 **Payment Integration** - Stripe payment processing
-- 📧 **Email Notifications** - OTP and event notifications
-- 📅 **Event Sessions** - Multiple sessions per event
-- 🎟️ **Ticket Types** - Multiple ticket tiers with pricing
-- 📍 **Venue Management** - Location and seating maps
-- 🔖 **Coupon System** - Discount codes for events
-- 🏷️ **Event Tagging** - Categorize events with tags
-- 📋 **Event Rules** - Define policies and rules for events
-- ❤️ **Interested Events** - Track user interests in events
-- 📱 **Mobile App** - Mobile app for ticket scanning and validation via QR codes
+- 🎫 **General Admission Tickets** - Standard ticketed events.
+- 💺 **Seat-Based Events** - Events with assigned seating and flexible seat management.
+- 👤 **User Authentication** - Email, phone (OTP), and social login (Google) with soft delete support.
+- 📱 **QR Code Tickets** - Mobile ticket validation with QR code generation.
+- 💳 **Payment Integration** - Stripe payment processing and payout management.
+- 📧 **Background Workers** - Reliable email, SMS, and AI processing using BullMQ.
+- 📍 **Venue & Location Core** - Detailed location hierarchy and seating map configurations.
+- 📱 **Mobile API** - Specialized endpoints for mobile ticket scanning.
+
+---
+
+## ✨ Main Features
+
+- **Organizer Onboarding**: Multi-stage approval workflow for hobbyists, businesses, and companies.
+- **Seat Map Locking**: Transaction-safe seat reservations to prevent overbooking.
+- **Semantic Search**: (Optional) AI-powered event discovery using Ollama and pgvector.
+- **Real-time Notifications**: Socket.io integration for instant updates.
+- **Coupon System**: Event-specific and platform-wide discount codes.
+- **Newsletter**: Subscription flow with double opt-in confirmation.
+- **Admin Dashboard**: Comprehensive monitoring and moderation tools.
 
 ---
 
 ## 🛠 Tech Stack
 
-| Category           | Technology        |
-| ------------------ | ----------------- |
-| **Runtime**        | Node.js           |
-| **Framework**      | Express.js        |
-| **Database**       | PostgreSQL        |
-| **ORM**            | Prisma            |
-| **Caching**        | Redis             |
-| **Authentication** | JWT               |
-| **Queue**          | BullMQ            |
-| **Payments**       | Stripe            |
-| **SMS**            | Twilio            |
-| **Email**          | Nodemailer        |
-| **AI/ML**          | LangChain, OpenAI |
+| Category | Technology |
+| :--- | :--- |
+| **Runtime** | Node.js 20.x |
+| **Framework** | Express.js 5 |
+| **Database** | PostgreSQL 16 (with `pgvector`) |
+| **ORM** | Prisma |
+| **Caching / Queue** | Redis 7, BullMQ |
+| **Authentication** | JWT, bcryptjs |
+| **Payments** | Stripe |
+| **SMS** | Twilio |
+| **AI / ML** | Ollama, LangChain |
+| **Testing** | Jest, Supertest |
+| **Containerization** | Docker, Docker Compose |
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation & Setup
 
 ### Prerequisites
 
 - Node.js (v18+)
 - PostgreSQL (v14+)
-- Redis
+- Redis 7+
 
-### Steps
+### 1. Clone the repository
 
-1. **Clone the repository**
+```bash
+git clone https://github.com/muuhesham/graduation_project.git
+cd graduation_project
+```
 
-    ```bash
-    git clone https://github.com/muuhesham/graduation_project.git
-    cd graduation_project
-    ```
+### 2. Install dependencies
 
-2. **Install dependencies**
+```bash
+npm install
+```
 
-    ```bash
-    npm install
-    ```
+### 3. Configure environment variables
 
-3. **Configure environment variables**
+Create a local environment file from the provided template:
 
-    ```bash
-    cp .env.example .env
-    # Edit .env with your configuration
-    ```
+```bash
+cp .env.example .env
+```
 
-4. **Setup database**
+*Update `.env` with your actual database, Redis, and external service credentials.*
 
-    ```bash
-    npm run prisma:migrate
-    npm run prisma:generate
-    ```
+### 4. Guided Setup
 
-5. **Seed database (optional)**
-
-    ```bash
-    npm run prisma:seed
-    ```
-
-6. **Start the server**
-    ```bash
-    npm run dev
-    ```
-
-### Quick Setup
-
-Alternatively, you can run the following command to automate all the installation steps above:
+Alternatively, use the built-in setup script to automate folder creation and basic configuration:
 
 ```bash
 npm run setup
 ```
 
+### 5. Database Initialization
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+### 6. Start the server
+
+```bash
+npm run dev
+```
+
 ---
 
-## ✨ Features
+## 🐳 Docker Setup
 
-### Authentication & Authorization
+Docker is the recommended way to run the full stack with consistent configuration.
 
-- Email/password authentication
-- Phone number verification (OTP)
-- Social login (Google, Facebook, Apple)
-- JWT-based session management
-- Role-based access control (User, Organizer, Admin)
+### Standard Stack
+```bash
+docker compose up --build
+```
 
-### Event Management
+### AI Profile (Ollama + Embedding Worker)
+```bash
+docker compose --profile ai up --build
+```
 
-- Create and manage events
-- Event categories and tags
-- Multiple event sessions
-- Event rules and policies
-- Banner and media uploads
-- Interested events tracking
-
-### Ticketing System
-
-- Multiple ticket types per event
-- General admission tickets
-- Seat-based ticketing with tier pricing and flexible seating
-- QR code generation for tickets
-- Ticket validation and check-in
-
-### Payment Processing
-
-- Stripe integration
-- Secure payment processing
-- Refund handling
-- Payout management for organizers
-
-### Venue Management
-
-- Create and manage venues
-- Seat map configuration
-- State/City/Country location hierarchy
-
-### Additional Features
-
-- Newsletter subscription
-- User wallet system
-- Interested events tracking
-- Coupon/discount codes
-- Rate limiting and security
-- Reviews system
-- Real-time notifications
-- User soft delete functionality
-- Mobile app for ticket scanning and validation using QR codes
+### Stripe Webhook Forwarding
+```bash
+docker compose --profile stripe up --build
+```
 
 ---
 
 ## 📂 Project Structure
 
-```
-fa3liat/
-├── prisma/
-│   ├── schema.prisma          # Database schema
-│   ├── seed.js                # Database seeder
-│   └── factories/             # Test data factories
-│       ├── category.factory.js
-│       ├── city.factory.js
-│       ├── country.factory.js
-│       ├── event.factory.js
-│       ├── organizer.factory.js
-│       ├── state.factory.js
-│       ├── tag.factory.js
-│       ├── user.factory.js
-│       └── venue.factory.js
-├── migrations/                 # Database migrations
-├── scripts/
-│   ├── setup.js               # Project setup script
-│   ├── generate.js            # Prisma client generation
-│   ├── migrate.js             # Database migration
-│   └── seed.js                # Seed database
-├── data/
-│   └── governorates.json     # Egypt governorates data
+```text
+.
 ├── src/
-│   ├── app.js                 # Express app configuration
-│   ├── server.js              # Server entry point
-│   ├── resources.js           # API resources loader
-│   ├── config/                # Configuration files
-│   ├── controllers/           # Route controllers
-│   ├── routes/                # API routes
-│   │   ├── admin.routes.js
-│   │   ├── auth.routes.js
-│   │   ├── category.routes.js
-│   │   ├── event.routes.js
-│   │   ├── home.routes.js
-│   │   ├── location.routes.js
-│   │   ├── newsletter.routes.js
-│   │   ├── onboarding.routes.js
-│   │   ├── order.routes.js
-│   │   ├── organizer.routes.js
-│   │   ├── organizerDashboard.routes.js
-│   │   ├── payment.routes.js
-│   │   ├── profile.routes.js
-│   │   ├── search.routes.js
-│   │   ├── ticket.routes.js
-│   │   └── user.routes.js
-│   ├── middlewares/           # Custom middlewares
-│   ├── validations/           # Request validations
-│   ├── services/              # Business logic
-│   ├── repositories/          # Data access layer
-│   ├── models/                # Additional models
-│   ├── helpers/               # Helper functions
-│   ├── utils/                 # Utility functions
-│   ├── queues/                # Queue configurations
-│   ├── workers/               # Background workers
-│   │   ├── mailWorker.js
-│   │   ├── smsWorker.js
-│   │   └── embeddingWorker.js
-│   ├── mails/                 # Email templates
-│   ├── policies/              # Authorization policies
-│   ├── types/                 # Type definitions
-│   └── errors/                # Custom error classes
-├── package.json
-├── .env.example
-└── README.md
+│   ├── config/            # Configuration (DB, Redis, Mail, Stripe)
+│   ├── controllers/       # Route handlers
+│   ├── models/            # Core business models
+│   ├── services/          # Business logic layer
+│   ├── repositories/      # Data access layer
+│   ├── routes/            # API endpoint definitions
+│   ├── middlewares/       # Auth, validation, error handling
+│   ├── workers/           # BullMQ background workers
+│   ├── resources/         # API response transformers
+│   └── utils/             # Utility helpers
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   ├── seed.js            # Main seeder
+│   └── seeders/           # Modular data seeders
+├── docs/                  # Detailed technical documentation
+├── data/                  # Static JSON data (e.g. governorates)
+├── scripts/               # Setup and maintenance utilities
+├── tests/                 # Integration and unit tests
+├── Dockerfile             # App image definition
+└── docker-compose.yml     # Orchestration
 ```
 
 ---
 
 ## 🔗 API Endpoints
 
-### Authentication
+The API is versioned and mounted under `/api/v1`.
 
-| Method | Endpoint               | Description          |
-| ------ | ---------------------- | -------------------- |
-| POST   | `/api/auth/register`   | Register new user    |
-| POST   | `/api/auth/login`      | User login           |
-| POST   | `/api/auth/otp/send`   | Send OTP to email    |
-| POST   | `/api/auth/otp/verify` | Verify OTP           |
-| POST   | `/api/auth/refresh`    | Refresh access token |
-| POST   | `/api/auth/logout`     | Logout user          |
-
-### Users
-
-| Method | Endpoint        | Description      |
-| ------ | --------------- | ---------------- |
-| GET    | `/api/users/me` | Get current user |
-| PUT    | `/api/users/me` | Update profile   |
-| DELETE | `/api/users/me` | Delete account   |
-
-### Events
-
-| Method | Endpoint            | Description       |
-| ------ | ------------------- | ----------------- |
-| GET    | `/api/events`       | List events       |
-| GET    | `/api/events/:slug` | Get event details |
-| POST   | `/api/events`       | Create event      |
-| PUT    | `/api/events/:id`   | Update event      |
-| DELETE | `/api/events/:id`   | Delete event      |
-
-### Tickets
-
-| Method | Endpoint                | Description        |
-| ------ | ----------------------- | ------------------ |
-| GET    | `/api/tickets`          | List user tickets  |
-| GET    | `/api/tickets/:id`      | Get ticket details |
-| POST   | `/api/tickets/validate` | Validate QR code   |
-
-### Orders
-
-| Method | Endpoint          | Description      |
-| ------ | ----------------- | ---------------- |
-| POST   | `/api/orders`     | Create order     |
-| GET    | `/api/orders`     | List user orders |
-| GET    | `/api/orders/:id` | Order details    |
-
-### Organizers
-
-| Method | Endpoint                   | Description           |
-| ------ | -------------------------- | --------------------- |
-| POST   | `/api/organizers/register` | Register as organizer |
-| GET    | `/api/organizers/profile`  | Get organizer profile |
-| PUT    | `/api/organizers/profile`  | Update organizer      |
-
-### Venues
-
-| Method | Endpoint          | Description   |
-| ------ | ----------------- | ------------- |
-| GET    | `/api/venues`     | List venues   |
-| POST   | `/api/venues`     | Create venue  |
-| GET    | `/api/venues/:id` | Venue details |
-
-### Categories
-
-| Method | Endpoint                     | Description        |
-| ------ | ---------------------------- | ------------------ |
-| GET    | `/api/categories`            | List categories    |
-| GET    | `/api/categories/:id/events` | Events by category |
-
-### Search
-
-| Method | Endpoint                 | Description       |
-| ------ | ------------------------ | ----------------- |
-| GET    | `/api/search/events`     | Search events     |
-| GET    | `/api/search/organizers` | Search organizers |
-
-### Location
-
-| Method | Endpoint                          | Description       |
-| ------ | --------------------------------- | ----------------- |
-| GET    | `/api/location/countries`         | List countries    |
-| GET    | `/api/location/states/:countryId` | States by country |
-| GET    | `/api/location/cities/:stateId`   | Cities by state   |
+| Module | Base Path | Description |
+| :--- | :--- | :--- |
+| **Auth** | `/api/v1/auth` | Login, Register, OTP, Social Login |
+| **User** | `/api/v1/user` | Profile management, Onboarding |
+| **Events** | `/api/v1/events` | Browsing, Checkout, Interests |
+| **Organizer** | `/api/v1/organizer` | Event management, Venue setup |
+| **Admin** | `/api/v1/admin` | Reviews, Payouts, System stats |
+| **Mobile** | `/api/v1/mobile` | Ticket scanning and validation |
 
 ---
 
 ## 🗄 Database Schema
 
 ### Core Models
-
-- **User** - User accounts with authentication
-- **Organizer** - Event organizer profiles
-- **Event** - Event listings
-- **Venue** - Event venues
-- **Category** - Event categories
-- **Ticket** - Purchased tickets
-- **Order** - Order records
-- **TicketType** - Ticket type definitions
-
-### Authentication Models
-
-- **Otp** - Email OTP codes
-- **PhoneOtp** - Phone OTP codes
-- **RefreshToken** - JWT refresh tokens
-- **ResetPasswordToken** - Password reset tokens
+- **User** & **Organizer** (Hobbyist, Business, Company)
+- **Event**, **Venue**, **Category**, **Tag**
+- **Order**, **OrderItem**, **Ticket**, **TicketType**
+- **EventSeat**, **EventSeatTier** (Assigned seating)
 
 ### Supporting Models
-
-- **Governorate** - Egypt governorates
-- **NewsletterSubscriber** - Newsletter emails
-- **InterestedEvent** - User interests
-- **EventTag** - Event tags
-- **EventRule** - Event policies
-- **Coupon** - Discount codes
-- **EventSeatTier** - Seat pricing tiers
-- **EventSeat** - Individual seats
-
----
-
-## Environment Variables
-
-```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/fa3liat"
-
-# Redis
-REDIS_URL="redis://localhost:6379"
-
-# JWT
-JWT_SECRET="your-secret-key"
-JWT_REFRESH_SECRET="your-refresh-secret-key"
-
-# Stripe
-STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-
-# Mail
-MAIL_HOST="smtp.example.com"
-MAIL_PORT=587
-MAIL_USER="user@example.com"
-MAIL_PASSWORD="password"
-
-# SMS (Twilio)
-TWILIO_ACCOUNT_SID="your-account-sid"
-TWILIO_AUTH_TOKEN="your-auth-token"
-TWILIO_PHONE_NUMBER="+1234567890"
-
-# OAuth
-GOOGLE_CLIENT_ID="your-client-id"
-GOOGLE_CLIENT_SECRET="your-client-secret"
-FACEBOOK_APP_ID="your-app-id"
-FACEBOOK_APP_SECRET="your-app-secret"
-
-# OpenAI
-OPENAI_API_KEY="sk-..."
-
-# App
-NODE_ENV="development"
-PORT=8000
-```
+- **Otp**, **PhoneOtp**, **RefreshToken**, **ResetPasswordToken**
+- **NewsletterSubscriber**, **InterestedEvent**, **EventReview**
+- **Payout**, **PayoutItem**, **Coupon**, **QrCode**
 
 ---
 
 ## 📜 Available Scripts
 
-| Script                      | Description              |
-| --------------------------- | ------------------------ |
-| `npm run setup`             | Run full project setup   |
-| `npm run dev`               | Start development server |
-| `npm run start`             | Start production server  |
-| `npm run prisma:generate`   | Generate Prisma client   |
-| `npm run prisma:migrate`    | Run database migrations  |
-| `npm run prisma:seed`       | Seed database            |
-| `npm run queue:mail-worker` | Start mail worker        |
-| `npm run queue:sms-worker`  | Start SMS worker         |
-| `npm run test`              | Run tests                |
+| Script | Description |
+| :--- | :--- |
+| `npm run setup` | Run full project setup utility |
+| `npm run dev` | Start development server with nodemon |
+| `npm start` | Start production server |
+| `npm run prisma:migrate` | Run database migrations |
+| `npm run prisma:seed` | Seed database with sample data |
+| `npm test` | Run test suite with Jest |
+| `npm run queue:mail-worker` | Start mail processing worker |
+
+---
+
+## 📚 Technical Documentation
+
+Detailed guides are available in the `/docs` folder:
+- [Architecture Overview](./ARCHITECTURE.md)
+- [API Design](./docs/api_design.md)
+- [Database ERD](./docs/database_erd.md)
+- [Deployment Guide](./docs/deployment_guide.md)
+- [Security Notes](./docs/security.md)
 
 ---
 
@@ -443,7 +248,5 @@ PORT=8000
 ## 📄 License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 <p align="center">Built with ❤️ by the Fa3liat Team</p>

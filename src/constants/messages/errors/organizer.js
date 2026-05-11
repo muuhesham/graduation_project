@@ -45,104 +45,49 @@ const OrganizerErrors = Object.freeze({
         message: 'Organizer is pending verification',
     },
 
+    ORGANIZER_NOT_APPROVED: {
+        code: 'ORGANIZER_NOT_APPROVED',
+        message: 'Organizer account is not approved',
+    },
+
     ORGANIZER_ACCOUNT_NOT_ACTIVE: {
         code: 'ORGANIZER_ACCOUNT_NOT_ACTIVE',
         message: 'Organizer account is not active',
     },
 
-    ORGANIZER_NOT_APPROVED_FOR_EVENT_CREATION: {
-        code: 'ORGANIZER_NOT_APPROVED_FOR_EVENT_CREATION',
-        message: 'Only approved organizers can create events',
-    },
-
-    ORGANIZER_NOT_ACTIVE_FOR_EVENT_CREATION: {
-        code: 'ORGANIZER_NOT_ACTIVE_FOR_EVENT_CREATION',
-        message: 'Only active organizers can create events',
-    },
-
-    ORGANIZER_NOT_APPROVED_FOR_DASHBOARD_ACCESS: {
-        code: 'ORGANIZER_NOT_APPROVED_FOR_DASHBOARD_ACCESS',
-        message: 'Only approved organizers can access the dashboard',
-    },
-
-    ORGANIZER_NOT_ACTIVE_FOR_DASHBOARD_ACCESS: {
-        code: 'ORGANIZER_NOT_ACTIVE_FOR_DASHBOARD_ACCESS',
-        message: 'Only active organizers can access the dashboard',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_READ_EVENTS: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_READ_EVENTS',
-        message: 'Individual organizers must be verified to read events',
-    },
-
-    ORGANIZER_EVENT_READ_FORBIDDEN: {
-        code: 'ORGANIZER_EVENT_READ_FORBIDDEN',
-        message: 'Organizers can only read their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_UPDATE_EVENTS: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_UPDATE_EVENTS',
-        message: 'Individual organizers must be verified to update events',
-    },
-
-    ORGANIZER_EVENT_UPDATE_FORBIDDEN: {
-        code: 'ORGANIZER_EVENT_UPDATE_FORBIDDEN',
-        message: 'Organizers can only update their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_DELETE_EVENTS: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_DELETE_EVENTS',
-        message: 'Individual organizers must be verified to delete events',
-    },
-
-    ORGANIZER_EVENT_DELETE_FORBIDDEN: {
-        code: 'ORGANIZER_EVENT_DELETE_FORBIDDEN',
-        message: 'Organizers can only delete their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_MANAGE_ATTENDEES: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_MANAGE_ATTENDEES',
-        message: 'Individual organizers must be verified to manage attendees',
-    },
-
-    ORGANIZER_ATTENDEE_MANAGEMENT_FORBIDDEN: {
-        code: 'ORGANIZER_ATTENDEE_MANAGEMENT_FORBIDDEN',
-        message: 'Organizers can only manage attendees for their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_MANAGE_TICKETS: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_MANAGE_TICKETS',
-        message: 'Individual organizers must be verified to manage tickets',
-    },
-
-    ORGANIZER_TICKET_MANAGEMENT_FORBIDDEN: {
-        code: 'ORGANIZER_TICKET_MANAGEMENT_FORBIDDEN',
-        message: 'Organizers can only manage tickets for their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_MANAGE_PROMOTIONS: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_MANAGE_PROMOTIONS',
-        message: 'Individual organizers must be verified to manage promotions',
-    },
-
-    ORGANIZER_PROMOTION_MANAGEMENT_FORBIDDEN: {
-        code: 'ORGANIZER_PROMOTION_MANAGEMENT_FORBIDDEN',
-        message: 'Organizers can only manage promotions for their own events',
-    },
-
-    ORGANIZER_NOT_VERIFIED_TO_MANAGE_VENUES: {
-        code: 'ORGANIZER_NOT_VERIFIED_TO_MANAGE_VENUES',
-        message: 'Individual organizers must be verified to manage venues',
-    },
-
-    ORGANIZER_VENUE_MANAGEMENT_FORBIDDEN: {
-        code: 'ORGANIZER_VENUE_MANAGEMENT_FORBIDDEN',
-        message: 'Organizers can only manage venues for their own events',
+    ORGANIZER_ACTION_FORBIDDEN: {
+        code: 'ORGANIZER_ACTION_FORBIDDEN',
+        message: 'You do not have permission to perform this action on this resource',
     },
 
     ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION: {
         code: 'ORGANIZER_REFERENCE_CONSTRAINT_VIOLATION',
         message: 'Invalid reference for organizer',
+    },
+
+    ORGANIZER_COUNTRY_NOT_FOUND: {
+        code: 'ORGANIZER_COUNTRY_NOT_FOUND',
+        message: 'Referenced country does not exist',
+    },
+
+    ORGANIZER_STATE_NOT_FOUND: {
+        code: 'ORGANIZER_STATE_NOT_FOUND',
+        message: 'Referenced state does not exist',
+    },
+
+    ORGANIZER_CITY_NOT_FOUND: {
+        code: 'ORGANIZER_CITY_NOT_FOUND',
+        message: 'Referenced city does not exist',
+    },
+
+    ORGANIZER_EMAIL_ALREADY_IN_USE: {
+        code: 'ORGANIZER_EMAIL_ALREADY_IN_USE',
+        message: 'Contact email is already in use by another organizer',
+    },
+
+    ORGANIZER_PHONE_ALREADY_IN_USE: {
+        code: 'ORGANIZER_PHONE_ALREADY_IN_USE',
+        message: 'Contact phone is already in use by another organizer',
     },
 
     ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED: {

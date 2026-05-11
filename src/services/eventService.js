@@ -1,5 +1,6 @@
 import { prisma as prismaClient } from '../config/db.js';
 import slugify from 'slugify';
+import { Event } from '../models/index.js';
 import ConflictError from '../errors/ConflictError.js';
 import { PrismaQueryBuilder } from '../utils/queryBulider.js';
 import fileService from './fileService.js';
@@ -8,23 +9,32 @@ import orderService from './orderService.js';
 import NotFoundError from '../errors/NotFoundError.js';
 import paymentService from './paymentService.js';
 import OrderStatus from '../constants/enums/orderStatus.js';
+import EventStatus from '../constants/enums/eventStatus.js';
 import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
-import { eventRepository } from './../repositories/index.js';
+import {
+    eventRepository,
+    tagRepository,
+    eventTagRepository,
+    eventSessionRepository,
+    eventRuleRepository,
+} from './../repositories/index.js';
 import EventErrors from './../constants/messages/errors/event.js';
 import { addEmbeddingJob, EmbeddingJobType } from '../queues/embeddingQueue.js';
-import eventEmbeddingService from './eventEmbeddingService.js';
 
 /**
- * @typedef {import('./../types/shared/common.types.js').PaginationQuery} PaginationQuery
+ * @typedef {import('@prisma/client').Prisma} PrismaClient
+ * @typedef {import('./../types/shared').TransactionClient} TransactionClient
+ * @typedef {import('./../types/shared').PaginationQuery} PaginationQuery
  * @typedef {import('@prisma/client').Prisma.EventDefaultArgs} EventDefaultArgs
- * @typedef {import('./../types/models/event.model.js').Event} EventModel
- * @typedef {import('./../types/models/event.model.js').EventWhere} EventWhere
- * @typedef {import('./../types/shared/common.types.js').RepositoryReadOptions<EventWhere, EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']>} EventListOptions
- * @typedef {import('./../types/shared/common.types.js').RepositoryProjection<EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']> & { selections?: EventDefaultArgs['select'], relations?: EventDefaultArgs['include'], exclude?: EventDefaultArgs['omit'] }} EventProjectionInput
- * @typedef {EventProjectionInput & { filters?: EventWhere }} EventFindByIdOptions
+ * @typedef {import('./../types/models').Event} EventModel
+ * @typedef {import('./../types/models').EventHydrated} EventHydrated
+ * @typedef {import('./../types/models').EventWhere} EventWhere
+ * @typedef {import('./../types/models').EventCreate} EventCreate
+ * @typedef {import('./../types/models').EventUpdate} EventUpdate
+ * @typedef {import('./../types/shared').RepositoryReadOptions<EventWhere, EventDefaultArgs['select'], EventDefaultArgs['include'], EventDefaultArgs['omit']>} EventListOptions
  */
 
 const SEARCH_STOP_WORDS = new Set([
@@ -94,6 +104,7 @@ const eventService = {
 
     DEFAULT_RELATIONS: {
         venue: true,
+        category: true,
         ticketTypes: true,
         eventSessions: true,
         eventSeatTier: true,
@@ -122,6 +133,37 @@ const eventService = {
 
     MAX_LIMIT: 100,
     RESERVATION_TTL_SECONDS: 10 * 60,
+
+    /**
+     * Map request data to database-safe fields.
+     * @private
+     * @param {object} data
+     * @returns {object}
+     */
+    _mapToDbFields(data) {
+        const updateData = {};
+        const dbFields = [
+            'title',
+            'description',
+            'type',
+            'mode',
+            'venueId',
+            'categoryId',
+            'hasSeatMap',
+        ];
+
+        for (const field of dbFields) {
+            if (data[field] !== undefined) {
+                updateData[field] = data[field];
+            }
+        }
+
+        if (data.eventType !== undefined) {
+            updateData.hasSeatMap = data.eventType === 'seatmap';
+        }
+
+        return updateData;
+    },
 
     async create(
         organizerId,
@@ -185,21 +227,97 @@ const eventService = {
     },
 
     /**
-     * @param {number} id
-     * @param {EventProjectionInput} [projection]
-     * @returns {Promise<EventModel | null>}
+     * @param {string} slug
+     * @param {any} banner
+     * @returns {Promise<{ disk: string | null, url: string | null }>}
      */
-    async findById(id, projection = {}) {
-        return eventRepository.findById(id, projection);
+    async saveBannerAsset(slug, banner) {
+        if (!banner) {
+            return { disk: null, url: null };
+        }
+
+        const folder = Event.getUploadPath(slug);
+        const savedBanner = await fileService.save(banner, folder);
+
+        return {
+            disk: savedBanner?.disk ?? null,
+            url: savedBanner?.url ?? null,
+        };
+    },
+
+    /**
+     * @param {string} organizerId
+     * @param {EventCreate & { banner?: any, eventType?: string }} data
+     * @param {TransactionClient | null} [tx]
+     * @returns {Promise<EventModel>}
+     */
+    async createRecord(organizerId, data, tx = null) {
+        const slug = this.generateSlug({ title: data.title });
+
+        const existingEvent = await this.exists(organizerId, slug, tx);
+        if (existingEvent) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_ALREADY_EXISTS]);
+        }
+
+        const { disk: bannerDisk, url: bannerPath } = await this.saveBannerAsset(slug, data.banner);
+
+        const createData = {
+            ...this._mapToDbFields(data),
+            organizerId,
+            slug,
+            bannerDisk,
+            bannerPath,
+        };
+
+        return eventRepository.create(createData, tx);
     },
 
     /**
      * @param {number} id
-     * @param {EventProjectionInput} [projection]
+     * @param {string} organizerId
+     * @param {EventUpdate & { banner?: any, eventType?: string }} data
+     * @param {TransactionClient | null} [tx]
+     * @returns {Promise<EventModel>}
+     */
+    async updateRecord(id, organizerId, data, tx = null) {
+        const slug = this.generateSlug({ title: data.title });
+
+        const existingEvent = await eventRepository.findBySlug(organizerId, slug, {}, tx);
+        if (existingEvent && existingEvent.id !== id) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_ALREADY_EXISTS]);
+        }
+
+        const updateData = this._mapToDbFields(data);
+
+        if (data.banner) {
+            const currentEvent = await eventRepository.findById(id, { select: { slug: true } }, tx);
+            const bannerSlug = slug || currentEvent?.slug || '';
+            const { disk: bannerDisk, url: bannerPath } = await this.saveBannerAsset(
+                bannerSlug,
+                data.banner
+            );
+            Object.assign(updateData, { bannerDisk, bannerPath });
+        }
+
+        if (slug) updateData.slug = slug;
+
+        return eventRepository.update(
+            {
+                where: { id },
+                data: updateData,
+            },
+            tx
+        );
+    },
+
+    /**
+     * @param {number} id
+     * @param {object} [options]
+     * @param {TransactionClient | null} [tx]
      * @returns {Promise<EventModel | null>}
      */
-    async findByIdIncludingDeleted(id, projection = {}) {
-        return eventRepository.findByIdIncludingDeleted(id, projection);
+    async findByIdIncludingDeleted(id, options = {}, tx = null) {
+        return eventRepository.findByIdIncludingDeleted(id, options, tx);
     },
 
     /**
@@ -212,26 +330,21 @@ const eventService = {
 
     /**
      * @param {number} eventId
+     * @param {TransactionClient | null} [tx]
      * @returns {Promise<EventModel | null>}
      */
-    async softDelete(eventId) {
-        const event = await eventRepository.findById(Number(eventId));
+    async softDelete(eventId, tx = null) {
+        const event = await eventRepository.findById(eventId, {}, tx);
+
         if (!event) {
-            return null;
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
         }
 
-        const deletedAt = new Date();
-        const result = await eventRepository.softDeleteById(Number(eventId));
-        if (!result) {
-            return null;
+        if (!event.canBeDeleted()) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_CANNOT_BE_DELETED]);
         }
 
-        await addEmbeddingJob(EmbeddingJobType.DELETE_EMBEDDING, String(eventId)).catch((err) => {
-            console.error(`Failed to queue embedding deletion for event ${eventId}:`, err);
-        });
-
-        event.deletedAt = deletedAt;
-        return event;
+        return eventRepository.softDeleteById(eventId, tx);
     },
 
     async update(
@@ -310,6 +423,19 @@ const eventService = {
         });
     },
 
+    /**
+     * @param {number} eventId
+     * @param {TransactionClient | null} [tx]
+     */
+    async deleteSessionsRecord(eventId, tx = null) {
+        return eventSessionRepository.deleteMany(
+            {
+                where: { eventId },
+            },
+            tx
+        );
+    },
+
     async createBulkSessions(eventId, sessions, tx = prismaClient) {
         const sessionsData = sessions.map((session) => ({
             eventId,
@@ -320,6 +446,25 @@ const eventService = {
             data: sessionsData,
         });
         return result;
+    },
+
+    /**
+     * @param {number} eventId
+     * @param {{ startDate: Date | string, endDate: Date | string }[]} sessions
+     * @param {TransactionClient | null} [tx]
+     */
+    async createSessionsRecord(eventId, sessions, tx = null) {
+        const sessionsData = sessions.map((session) => ({
+            eventId,
+            startDate: session.startDate,
+            endDate: session.endDate,
+        }));
+        return eventSessionRepository.bulkInsert(
+            {
+                data: sessionsData,
+            },
+            tx
+        );
     },
 
     async ticketsSoldByEvent(eventId) {
@@ -364,6 +509,11 @@ const eventService = {
                 },
             ]);
         }
+
+        if (event.status === EventStatus.CANCELLED) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_RESTORE_CANCELLED]);
+        }
+
         return eventRepository.restoreDeleted(id);
     },
 
@@ -390,8 +540,7 @@ const eventService = {
     // },
 
     /**
-     * @param {EventModel[]} events
-     * @returns {EventModel[]}
+     * @deprecated Use Event model's bannerUrl getter.
      */
     attachBannerUrls(events = []) {
         return events.map((event) => this.attachBannerUrl(event)).filter(Boolean);
@@ -643,6 +792,9 @@ const eventService = {
         return eventService.getBannerAbsUrl(events);
     },
 
+    /**
+     * @deprecated Use existsById instead
+     */
     async exists(organizerId, slug, tx = prismaClient) {
         return tx.event.findFirst({
             where: {
@@ -650,6 +802,17 @@ const eventService = {
                 slug,
             },
         });
+    },
+
+    /**
+     * @param {number} organizerId
+     * @param {string} slug
+     * @param {object} [projection]
+     * @param {TransactionClient | null} [tx]
+     * @return {Promise<EventModel | null>}
+     */
+    async existsById(organizerId, slug, projection = {}, tx = null) {
+        return !!(await eventRepository.findBySlug(organizerId, slug, {}, tx));
     },
 
     getBannerAbsUrl(events) {
@@ -727,6 +890,19 @@ const eventService = {
             rules: eventRules?.map((r) => r.rule) || [],
             tags: eventTags?.map((t) => t.tag.name) || [],
         };
+    },
+
+    /**
+     * @param {number} id
+     * @param {object} [options]
+     * @param {TransactionClient | null} [tx]
+     * @returns {Promise<EventModel | null>}
+     */
+    findById(id, options = {}, tx = null) {
+        if (!options.include && !options.select) {
+            options.include = this.DEFAULT_RELATIONS;
+        }
+        return eventRepository.findById(id, options, tx);
     },
 
     async availability(eventId) {
@@ -1425,6 +1601,23 @@ const eventService = {
         return createdRules;
     },
 
+    /**
+     * @param {number} eventId
+     * @param {{ rule: string }[]} rules
+     * @param {TransactionClient | null} [tx]
+     */
+    async createEventRulesRecord(eventId, rules, tx = null) {
+        if (!rules || !rules.length) return [];
+
+        const data = rules.map((rule) => ({
+            rule: rule.rule,
+            eventId,
+        }));
+
+        await eventRuleRepository.bulkInsert({ data }, tx);
+        return data;
+    },
+
     async updateEventRules(eventId, newRules, tx = prismaClient) {
         await tx.eventRule.deleteMany({ where: { eventId } });
 
@@ -1440,6 +1633,24 @@ const eventService = {
                 })
             )
         );
+    },
+
+    /**
+     * @param {number} eventId
+     * @param {{ rule: string }[]} newRules
+     * @param {TransactionClient | null} [tx]
+     */
+    async updateEventRulesRecord(eventId, newRules, tx = null) {
+        const exists = await this.findById(eventId);
+        if (!exists) {
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
+        }
+
+        await eventRuleRepository.deleteMany({ where: { eventId } }, tx);
+
+        if (!newRules || !newRules.length) return [];
+
+        return this.createEventRulesRecord(eventId, newRules, tx);
     },
 
     async createEventTags(eventId, tags, tx = prismaClient) {
@@ -1460,6 +1671,41 @@ const eventService = {
             })),
             skipDuplicates: true,
         });
+
+        return tagRecords;
+    },
+
+    /**
+     * @param {number} eventId
+     * @param {string[]} tags
+     * @param {TransactionClient | null} [tx]
+     */
+    async createEventTagsRecord(eventId, tags, tx = null) {
+        if (!tags || !tags.length) return [];
+
+        const tagRecords = await Promise.all(
+            tags.map((tag) =>
+                tagRepository.upsert(
+                    {
+                        where: { name: tag.toLowerCase() },
+                        update: {},
+                        create: { name: tag.toLowerCase() },
+                    },
+                    tx
+                )
+            )
+        );
+
+        await eventTagRepository.bulkInsert(
+            {
+                data: tagRecords.map((tagRecord) => ({
+                    eventId,
+                    tagId: tagRecord.id,
+                })),
+                skipDuplicates: true,
+            },
+            tx
+        );
 
         return tagRecords;
     },
@@ -1488,6 +1734,19 @@ const eventService = {
         });
 
         return tagRecords;
+    },
+
+    /**
+     * @param {number} eventId
+     * @param {string[]} tags
+     * @param {TransactionClient | null} [tx]
+     */
+    async updateEventTagsRecord(eventId, tags, tx = null) {
+        await eventTagRepository.deleteMany({ where: { eventId } }, tx);
+
+        if (!tags || !tags.length) return [];
+
+        return this.createEventTagsRecord(eventId, tags, tx);
     },
 
     async getAllTags(search) {
@@ -1524,6 +1783,37 @@ const eventService = {
 
     hydrateMatches(matches) {
         return eventRepository.hydrateSearchMatches(matches);
+    },
+
+    /**
+     * @param {number} id
+     * @param {TransactionClient | null} [tx]
+     */
+    async cancelEvent(id, tx = null) {
+        const event = await this.findById(id, {
+            relations: {
+                eventSessions: true,
+            },
+        });
+
+        if (!event) {
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
+        }
+
+        event.pendingOrders = await this.countEventOrdersByStatus(id, OrderStatus.PENDING);
+        event.completedOrders = await this.countEventOrdersByStatus(id, OrderStatus.COMPLETED);
+
+        const canBeCancelled = event.canBeCancelled();
+        if (!canBeCancelled) {
+            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_CANNOT_BE_CANCELLED]);
+        }
+
+        await eventSessionRepository.cancelSessions(id, tx);
+        
+        return eventRepository.update({
+            where: { id },
+            data: { status: EventStatus.CANCELLED, deletedAt: new Date() }
+        }, tx);
     },
 };
 

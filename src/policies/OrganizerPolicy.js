@@ -9,33 +9,15 @@ import ForbiddenError from './../errors/ForbiddenError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 
 /**
- * @typedef {import('./../types/models/index.js').Organizer} Organizer
+ * @typedef {import('./../types/models').Organizer} Organizer
  *
- * @typedef {import('../types/models/index.js').Event} Event
+ * @typedef {import('../types/models').Event} Event
  */
 
 class OrganizerPolicy {
     /** @param {Organizer} organizer */
     canCreateEvent(organizer) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_APPROVED_FOR_EVENT_CREATION.message,
-                OrganizerErrors.ORGANIZER_NOT_APPROVED_FOR_EVENT_CREATION.code
-            );
-        }
-        if (organizer.status !== organizerStatus.ACTIVE) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_ACTIVE_FOR_EVENT_CREATION.message,
-                OrganizerErrors.ORGANIZER_NOT_ACTIVE_FOR_EVENT_CREATION.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         return true;
     }
 
@@ -45,31 +27,7 @@ class OrganizerPolicy {
      * @throws {ForbiddenError}
      */
     canAccessDashboard(organizer) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_APPROVED_FOR_DASHBOARD_ACCESS.message,
-                OrganizerErrors.ORGANIZER_NOT_APPROVED_FOR_DASHBOARD_ACCESS.code
-            );
-        }
-        if (organizer.status !== organizerStatus.ACTIVE) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_ACTIVE_FOR_DASHBOARD_ACCESS.message,
-                OrganizerErrors.ORGANIZER_NOT_ACTIVE_FOR_DASHBOARD_ACCESS.code
-            );
-        }
-
-        if (!organizer.isContactEmailVerified) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED.message,
-                OrganizerErrors.ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
     }
 
     /**
@@ -77,48 +35,20 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canViewEvent(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_READ_EVENTS.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_READ_EVENTS.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_EVENT_READ_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_EVENT_READ_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
     /**
-     * @param {any} organizer
-     * @param {any} event
+     * @param {Organizer} organizer
+     * @param {Event} event
      */
     canUpdateEvent(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.organizerVerificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_UPDATE_EVENTS.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_UPDATE_EVENTS.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_EVENT_UPDATE_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_EVENT_UPDATE_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
@@ -127,29 +57,20 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canDeleteEvent(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_DELETE_EVENTS.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_DELETE_EVENTS.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_EVENT_DELETE_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_EVENT_DELETE_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
-        if (organizer.status !== organizerStatus.ACTIVE) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_ACCOUNT_NOT_ACTIVE.message,
-                OrganizerErrors.ORGANIZER_ACCOUNT_NOT_ACTIVE.code
-            );
+    }
+
+    /**
+     * @param {Organizer} organizer
+     * @param {Event} event
+     */
+    canCancelEvent(organizer, event) {
+        this.#ensureVerifiedAndActive(organizer);
+        if (organizer.id !== event.organizerId) {
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
@@ -158,23 +79,9 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canManageAttendees(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_ATTENDEES.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_ATTENDEES.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_ATTENDEE_MANAGEMENT_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_ATTENDEE_MANAGEMENT_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
@@ -183,23 +90,9 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canManageTickets(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_TICKETS.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_TICKETS.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_TICKET_MANAGEMENT_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_TICKET_MANAGEMENT_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
@@ -208,23 +101,9 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canManagePromotions(organizer, event) {
-        if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
-        }
-        if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_PROMOTIONS.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_PROMOTIONS.code
-            );
-        }
+        this.#ensureVerifiedAndActive(organizer);
         if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_PROMOTION_MANAGEMENT_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_PROMOTION_MANAGEMENT_FORBIDDEN.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
         }
     }
 
@@ -233,23 +112,28 @@ class OrganizerPolicy {
      * @param {Event} event
      */
     canManageVenues(organizer, event) {
+        this.#ensureVerifiedAndActive(organizer);
+        if (organizer.id !== event.organizerId) {
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACTION_FORBIDDEN]);
+        }
+    }
+
+    /**
+     * @param {Organizer} organizer
+     */
+    #ensureVerifiedAndActive(organizer) {
         if (!organizer) {
-            throw new NotFoundError(
-                OrganizerErrors.ORGANIZER_NOT_FOUND.message,
-                OrganizerErrors.ORGANIZER_NOT_FOUND.code
-            );
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
         if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_VENUES.message,
-                OrganizerErrors.ORGANIZER_NOT_VERIFIED_TO_MANAGE_VENUES.code
-            );
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_APPROVED]);
         }
-        if (organizer.id !== event.organizerId) {
-            throw new ForbiddenError(
-                OrganizerErrors.ORGANIZER_VENUE_MANAGEMENT_FORBIDDEN.message,
-                OrganizerErrors.ORGANIZER_VENUE_MANAGEMENT_FORBIDDEN.code
-            );
+        if (organizer.status !== organizerStatus.ACTIVE) {
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACCOUNT_NOT_ACTIVE]);
+        }
+
+        if (!organizer.isContactEmailVerified) {
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED]);
         }
     }
 }

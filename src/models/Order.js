@@ -4,9 +4,9 @@ import BaseModel from './BaseModel.js';
 import { dateCast, numberCast, booleanCast } from './casts.js';
 import OrderItem from './OrderItem.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/order.model.js').OrderData} OrderDataType */
-/** @typedef {import('./../types/models/order.model.js').Order} OrderWithRelations */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('./../types/models').OrderData} OrderDataType */
+/** @typedef {import('./../types/models').Order} OrderWithRelations */
 
 /**
  * @extends {BaseModel<OrderDataType>}
@@ -74,7 +74,7 @@ class Order extends BaseModel {
 
     /**
      * @param {OrderWithRelations[]} orders
-     * @returns {import('./../repositories/OrderRepository.js').PayoutSummaryRow[]}
+     * @returns {import('./../repositories/OrderRepository').PayoutSummaryRow[]}
      */
     static computePayouts(orders) {
         /** @type {Map<string, any>} */

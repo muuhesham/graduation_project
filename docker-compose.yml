@@ -1,0 +1,147 @@
+x-app-runtime: &app-runtime
+    DATABASE_URL: postgresql://fa3liat:fa3liat@db:5432/fa3liat?schema=public
+    REDIS_URL: redis://redis:6379
+    MAIL_HOST: mailhog
+    MAIL_PORT: 1025
+    OLLAMA_BASE_URL: http://ollama:11434
+
+services:
+    db:
+        image: pgvector/pgvector:pg16
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: fa3liat
+            POSTGRES_PASSWORD: fa3liat
+            POSTGRES_DB: fa3liat
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U fa3liat -d fa3liat']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    mailhog:
+        image: mailhog/mailhog:v1.0.1
+        restart: unless-stopped
+        ports:
+            - '8026:8025'
+
+    ollama:
+        image: ollama/ollama:latest
+        restart: unless-stopped
+        profiles:
+            - ai
+        ports:
+            - '11434:11434'
+        volumes:
+            - ollama_data:/root/.ollama
+
+    ollama-model:
+        image: ollama/ollama:latest
+        profiles:
+            - ai
+        depends_on:
+            - ollama
+        env_file:
+            - .env
+        command: pull ${OLLAMA_MODEL:-nomic-embed-text-v2-moe:latest}
+        restart: on-failure
+        volumes:
+            - ollama_data:/root/.ollama
+
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            mailhog:
+                condition: service_started
+        env_file:
+            - .env
+        environment:
+            <<: *app-runtime
+        ports:
+            - '3000:8000'
+        volumes:
+            - ./uploads:/app/uploads
+            - ./logs:/app/logs
+        command: >
+            sh -c "npm run setup -- --non-interactive && npm run dev"
+
+    mail-worker:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            redis:
+                condition: service_healthy
+            mailhog:
+                condition: service_started
+        env_file:
+            - .env
+        environment:
+            <<: *app-runtime
+        command: npm run queue:mail-worker
+
+    embedding-worker:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        profiles:
+            - ai
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            ollama-model:
+                condition: service_completed_successfully
+        env_file:
+            - .env
+        environment:
+            <<: *app-runtime
+        command: npm run queue:embedding-worker
+
+    stripe-cli:
+        image: stripe/stripe-cli:latest
+        restart: unless-stopped
+        profiles:
+            - stripe
+        depends_on:
+            app:
+                condition: service_started
+        env_file:
+            - .env
+        environment:
+            STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+        command: >-
+            listen
+            --forward-to http://app:8000/api/v1/payments/webhook
+            --events checkout.session.completed,payment_intent.payment_failed
+        volumes:
+            - stripe_data:/root/.config/stripe
+
+volumes:
+    postgres_data:
+    redis_data:
+    ollama_data:
+    stripe_data:

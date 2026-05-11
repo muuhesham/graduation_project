@@ -1,17 +1,17 @@
 import { prisma as prismaClient } from '../config/db.js';
 import organizerService from './organizerService.js';
+import organizerPolicy from './../policies/OrganizerPolicy.js';
 
 const organizerDashboardService = {
+    async getAccessibleOrganizer(userId) {
+        const organizer = await organizerService.findByUserId(userId);
+        organizerPolicy.canAccessDashboard(organizer);
+        return organizer;
+    },
+
+    // EVENT PIE CHART
     async getEventsData(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
 
         const activeEvents = await prismaClient.event.count({
@@ -52,14 +52,7 @@ const organizerDashboardService = {
     },
 
     async getTicketsData(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: { message: 'Organizer not found' },
-            };
-        }
-
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
 
         const totalAgg = await prismaClient.ticketType.aggregate({
@@ -94,15 +87,7 @@ const organizerDashboardService = {
     },
 
     async getOrdersData(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
 
         const [totalOrders, completedOrders, pendingOrders, cancelledOrders] = await Promise.all([
@@ -175,15 +160,7 @@ const organizerDashboardService = {
     },
 
     async getEventsStats(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
 
         const totalEvents = await prismaClient.event.count({
@@ -246,15 +223,7 @@ const organizerDashboardService = {
     },
 
     async getTicketStats(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
         const [totalTickets, soldTickets] = await Promise.all([
             prismaClient.ticketType.aggregate({
@@ -285,15 +254,7 @@ const organizerDashboardService = {
     },
 
     async getOrderStats(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
         const totalOrders = await prismaClient.order.count({
             where: {
@@ -347,15 +308,7 @@ const organizerDashboardService = {
     },
 
     async getRevenueStats(userId) {
-        const organizer = await organizerService.getByUserId(userId);
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: {
-                    message: 'Organizer not found',
-                },
-            };
-        }
+        const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
         const totalRevenue = await prismaClient.order.aggregate({
             _sum: {

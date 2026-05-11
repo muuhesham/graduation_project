@@ -2,19 +2,33 @@
 
 import BaseModel from './BaseModel.js';
 import { dateCast, numberCast, stringCast } from './casts.js';
+import { Event, User, Venue, City, State, Country, Hobbyist, Business, Company } from './index.js';
+import fileService from './../services/fileService.js';
 
-import { pluck } from './../helpers/pluck.js';
+/**
+ * @typedef {import('./../types/models').Organizer} OrgainzerType
+ * @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition
+ * @typedef {OrgainzerType & {
+ *     user?: import('./index').User;
+ *     venue?: import('./index').Venue;
+ *     city?: import('./index').City;
+ *     state?: import('./index').State;
+ *     country?: import('./index').Country;
+ *     Event?: import('./index').Event[];
+ * }} OrganizerDataType
+ * @typedef {OrganizerDataType & {
+ *     deletedAt: Date | null;
+ * }} OrganizerDeletionState
+ *
+ * @typedef {import('./index').Hobbyist} Hobbyist
+ * @typedef {import('./index').Business} Business
+ * @typedef {import('./index').Company} Company
+ */
 
-import ValidationError from './../errors/ValidationError.js';
-
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/organizer.model.js').Organizer} OrganizerDataType */
-/** @typedef {import('./../types/dtos/index.js').OrganizerCreateDTO} OrganizerCreateDTO */
-
-/** @extends {BaseModel<OrganizerDataType>} */
+/** @extends {BaseModel<OrgainzerType>} */
 class Organizer extends BaseModel {
     /**
-     * @param {OrganizerDataType} data
+     * @param {OrgainzerType} data
      */
     constructor(data) {
         super(data);
@@ -40,35 +54,30 @@ class Organizer extends BaseModel {
         ];
     }
 
-    /**
-     * @param {OrganizerCreateDTO} data
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
-     */
-    static create(data, tx) {
-        const validated = /** @type {OrganizerCreateDTO} */ (pluck(data, ['name', 'type']));
-        Organizer.validate(validated);
-        return tx.organizer.create({ data });
-    }
-
-    /**
-     * @private
-     * @param {OrganizerCreateDTO} data
-     */
-    static validate(data) {
-        const errors = [];
-        if (!data.name) {
-            errors.push('Name is required');
-        }
-        if (!data.type) {
-            errors.push('Type is required');
-        }
-        if (errors.length > 0) {
-            throw new ValidationError(errors, 'Invalid organizer data');
-        }
-    }
-
     static get resourceName() {
         return 'organizer';
+    }
+
+    /**
+     * @param {string} userId
+     * @param {'logos' | 'covers'} [type]
+     * @returns {string}
+     */
+    static getUploadPath(userId, type = 'logos') {
+        return `user/${userId}/organizer/${type}`;
+    }
+
+    static get relations() {
+        return {
+            user: User,
+            city: City,
+            state: State,
+            country: Country,
+            Event: [Event],
+            hobbyist: Hobbyist,
+            business: Business,
+            company: Company,
+        };
     }
 
     /**
@@ -76,6 +85,51 @@ class Organizer extends BaseModel {
      */
     static get softDeleteField() {
         return 'deletedAt';
+    }
+
+    /**
+     * @returns {Hobbyist | Business | Company | null}
+     */
+    get subtype() {
+        return this.hobbyist || this.business || this.company || null;
+    }
+
+    get logoUrl() {
+        const path = this.logoPath;
+        if (!path) return null;
+        
+        const normalizedPath = (!path.startsWith('/') && !path.startsWith('http')) 
+            ? `/uploads/${path}` 
+            : path;
+            
+        return fileService.getAbsUrl(normalizedPath, this.logoDisk);
+    }
+
+    get coverUrl() {
+        const path = this.coverPath;
+        if (!path) return null;
+        
+        const normalizedPath = (!path.startsWith('/') && !path.startsWith('http')) 
+            ? `/uploads/${path}` 
+            : path;
+            
+        return fileService.getAbsUrl(normalizedPath, this.coverDisk);
+    }
+
+    /**
+     * @returns {boolean | undefined}
+     */
+    get isFollowing() {
+        // @ts-ignore
+        return this._isFollowing;
+    }
+
+    /**
+     * @param {boolean | undefined} value
+     */
+    set isFollowing(value) {
+        // @ts-ignore
+        this._isFollowing = value;
     }
 }
 

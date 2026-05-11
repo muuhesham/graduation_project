@@ -1,6 +1,10 @@
 //@ts-check
 
 /**
+ * @typedef {import('./request.types').AuthenticatedRequest<any>} AuthRequest
+ */
+
+/**
  * @typedef {import('./request.types').AuthenticatedRequest<
  *     import('./../dtos').UpgradeToOrganizerDTO
  * >} UpgradeToOrganizerRequest

@@ -2,7 +2,7 @@ import eventService from './eventService.js';
 import categoryService from './categoryService.js';
 
 const homeService = {
-    async latestEvents({userId = null, limit = 6, page = 1 } = {}) {
+    async latestEvents({ userId = null, limit = 6, page = 1 } = {}) {
         return await eventService.getLatest({ userId, limit, page });
     },
 
@@ -41,7 +41,7 @@ const homeService = {
         return categoryService.getAll({ limit, page });
     },
 
-    async pastEventsAndHighlights({userId = null, limit = 6, page = 1 } = {}) {
+    async pastEventsAndHighlights({ userId = null, limit = 6, page = 1 } = {}) {
         const orderBy = [
             {
                 createdAt: 'desc',
@@ -75,8 +75,8 @@ const homeService = {
             bannerPath: true,
             bannerDisk: true,
             organizerId: true,
-            ticketTypes:true,
-            eventSessions:true,
+            ticketTypes: true,
+            eventSessions: true,
         };
         const now = new Date();
 
@@ -91,13 +91,12 @@ const homeService = {
     },
 
     async nearbyEvents({ userId = null, limit = 6, page = 1 } = {}) {
-        
         return eventService.getNearbyEvents({ userId, limit, page });
     },
 
     async personalizedEvents({ userId = null, limit = 6, page = 1 } = {}) {
         return eventService.getPersonalizedEvents({ userId, limit, page });
-    }
+    },
 };
 
 export default homeService;

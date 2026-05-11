@@ -10,12 +10,12 @@
  * @typedef {import('@prisma/client').Prisma.AdminSelect} AdminSelect
  * @typedef {import('@prisma/client').Prisma.AdminInclude} AdminInclude
  * @typedef {import('@prisma/client').Prisma.AdminDefaultArgs} AdminDefaultArgs
- * @typedef {import('./../shared/common.types.js').RepositoryProjection<AdminSelect, AdminInclude, AdminDefaultArgs['omit']>} AdminProjection
- * @typedef {import('./../shared/common.types.js').RepositoryReadOptions<AdminWhere, AdminSelect, AdminInclude, AdminDefaultArgs['omit']>} AdminReadOptions
+ * @typedef {import('./../shared/common.types').RepositoryProjection<AdminSelect, AdminInclude, AdminDefaultArgs['omit']>} AdminProjection
+ * @typedef {import('./../shared/common.types').RepositoryReadOptions<AdminWhere, AdminSelect, AdminInclude, AdminDefaultArgs['omit']>} AdminReadOptions
  */
 
 /** @typedef {import('@prisma/client').Prisma.AdminGetPayload<{ include: { reviewedOrganizers: true } }>} AdminWithRelations */
-/** @typedef {InstanceType<typeof import('./../../models/Admin.js').default>} AdminLogic */
+/** @typedef {InstanceType<typeof import('./../../models/Admin').default>} AdminLogic */
 /** @typedef {AdminWithRelations & AdminLogic} Admin */
 /** @typedef {Admin} AdminHydrated */
 /** @typedef {AdminRefreshToken & { admin?: Admin | null }} AdminRefreshTokenRecord */

@@ -16,25 +16,26 @@ model User {
   phone              String?                    @unique
   role               Role                       @default(user)
   location           String?
-  languagePreference Language                   @default(en)
   isVerified         Boolean                    @default(false)
-  idInProviderDB     String?
-  authProvider       AuthProvider               @default(LOCAL)
-  isCompleted        Boolean                    @default(false)
-  birthDate          DateTime?
-  governorateId      Int?
-  wallet             Decimal                    @default(0) @db.Decimal(10, 2)
-  governorate        Governorate?               @relation(fields: [governorateId], references: [id])
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
+  languagePreference Language                   @default(en)
+  authProvider       AuthProvider               @default(LOCAL)
+  birthDate          DateTime?
+  idInProviderDB     String?
+  isCompleted        Boolean                    @default(false)
+  governorateId      Int?
   deletedAt          DateTime?
-  refreshToken       RefreshToken[]
-  Organizer          Organizer?
+  wallet             Decimal                    @default(0) @db.Decimal(10, 2)
   categories         AttendeeFavoriteCategory[]
-  tickets            Ticket[]
-  orders             Order[]
-  interestedEvents   InterestedEvent[]
   eventReviews       EventReview[]
+  interestedEvents   InterestedEvent[]
+  orders             Order[]
+  Organizer          Organizer?
+  followedOrganizers OrganizerFollower[]
+  refreshToken       RefreshToken[]
+  tickets            Ticket[]
+  governorate        Governorate?               @relation(fields: [governorateId], references: [id])
 }
 
 model NewsletterSubscriber {
@@ -42,6 +43,475 @@ model NewsletterSubscriber {
   email              String   @unique
   languagePreference Language @default(en)
   createdAt          DateTime @default(now())
+}
+
+model Governorate {
+  id                 Int             @id @default(autoincrement())
+  latitude           Float
+  longitude          Float
+  otherGovsIdsSorted Json?
+  name               GovernorateName @unique
+  users              User[]
+  venues             Venue[]
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  code      String
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model PhoneOtp {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  code      String
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model ResetPasswordToken {
+  id        Int      @id @default(autoincrement())
+  email     String
+  token     String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+}
+
+model Organizer {
+  id                     String                      @id @default(uuid())
+  userId                 String                      @unique
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  deletedAt              DateTime?
+  address                String?
+  cityId                 Int
+  contactEmail           String                      @unique
+  contactName            String?
+  contactPhone           String                      @unique
+  countryId              Int
+  coverDisk              String?
+  coverPath              String?
+  description            String?
+  facebookUrl            String?
+  instagramUrl           String?
+  isContactEmailVerified Boolean                     @default(false)
+  isContactPhoneVerified Boolean                     @default(false)
+  linkedinUrl            String?
+  logoDisk               String?
+  logoPath               String?
+  name                   String
+  rejectionReason        String?
+  reviewedAt             DateTime?
+  stateId                Int
+  status                 OrganizerStatus             @default(ACTIVE)
+  suspendReason          String?
+  twitterUrl             String?
+  type                   OrganizerType
+  verificationStatus     OrganizerVerficiationStatus @default(UNDER_REVIEW)
+  websiteUrl             String?
+  youtubeUrl             String?
+  reviewedBy             Int?
+  stripeAccountId        String?                     @unique
+  business               Business?
+  company                Company?
+  Event                  Event[]
+  hobbyist               Hobbyist?
+  city                   City                        @relation(fields: [cityId], references: [id])
+  country                Country                     @relation(fields: [countryId], references: [id])
+  reviewer               Admin?                      @relation("OrganizerReviewer", fields: [reviewedBy], references: [id])
+  state                  State                       @relation(fields: [stateId], references: [id])
+  user                   User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  followers              OrganizerFollower[]
+  payoutItems            PayoutItem[]
+}
+
+model OrganizerFollower {
+  userId      String
+  organizerId String
+  createdAt   DateTime  @default(now())
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, organizerId])
+}
+
+model Hobbyist {
+  organizerId String    @id
+  nationalId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+}
+
+model Business {
+  organizerId            String    @id
+  commercialRegistration String?
+  taxId                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  organizer              Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+}
+
+model Company {
+  organizerId           String    @id
+  registrationNumber    String?
+  taxId                 String?
+  officialDocumentsDisk String?
+  officialDocumentsPath String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id               Int                    @id @default(autoincrement())
+  organizerId      String
+  venueId          Int?
+  categoryId       Int?
+  slug             String
+  title            String
+  bannerDisk       String                 @default("local")
+  bannerPath       String
+  description      String
+  type             EventType              @default(ticketed)
+  mode             EventMode              @default(single)
+  status           EventStatus            @default(active)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  deletedAt        DateTime?
+  hasSeatMap       Boolean                @default(false)
+  embedding        Unsupported("vector(768)")?
+  coupons          Coupon[]
+  category         Category?              @relation(fields: [categoryId], references: [id])
+  organizer        Organizer              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  venue            Venue?                 @relation(fields: [venueId], references: [id])
+  eventReviews     EventReview[]
+  eventRules       EventRule[]
+  eventSeat        EventSeat[]
+  eventSeatTier    EventSeatTier[]
+  eventSessions    EventSession[]
+  eventTags        EventTag[]
+  interestedEvents InterestedEvent[]
+  ticketTypes      TicketType[]
+
+  @@unique([organizerId, slug])
+}
+
+model EventSession {
+  id        Int           @id @default(autoincrement())
+  eventId   Int
+  status    SessionStatus @default(active)
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, startDate, endDate])
+}
+
+model EventRule {
+  id      Int    @id @default(autoincrement())
+  eventId Int
+  rule    String
+  event   Event  @relation(fields: [eventId], references: [id])
+}
+
+model Tag {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  eventTags EventTag[]
+}
+
+model EventTag {
+  eventId Int
+  tagId   Int
+  event   Event @relation(fields: [eventId], references: [id])
+  tag     Tag   @relation(fields: [tagId], references: [id])
+
+  @@id([eventId, tagId])
+}
+
+model EventReview {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  eventId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+model Venue {
+  id            Int         @id @default(autoincrement())
+  googlePlaceId String?     @unique
+  latitude      Float
+  longitude     Float
+  name          String
+  address       String
+  country       String
+  state         String
+  city          String
+  zipCode       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  governorateId Int
+  events        Event[]
+  governorate   Governorate @relation(fields: [governorateId], references: [id], onDelete: SetNull)
+}
+
+model Category {
+  id        Int                        @id @default(autoincrement())
+  name      String                     @unique
+  imagePath String
+  imageDisk String                     @default("local")
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+  attendees AttendeeFavoriteCategory[]
+  events    Event[]
+}
+
+model AttendeeFavoriteCategory {
+  categoryId Int
+  attendeeId String
+  attendee   User     @relation(fields: [attendeeId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([attendeeId, categoryId])
+}
+
+model EventSeatTier {
+  id              Int         @id @default(autoincrement())
+  tierNumber      Int
+  eventId         Int
+  name            String
+  price           Decimal     @db.Decimal(10, 2)
+  color           String
+  numberOfRows    Int
+  numberOfColumns Int
+  seats           EventSeat[]
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, tierNumber])
+}
+
+model EventSeat {
+  id         Int            @id @default(autoincrement())
+  eventId    Int
+  tierNumber Int?
+  rowIndex   Int
+  seatIndex  Int
+  isSold     Boolean        @default(false)
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tier       EventSeatTier? @relation(fields: [eventId, tierNumber], references: [eventId, tierNumber], onDelete: Cascade)
+  tickets    Ticket[]
+
+  @@unique([eventId, rowIndex, seatIndex])
+}
+
+model TicketType {
+  id         Int         @id @default(autoincrement())
+  eventId    Int
+  name       String
+  price      Decimal     @db.Decimal(10, 2)
+  sold       Int         @default(0)
+  quantity   Int
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+  tickets    Ticket[]
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([name, eventId])
+}
+
+model Ticket {
+  id           String       @id @default(uuid())
+  userId       String
+  ticketTypeId Int
+  orderId      String?
+  orderItemId  String
+  status       TicketStatus @default(valid)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  eventSeatId  Int?
+  qrCode       QrCode?
+  eventSeat    EventSeat?   @relation(fields: [eventSeatId], references: [id])
+  order        Order?       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  totalPrice Decimal     @db.Decimal(10, 2)
+  itemsCount Int
+  status     OrderStatus @default(pending)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  isPaidOut  Boolean     @default(false)
+  payoutId   Int?
+  payout     Payout?     @relation(fields: [payoutId], references: [id])
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  tickets    Ticket[]
+}
+
+model Payout {
+  id             Int          @id @default(autoincrement())
+  adminId        Int
+  amount         Decimal      @db.Decimal(10, 2)
+  organizerCount Int
+  orderCount     Int
+  startDate      DateTime
+  endDate        DateTime
+  status         PayoutStatus @default(COMPLETED)
+  createdAt      DateTime     @default(now())
+  orders         Order[]
+  admin          Admin        @relation(fields: [adminId], references: [id])
+  items          PayoutItem[]
+}
+
+model PayoutItem {
+  id          Int              @id @default(autoincrement())
+  payoutId    Int
+  organizerId String
+  amount      Decimal          @db.Decimal(10, 2)
+  status      PayoutItemStatus @default(PAID)
+  organizer   Organizer        @relation(fields: [organizerId], references: [id])
+  payout      Payout           @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+}
+
+model OrderItem {
+  id           String     @id @default(uuid())
+  orderId      String
+  ticketTypeId Int
+  price        Decimal    @db.Decimal(10, 2)
+  quantity     Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  tickets      Ticket[]
+}
+
+model InterestedEvent {
+  userId    String
+  eventId   Int
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
+model QrCode {
+  id        String   @id @default(uuid())
+  ticketId  String   @unique
+  codePath  String
+  codeDisk  String   @default("local")
+  isActive  Boolean  @default(true)
+  status    QRStatus @default(valid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  stripePromoId String
+  eventId       Int?
+  createdAt     DateTime @default(now())
+  event         Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Country {
+  id             Int         @id @default(autoincrement())
+  name           String      @unique
+  code           String      @unique
+  phoneCode      String
+  taxIdLocale    String?
+  currencyCode   String
+  currencySymbol String
+  flagEmoji      String
+  isSupported    Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  organizers     Organizer[]
+  states         State[]
+
+  @@index([code])
+}
+
+model State {
+  id         Int         @id @default(autoincrement())
+  countryId  Int
+  name       String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  cities     City[]
+  organizers Organizer[]
+  country    Country     @relation(fields: [countryId], references: [id], onDelete: Cascade)
+}
+
+model City {
+  id         Int         @id @default(autoincrement())
+  stateId    Int
+  name       String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  state      State       @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  organizers Organizer[]
+}
+
+model Admin {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  email              String              @unique
+  password           String
+  isApproved         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  refreshTokens      AdminRefreshToken[]
+  reviewedOrganizers Organizer[]         @relation("OrganizerReviewer")
+  payouts            Payout[]
+}
+
+model AdminRefreshToken {
+  id      Int    @id @default(autoincrement())
+  adminId Int
+  token   String
+  admin   Admin  @relation(fields: [adminId], references: [id])
+}
+
+model event_search_documents {
+  id        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  content   String?
+  metadata  Json?
+  embedding Unsupported("vector(768)")?
 }
 
 enum Role {
@@ -96,115 +566,6 @@ enum GovernorateName {
   KAFR_EL_SHEIKH
 }
 
-model Governorate {
-  id        Int             @id @default(autoincrement())
-  name      GovernorateName @unique
-  latitude  Float
-  longitude Float
-
-  otherGovsIdsSorted Json?
-
-  users  User[]
-  venues Venue[]
-}
-
-model Otp {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  code      String
-  isUsed    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-}
-
-model PhoneOtp {
-  id        Int      @id @default(autoincrement())
-  phone     String   @unique
-  code      String
-  isUsed    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-}
-
-model ResetPasswordToken {
-  id        Int      @id @default(autoincrement())
-  email     String
-  token     String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-}
-
-model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
-  isRevoked Boolean  @default(false)
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, token])
-}
-
-model Organizer {
-  id     String @id @default(uuid())
-  userId String @unique
-
-  name        String
-  description String?
-  type        OrganizerType
-
-  contactName  String?
-  contactEmail String  @unique
-  contactPhone String  @unique
-
-  websiteUrl   String?
-  instagramUrl String?
-  facebookUrl  String?
-  twitterUrl   String?
-  linkedinUrl  String?
-  youtubeUrl   String?
-
-  logoDisk String?
-  logoPath String?
-
-  coverDisk String?
-  coverPath String?
-
-  address   String?
-  countryId Int
-  cityId    Int
-  stateId   Int
-
-  isContactPhoneVerified Boolean                     @default(false)
-  isContactEmailVerified Boolean                     @default(false)
-  verificationStatus     OrganizerVerficiationStatus @default(UNDER_REVIEW)
-  status                 OrganizerStatus             @default(ACTIVE)
-
-  stripeAccountId String? @unique
-  suspendReason   String?
-  rejectionReason String?
-  reviewedBy      Int?
-
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
-  reviewedAt DateTime?
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewer Admin?   @relation("OrganizerReviewer", fields: [reviewedBy], references: [id])
-  city     City?    @relation(fields: [cityId], references: [id])
-  state    State?   @relation(fields: [stateId], references: [id])
-  country  Country? @relation(fields: [countryId], references: [id])
-  Event    Event[]
-
-  hobbyist    Hobbyist?
-  business    Business?
-  company     Company?
-  payoutItems PayoutItem[]
-}
-
 enum OrganizerType {
   HOBBYIST
   BUSINESS
@@ -222,93 +583,12 @@ enum OrganizerStatus {
   SUSPENDED
 }
 
-model Hobbyist {
-  organizerId String @id
-
-  nationalId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organizer Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-}
-
-model Business {
-  organizerId String @id
-
-  commercialRegistration String?
-  taxId                  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organizer Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-}
-
-model Company {
-  organizerId String @id
-
-  registrationNumber String?
-  taxId              String?
-
-  officialDocumentsDisk String?
-  officialDocumentsPath String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organizer Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-}
-
-model Event {
-  id               Int                         @id @default(autoincrement())
-  organizerId      String
-  venueId          Int?
-  categoryId       Int?
-  slug             String
-  title            String
-  bannerDisk       String                      @default("local")
-  bannerPath       String
-  description      String
-  type             EventType                   @default(ticketed)
-  mode             EventMode                   @default(single)
-  createdAt        DateTime                    @default(now())
-  updatedAt        DateTime                    @updatedAt
-  deletedAt        DateTime?
-  category         Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  organizer        Organizer                   @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  venue            Venue?                      @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  hasSeatMap       Boolean                     @default(false)
-  embedding        Unsupported("vector(768)")?
-  eventSessions    EventSession[]
-  ticketTypes      TicketType[]
-  eventRules       EventRule[]
-  interestedEvents InterestedEvent[]
-  eventReviews     EventReview[]
-
-  eventSeatTier EventSeatTier[]
-  eventSeat     EventSeat[]
-  eventTags     EventTag[]
-  coupons       Coupon[]
-
-  @@unique([organizerId, slug])
-}
-
-model EventSession {
-  id        Int           @id @default(autoincrement())
-  eventId   Int
-  status    SessionStatus @default(active)
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, startDate, endDate])
-}
-
 enum SessionStatus {
+  active
+  cancelled
+}
+
+enum EventStatus {
   active
   cancelled
 }
@@ -323,204 +603,10 @@ enum EventMode {
   recurring
 }
 
-model EventRule {
-  id      Int    @id @default(autoincrement())
-  eventId Int
-  rule    String
-
-  event Event @relation(fields: [eventId], references: [id])
-}
-
-model Tag {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  eventTags EventTag[]
-}
-
-model EventTag {
-  eventId Int
-  tagId   Int
-
-  event Event @relation(fields: [eventId], references: [id])
-  tag   Tag   @relation(fields: [tagId], references: [id])
-
-  @@id([eventId, tagId])
-}
-
-model EventReview {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  eventId   Int
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, eventId])
-}
-
-model Venue {
-  id            Int      @id @default(autoincrement())
-  googlePlaceId String?  @unique
-  latitude      Float
-  longitude     Float
-  name          String
-  address       String
-  country       String
-  state         String
-  city          String
-  zipCode       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  events        Event[]
-  governorateId Int
-
-  governorate Governorate? @relation(fields: [governorateId], references: [id], onDelete: SetNull)
-}
-
-model Category {
-  id        Int                        @id @default(autoincrement())
-  name      String                     @unique
-  imagePath String
-  imageDisk String                     @default("local")
-  createdAt DateTime                   @default(now())
-  updatedAt DateTime                   @updatedAt
-  attendees AttendeeFavoriteCategory[]
-  events    Event[]
-}
-
-model AttendeeFavoriteCategory {
-  categoryId Int
-  attendeeId String
-  attendee   User     @relation(fields: [attendeeId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  @@id([attendeeId, categoryId])
-}
-
-model EventSeatTier {
-  id Int @id @default(autoincrement())
-
-  tierNumber Int
-  eventId    Int
-
-  name            String
-  price           Decimal @db.Decimal(10, 2)
-  color           String
-  numberOfRows    Int
-  numberOfColumns Int
-
-  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  seats EventSeat[]
-
-  @@unique([eventId, tierNumber])
-}
-
-model EventSeat {
-  id Int @id @default(autoincrement())
-
-  eventId    Int
-  tierNumber Int?
-  rowIndex   Int
-  seatIndex  Int
-  isSold     Boolean @default(false)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  tier    EventSeatTier? @relation(fields: [eventId, tierNumber], references: [eventId, tierNumber], onDelete: Cascade)
-  tickets Ticket[]
-
-  @@unique([eventId, rowIndex, seatIndex])
-}
-
-model TicketType {
-  id         Int         @id @default(autoincrement())
-  eventId    Int
-  name       String
-  price      Decimal     @db.Decimal(10, 2)
-  sold       Int         @default(0)
-  quantity   Int
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  tickets    Ticket[]
-  orderItems OrderItem[]
-
-  @@unique([name, eventId])
-}
-
-model Ticket {
-  id           String       @id @default(uuid())
-  userId       String
-  ticketTypeId Int
-  eventSeatId  Int?
-  orderId      String?
-  orderItemId  String
-  status       TicketStatus @default(valid)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  order      Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  qrCode     QrCode?
-  eventSeat  EventSeat? @relation(fields: [eventSeatId], references: [id])
-}
-
 enum TicketStatus {
   valid
   used
   expired
-}
-
-model Order {
-  id         String      @id @default(uuid())
-  userId     String
-  totalPrice Decimal     @db.Decimal(10, 2)
-  itemsCount Int
-  status     OrderStatus @default(pending)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
-  tickets    Ticket[]
-
-  payoutId  Int?
-  payout    Payout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
-  isPaidOut Boolean @default(false)
-}
-
-model Payout {
-  id             Int          @id @default(autoincrement())
-  adminId        Int
-  amount         Decimal      @db.Decimal(10, 2)
-  organizerCount Int
-  orderCount     Int
-  startDate      DateTime
-  endDate        DateTime
-  status         PayoutStatus @default(COMPLETED)
-  createdAt      DateTime     @default(now())
-
-  admin  Admin        @relation(fields: [adminId], references: [id])
-  items  PayoutItem[]
-  orders Order[]
-}
-
-model PayoutItem {
-  id          Int              @id @default(autoincrement())
-  payoutId    Int
-  organizerId String
-  amount      Decimal          @db.Decimal(10, 2)
-  status      PayoutItemStatus @default(PAID)
-
-  payout    Payout    @relation(fields: [payoutId], references: [id], onDelete: Cascade)
-  organizer Organizer @relation(fields: [organizerId], references: [id])
 }
 
 enum PayoutStatus {
@@ -534,20 +620,6 @@ enum PayoutItemStatus {
   FAILED
 }
 
-model OrderItem {
-  id           String   @id @default(uuid())
-  orderId      String
-  ticketTypeId Int
-  price        Decimal  @db.Decimal(10, 2)
-  quantity     Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
-  tickets    Ticket[]
-}
-
 enum OrderStatus {
   pending
   completed
@@ -555,109 +627,8 @@ enum OrderStatus {
   refunded
 }
 
-model InterestedEvent {
-  userId    String
-  eventId   Int
-  createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@id([userId, eventId])
-}
-
-model QrCode {
-  id        String   @id @default(uuid())
-  ticketId  String   @unique
-  codePath  String
-  codeDisk  String   @default("local")
-  isActive  Boolean  @default(true)
-  status    QRStatus @default(valid)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-}
-
 enum QRStatus {
   valid
   used
   expired
-}
-
-model Coupon {
-  id            Int      @id @default(autoincrement())
-  code          String   @unique
-  stripePromoId String
-  eventId       Int?
-  event         Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-}
-
-model Country {
-  id             Int     @id @default(autoincrement())
-  name           String  @unique
-  code           String  @unique
-  phoneCode      String
-  taxIdLocale    String?
-  currencyCode   String
-  currencySymbol String
-  flagEmoji      String
-  isSupported    Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organizers Organizer[]
-  states     State[]
-
-  @@index([code])
-}
-
-model State {
-  id        Int    @id @default(autoincrement())
-  countryId Int
-  name      String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  country    Country     @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  organizers Organizer[]
-  cities     City[]
-}
-
-model City {
-  id      Int    @id @default(autoincrement())
-  stateId Int
-  name    String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  state      State       @relation(fields: [stateId], references: [id], onDelete: Cascade)
-  organizers Organizer[]
-}
-
-model Admin {
-  id         Int     @id @default(autoincrement())
-  name       String
-  email      String  @unique
-  password   String
-  isApproved Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  refreshTokens      AdminRefreshToken[]
-  reviewedOrganizers Organizer[]         @relation("OrganizerReviewer")
-  payouts            Payout[]
-}
-
-model AdminRefreshToken {
-  id      Int    @id @default(autoincrement())
-  adminId Int
-  token   String
-
-  admin Admin @relation(fields: [adminId], references: [id])
 }

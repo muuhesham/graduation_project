@@ -1,10 +1,13 @@
 //@ts-check
 
 import BaseModel from './BaseModel.js';
+import { Organizer } from './index.js';
 import { dateCast, stringCast } from './casts.js';
+import fileService from './../services/fileService.js';
 
-/** @typedef {import('./contracts/ICastableModel.js').CastDefinition} CastDefinition */
-/** @typedef {import('./../types/models/index.js').Company} CompanyType */
+/** @typedef {import('./contracts/ICastableModel').CastDefinition} CastDefinition */
+/** @typedef {import('@prisma/client').Company} CompanyData */
+/** @typedef {CompanyData & { officialDocumentsDisk?: string | null; officialDocumentsPath?: string | null }} CompanyType */
 
 /** @extends {BaseModel<CompanyType>} */
 class Company extends BaseModel {
@@ -18,19 +21,20 @@ class Company extends BaseModel {
     }
 
     /**
-     * @param {string} organizerId
-     * @param {object} data
-     * @param {import('@prisma/client').Prisma.TransactionClient} tx
+     * @param {string} userId
+     * @returns {string}
      */
-    create(organizerId, data, tx) {
-        return tx.company.create({
-            data: {
-                organizerId,
-                registrationNumber: data.registrationNumber,
-                taxId: data.taxId,
-                officialEmailDomain: data.officialEmailDomain,
-            },
-        });
+    static getUploadPath(userId) {
+        return `user/${userId}/organizer/documents`;
+    }
+
+    /**
+     * @returns {Record<string, any>}
+     */
+    static get relations() {
+        return {
+            organizer: Organizer,
+        };
     }
 
     /**
@@ -46,6 +50,14 @@ class Company extends BaseModel {
             { field: 'createdAt', cast: dateCast },
             { field: 'updatedAt', cast: dateCast },
         ];
+    }
+
+    get officialDocumentsUrl() {
+        const company = /** @type {CompanyType} */ (/** @type {unknown} */ (this));
+
+        return company.officialDocumentsPath && company.officialDocumentsDisk
+            ? fileService.getAbsUrl(company.officialDocumentsPath, company.officialDocumentsDisk)
+            : null;
     }
 }
 

@@ -6,7 +6,7 @@ import ForbiddenError from './../errors/ForbiddenError.js';
 import NotFoundError from './../errors/NotFoundError.js';
 
 /**
- * @typedef {import('./../types/models/index.js').Admin} Admin
+ * @typedef {import('./../types/models').Admin} Admin
  * @typedef {Admin | null | undefined} MaybeAdmin
  */
 
