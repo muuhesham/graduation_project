@@ -4,11 +4,12 @@ import chatbotService from '../services/chatbotService.js';
 import { validateChat } from '../validations/chatbotValidtion.js';
 import { socketOptionalAuth } from '../middlewares/socketOptionalAuth.js';
 import { chatLimiter } from '../middlewares/rateLimiter.js';
+import { FRONT_URL } from './env.js';
 
 export function initSocket(server) {
     const io = new Server(server, {
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+            origin: FRONT_URL || 'http://localhost:3000',
             methods: ['GET', 'POST'],
             allowedHeaders: ['Authorization'],
             credentials: true,
