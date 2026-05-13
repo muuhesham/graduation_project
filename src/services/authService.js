@@ -203,7 +203,7 @@ const authService = {
 
         const token = crypto.randomBytes(32).toString('hex');
         const encodedEmail = encodeURIComponent(email);
-        const URL = `${FRONT_URL}/reset-password?email=${encodedEmail}&token=${token}`;
+        const URL = `${FRONT_URL}/en/reset-password?email=${encodedEmail}&token=${token}`;
 
         await Promise.all([
             authService.createPasswordToken(email, token),
