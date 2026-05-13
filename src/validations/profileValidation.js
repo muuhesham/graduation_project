@@ -35,7 +35,7 @@ const profileValidations = {
         }),
 
         body('name')
-            .optional()
+            .optional({ checkFalsy: true })
             .trim()
             .notEmpty()
             .withMessage('Name cannot be empty')
@@ -45,7 +45,7 @@ const profileValidations = {
             .withMessage('Name cannot be that long'),
 
         body('phone')
-            .optional()
+            .optional({ checkFalsy: true })
             .trim()
             .isLength({ min: 11 })
             .withMessage('Phone number must be at least 11 characters long')
@@ -55,31 +55,28 @@ const profileValidations = {
             .withMessage('Invalid phone number format'),
 
         body('gender')
-            .optional()
+            .optional({ checkFalsy: true })
             .isIn(Object.values(Gender))
             .withMessage('Gender must be male or female'),
 
         body('location')
-            .optional()
+            .optional({ checkFalsy: true })
             .trim()
             .isString()
             .isLength({ max: 500 })
             .withMessage('Location must be valid string'),
 
         body('languagePreference')
-            .optional()
+            .optional({ checkFalsy: true })
             .isIn(Object.values(Language))
             .withMessage('Language is invalid'),
 
         body('birthDate')
-            .optional()
+            .optional({ checkFalsy: true })
             .isISO8601()
             .withMessage('birthDate must be a valid date')
             .custom((value) => {
                 const age = calculateAge(value);
-                if (age < 18) {
-                    throw new Error('birthDate must be 18 years or older');
-                }
                 if (new Date(value) > new Date()) {
                     throw new Error('birthDate cannot be in the future');
                 }
@@ -87,7 +84,7 @@ const profileValidations = {
             }),
 
         body('governorate')
-            .optional()
+            .optional({ checkFalsy: true })
             .trim()
             .toUpperCase()
             .notEmpty()
@@ -121,11 +118,8 @@ const profileValidations = {
             .withMessage('Email cannot be that long')
             .isEmail()
             .withMessage('Invalid email format'),
-        
-        body('password')
-            .trim()
-            .notEmpty()
-            .withMessage('Password cannot be empty'),
+
+        body('password').trim().notEmpty().withMessage('Password cannot be empty'),
     ],
 
     updatePassword: [
@@ -134,26 +128,14 @@ const profileValidations = {
             .trim()
             .notEmpty()
             .withMessage('New password cannot be empty')
-            .isStrongPassword({
-                minLength: 8,
-                minLowercase: 1,
-                minUppercase: 0,
-                minNumbers: 1,
-                minSymbols: 1,
-            })
-            .withMessage(
-                'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
-            ),
+            .isLength({ min: 8, max: 255 })
+            .withMessage('Password must be at least 8 characters long'),
         body('confirmPassword')
             .trim()
             .notEmpty()
             .withMessage('Confirm password cannot be empty')
-            .isStrongPassword({
-                minLength: 8,
-            })
-            .withMessage(
-                'Password must be at least 8 characters long and include a mix of letters, numbers, and symbols'
-            ),
+            .isLength({ min: 8, max: 255 })
+            .withMessage('Password must be at least 8 characters long'),
     ],
 
     confirmEmail: [query('token').notEmpty().withMessage('Token is required')],
@@ -168,7 +150,7 @@ const profileValidations = {
         body('categoryIds')
             .exists()
             .withMessage('categoryIds field is required')
-            .isArray({ min: 1 })
+            .isArray()
             .withMessage('Preferences must be an array with at least one category'),
         body('categoryIds.*').isInt().withMessage('Each category ID must be an integer'),
     ],
