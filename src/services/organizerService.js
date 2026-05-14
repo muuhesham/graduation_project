@@ -360,7 +360,7 @@ const organizerService = {
                     return { event: eventResponse, ticketTypes, venue, eventSessions };
                 },
                 {
-                    timeout: 50000,
+                    timeout: 15000,
                 }
             );
 
@@ -389,6 +389,10 @@ const organizerService = {
      * @returns {Promise<EventHydrated>}
      */
     async createOrganizerEvent(userId, input) {
+        if (!input.categoryName) {
+            throw new NotFoundError(undefined, undefined, [CategoryErrors.CATEGORY_NOT_FOUND]);
+        }
+
         const [organizer, category] = await Promise.all([
             this.findByUserId(userId),
             categoryService.getByCategory(input.categoryName),
@@ -430,7 +434,16 @@ const organizerService = {
                 await this.handleSeatMapResources(event.id, input, tx);
             }
 
-            return /** @type {EventHydrated} */ (eventService.findById(event.id, {}, tx));
+            notificationService.notifyEventCreated(
+                organizer.id,
+                event.id,
+                event.title,
+                category.name
+            ).catch(err => console.error('Failed to send creation notification:', err));
+
+            return /** @type {EventHydrated} */ (await eventService.findById(event.id, {}, tx));
+        }, {
+            timeout: 30000,
         });
     },
 
@@ -647,79 +660,36 @@ const organizerService = {
                 await eventService.updateEventTagsRecord(eventId, input.tags, tx);
             }
 
-            return eventService.findById(eventId, {}, tx);
-        });
-    },
+            const updatedEvent = await eventService.findById(eventId, {}, tx);
 
-    async deleteEvent(userId, eventId) {
-        const [event, organizer] = await Promise.all([
-            eventService.getById(eventId),
-            organizerService.getByUserId(userId),
-        ]);
+            // Notify organizer about update
+            notificationService.sendNotification(
+                organizer.id,
+                'ORGANIZER',
+                'EVENT_UPDATED',
+                'Event updated!',
+                `Your event "${updatedEvent.title}" has been updated successfully.`,
+                updatedEvent.id
+            ).catch(err => console.error('Failed to send update notification:', err));
 
-        if (!event) {
-            return {
-                status: 'fail',
-                data: { error: `Event doesn't exist` },
-            };
-        }
+            // Notify interested users
+            const interestedUsers = await prismaClient.interestedEvent.findMany({
+                where: { eventId: Number(eventId) },
+                select: { userId: true },
+            });
 
-        if (!organizer) {
-            return {
-                status: 'fail',
-                data: { error: 'Organizer profile not found' },
-            };
-        }
-
-        if (!organizer.isApproved) {
-            return {
-                status: 'fail',
-                data: { error: 'Organizer is not approved to delete events' },
-            };
-        }
-
-        if (event.organizerId !== organizer.id) {
-            return {
-                status: 'fail',
-                data: { error: 'Unauthorized to delete this event' },
-            };
-        }
-
-        const ticketsCount = await prismaClient.ticket.count({
-            where: {
-                ticketType: { eventId }
+            if (interestedUsers.length > 0) {
+                notificationService.notifyEventUpdated(
+                    updatedEvent.id,
+                    updatedEvent.title,
+                    interestedUsers.map(u => u.userId)
+                ).catch(err => console.error('Failed to notify interested users:', err));
             }
+
+            return updatedEvent;
+        }, {
+            timeout: 30000,
         });
-
-        if(ticketsCount > 0) {
-            throw new AppError(`The event related to tickets can't be deleted`, 400);
-        }
-
-        let result;
-        try {
-            result = await eventService.softDelete(eventId);
-        } catch (err) {
-            if (err.code === 'P2003') {
-                return {
-                    status: 'fail',
-                    data: { error: `The event related to tickets can't be deleted` },
-                };
-            }
-            throw err;
-        }
-
-        if (result?.bannerPath) {
-            await fileService
-                .delete(result.bannerPath)
-                .catch((e) => console.log('Rollback banner delete failed', e));
-        }
-
-        return {
-            status: 'success',
-            data: {
-                message: 'Event deleted successfully',
-            },
-        };
     },
 
     /**
@@ -738,6 +708,19 @@ const organizerService = {
         }
 
         organizerPolicy.canDeleteEvent(organizer, event);
+
+        const ticketsCount = await prismaClient.ticket.count({
+            where: {
+                ticketType: { eventId: Number(eventId) }
+            }
+        });
+
+        if (ticketsCount > 0) {
+            throw new ConflictError(undefined, undefined, [{
+                code: 'EVENT_HAS_TICKETS',
+                message: "The event related to tickets can't be deleted",
+            }]);
+        }
 
         return eventService.softDelete(eventId);
     },
@@ -844,9 +827,25 @@ const organizerService = {
             throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
 
+        const event = await eventService.findById(eventId);
+        if (!event) {
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
+        }
+
         return organizerRepository.runInTransaction(async (tx) => {
             await eventService.cancelEvent(eventId, tx);
-            await orderService.refundOrdersRecord({ eventId, tx });
+            await orderService.refundOrders({ eventId, tx });
+
+            notificationService.sendNotification(
+                organizer.id,
+                'ORGANIZER',
+                'EVENT_CANCELLED',
+                'Event cancelled!',
+                `Your event "${event.title}" has been cancelled. All associated tickets will be refunded.`,
+                eventId
+            ).catch(err => console.error('Failed to send cancellation notification:', err));
+        }, {
+            timeout: 15000,
         });
     },
 

@@ -76,15 +76,19 @@ class NewsletterService {
             languagePreference: language,
         });
 
-        await this.#mailService.sendQueued({
-            to: subscriber.email,
-            subject: 'Welcome to our Newsletter!',
-            templateName: 'newsletterWelcomeMail',
-            variables: {
-                email: subscriber.email,
-                plainText: `Thank you for subscribing to our newsletter! You'll now receive the latest updates directly in your inbox.`,
-            },
-        });
+        try {
+            await this.#mailService.sendQueued({
+                to: subscriber.email,
+                subject: 'Welcome to our Newsletter!',
+                templateName: 'newsletterWelcomeMail',
+                variables: {
+                    email: subscriber.email,
+                    plainText: `Thank you for subscribing to our newsletter! You'll now receive the latest updates directly in your inbox.`,
+                },
+            });
+        } catch (mailError) {
+            console.error('Failed to send welcome email:', mailError);
+        }
 
         return subscriber;
     }

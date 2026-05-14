@@ -9,7 +9,6 @@ const organizerDashboardService = {
         return organizer;
     },
 
-    // EVENT PIE CHART
     async getEventsData(userId) {
         const organizer = await this.getAccessibleOrganizer(userId);
         const organizerId = organizer.id;
@@ -231,6 +230,7 @@ const organizerDashboardService = {
                 where: {
                     event: {
                         organizerId: organizerId,
+                        status: 'active',
                     },
                 },
             }),

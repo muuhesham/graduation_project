@@ -5,8 +5,9 @@ import eventService from '../services/eventService.js';
 const eventController = {
     show: asyncWrapper(async (req, res) => {
         const { id } = req.params;
+        const userId = req.user?.id;
 
-        const result = await eventService.show(id);
+        const result = await eventService.show(id, userId);
 
         if (!result || result.status === 'fail') {
             return sendFail(res, result.data, result.statusCode || 400);

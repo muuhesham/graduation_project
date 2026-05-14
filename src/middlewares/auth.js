@@ -7,7 +7,7 @@ async function auth(req, res, next) {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return sendError(res, 'No auth token provided', null, null,401);
+        return sendError(res, 'No auth token provided', null, null, 401);
     }
     
     const isAlive = await authService.isAccessAlive({ accessToken: token });
@@ -17,10 +17,39 @@ async function auth(req, res, next) {
 
     try {
         req.accessToken = token;
-        req.user = jwt.verify(token, JWT_KEY);
+        const decoded = jwt.verify(token, JWT_KEY);
+        
+        if (decoded.role === 'admin') {
+            return sendError(res, 'Admins cannot access user/organizer endpoints', 'ADMIN_RESTRICTION', null, 403);
+        }
+
+        req.user = decoded;
         next(); 
     } catch (error) {
-        return sendError(res,'Invalid auth token.', null, null,403);
+        return sendError(res, 'Invalid auth token.', null, null, 403);
+    }
+}
+
+async function adminAuth(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return sendError(res, 'No admin auth token provided', null, null, 401);
+    }
+
+    try {
+        req.accessToken = token;
+        const decoded = jwt.verify(token, JWT_KEY);
+
+        if (decoded.role !== 'admin') {
+            return sendError(res, 'Access denied: admin token required', 'NON_ADMIN_TOKEN', null, 403);
+        }
+
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return sendError(res, 'Invalid admin auth token.', null, null, 403);
     }
 }
 
@@ -33,4 +62,5 @@ function verifyToken(token) {
 }
 
 export default auth;
-export { generateToken, verifyToken };
+export { generateToken, verifyToken, adminAuth };
+
