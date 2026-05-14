@@ -246,8 +246,8 @@ export default class PrismaDriver extends IDriver {
      * @param {(tx: TransactionClient) => Promise<T>} work
      * @returns {Promise<T>}
      */
-    async runInTransaction(work) {
-        return this.client.$transaction(async (tx) => work(tx));
+    async runInTransaction(work, options = {}) {
+        return this.client.$transaction(async (tx) => work(tx), options);
     }
 
     /**

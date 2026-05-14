@@ -484,8 +484,8 @@ export default class BaseRepository {
      * @param {(tx: TransactionClient) => Promise<TR>} work
      * @returns {Promise<TR>}
      */
-    async runInTransaction(work) {
-        return this.driver.runInTransaction(work);
+    async runInTransaction(work, options = {}) {
+        return this.driver.runInTransaction(work, options);
     }
 
     /**
