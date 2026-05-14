@@ -98,7 +98,7 @@ function purchaseTicketMailTemplate({
                 <ul style="color: #856404; margin: 0; padding-left: 20px;">
                     <li>Please arrive at least 30 minutes before the event starts</li>
                     <li>Bring a valid ID for verification</li>
-                    <li>Tickets are non-refundable unless the event is cancelled</li>
+                    <li>Tickets are refundable if the event is cancelled</li>
                     <li>For any questions, contact our support team</li>
                 </ul>
             </div>

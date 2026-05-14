@@ -1,14 +1,12 @@
 //@ts-check
 
-/** @typedef {import('./../mailService').MailTemplate} MailTemplate */
-
-/** @type {MailTemplate} */
-const newsletterWelcomeMail = {
-    /**
-     * @param {object} variables
-     * @param {string} variables.email
-     */
-    generateHtml: (variables) => `
+/**
+ * @param {object} variables
+ * @param {string} variables.email
+ * @returns {string}
+ */
+export default function newsletterWelcomeMail(variables) {
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -33,21 +31,5 @@ const newsletterWelcomeMail = {
         </div>
     </body>
     </html>
-    `,
-
-    /**
-     * @param {object} variables
-     * @returns {string}
-     */
-    generateText: (variables) => `
-        Welcome to our Newsletter!
-        
-        Thank you for subscribing to the Fa3liat newsletter.
-        You'll now receive updates on the latest events, exclusive offers, and community news directly at ${variables.email}.
-        
-        Best regards,
-        The Fa3liat Team
-    `,
-};
-
-export default newsletterWelcomeMail;
+    `;
+}
