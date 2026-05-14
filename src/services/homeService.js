@@ -27,6 +27,9 @@ const homeService = {
                 },
             },
             interestedEvents: {},
+            _count: {
+                select: { interestedEvents: true },
+            },
         };
 
         return eventService.getCreatedBetween(oneWeekAgo, new Date(), {
@@ -65,6 +68,9 @@ const homeService = {
                 },
             },
             interestedEvents: {},
+            _count: {
+                select: { interestedEvents: true },
+            },
         };
 
         const selections = {

@@ -12,16 +12,6 @@ import optionalAuth from '../middlewares/optionalAuth.js';
 
 const Router = express.Router();
 
-Router.get(
-    '/:id',
-    publicLimiter,
-    optionalAuth,
-    organizerValidation.organizerIdParam,
-    validate,
-    organizerController.getPublicProfile
-);
-
-// CRUD OPERATIONS FOR ORGANIZER EVENTS
 
 Router.post(
     '/events',
@@ -76,6 +66,15 @@ Router.patch(
     organizerValidation.cancelEvent,
     validate,
     organizerController.cancelEvent
+);
+
+Router.get(
+    '/:id',
+    publicLimiter,
+    optionalAuth,
+    organizerValidation.organizerIdParam,
+    validate,
+    organizerController.getPublicProfile
 );
 
 export default Router;

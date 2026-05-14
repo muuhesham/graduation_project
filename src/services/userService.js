@@ -136,6 +136,9 @@ const userService = {
                         venue: true,
                         ticketTypes: true,
                         eventSessions: true,
+                        _count: {
+                            select: { interestedEvents: true },
+                        },
                     },
                 },
             },
@@ -145,6 +148,8 @@ const userService = {
         const events = interestedEvents.map((item) => {
             const event = item.event;
             event.isInterested = true;
+            event.interestedCount = event._count?.interestedEvents || 0;
+            delete event._count;
             return event;
         });
         const result = await eventService.getBannerAbsUrl(events);

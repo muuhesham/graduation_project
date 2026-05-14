@@ -5,12 +5,13 @@ import { paymentLimiter, availabilityLimiter, reserveLimiter } from '../middlewa
 import eventValidation from '../validations/eventValidation.js';
 import eventController from '../controllers/eventController.js';
 import { publicLimiter } from '../middlewares/rateLimiter.js';
+import optionalAuth from '../middlewares/optionalAuth.js';
 
 const Router = express.Router();
 
 Router.get('/tags', publicLimiter, eventController.getAllTags);
 
-Router.get('/:id', eventValidation.show, validate, eventController.show);
+Router.get('/:id', optionalAuth, eventValidation.show, validate, eventController.show);
 
 Router.get(
     '/:id/availability',

@@ -23,6 +23,7 @@ import {
 } from './../repositories/index.js';
 import EventErrors from './../constants/messages/errors/event.js';
 import { addEmbeddingJob, EmbeddingJobType } from '../queues/embeddingQueue.js';
+import notificationService from './notificationService.js';
 
 /**
  * @typedef {import('@prisma/client').Prisma} PrismaClient
@@ -83,6 +84,7 @@ const eventService = {
         updatedAt: true,
         deletedAt: true,
         venueId: true,
+        embedding: true,
     },
 
     DEFAULT_SELECTIONS: {
@@ -116,6 +118,9 @@ const eventService = {
             include: { tag: { select: { name: true } } },
         },
         interestedEvents: true,
+        _count: {
+            select: { interestedEvents: true },
+        },
     },
 
     ALLOWED_RELATIONS: [
@@ -129,6 +134,7 @@ const eventService = {
         'eventTags',
         'eventRules',
         'interestedEvents',
+        '_count',
     ],
 
     MAX_LIMIT: 100,
@@ -454,10 +460,11 @@ const eventService = {
      * @param {TransactionClient | null} [tx]
      */
     async createSessionsRecord(eventId, sessions, tx = null) {
+        if (!sessions || !Array.isArray(sessions)) return { count: 0 };
         const sessionsData = sessions.map((session) => ({
             eventId,
-            startDate: session.startDate,
-            endDate: session.endDate,
+            startDate: new Date(session.startDate),
+            endDate: new Date(session.endDate),
         }));
         return eventSessionRepository.bulkInsert(
             {
@@ -583,7 +590,7 @@ const eventService = {
         return eventService.getBannerAbsUrl(event);
     },
 
-    async getAll({ selections, relations, page, limit, orderBy, filters, exclude } = {}) {
+    async getAll({ selections, relations, page, limit, orderBy, filters, exclude, userId } = {}) {
         const query = new PrismaQueryBuilder({
             maxLimit: eventService.MAX_LIMIT,
             allowedRelations: eventService.ALLOWED_RELATIONS,
@@ -595,13 +602,19 @@ const eventService = {
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
-        // if (query.select && query.select.interestedEvents) {
-        //     query.select.interestedEvents = {
-        //         where: {
-        //             userId: userId || ' ',
-        //         },
-        //     };
-        // }
+        if (query.include && query.include.interestedEvents) {
+            query.include.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        } else if (query.select && query.select.interestedEvents) {
+            query.select.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        }
 
         const events = await prismaClient.event.findMany(query);
 
@@ -619,8 +632,10 @@ const eventService = {
         }
 
         events.forEach((event) => {
-            event.isInterested = false;
+            event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event._count?.interestedEvents || 0;
             delete event.interestedEvents;
+            delete event._count;
         });
 
         return eventService.getBannerAbsUrl(events);
@@ -629,7 +644,7 @@ const eventService = {
     /**
      * @deprecated - use findById with appropriate projection instead
      */
-    async getById(id, { selections, relations, filters, exclude } = {}) {
+    async getById(id, { selections, relations, filters, exclude, userId } = {}) {
         const query = new PrismaQueryBuilder({
             allowedRelations: eventService.ALLOWED_RELATIONS,
         })
@@ -638,12 +653,31 @@ const eventService = {
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS)
             .where(filters).value;
 
+        if (query.include && query.include.interestedEvents) {
+            query.include.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        } else if (query.select && query.select.interestedEvents) {
+            query.select.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        }
+
         const event = await prismaClient.event.findFirst({
             where: { id },
             ...query,
         });
 
         if (event) {
+            event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
+            event.interestedCount = event._count?.interestedEvents || 0;
+            delete event.interestedEvents;
+            delete event._count;
+
             const [eventWithBannerUrl] = eventService.getBannerAbsUrl(event);
             return eventWithBannerUrl;
         }
@@ -671,7 +705,13 @@ const eventService = {
             .where(filters)
             .omit(exclude || eventService.DEFAULT_EXCLUDE_FIELDS).value;
 
-        if (query.select && query.select.interestedEvents) {
+        if (query.include && query.include.interestedEvents) {
+            query.include.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
+                },
+            };
+        } else if (query.select && query.select.interestedEvents) {
             query.select.interestedEvents = {
                 where: {
                     userId: userId || ' ',
@@ -690,8 +730,9 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
-            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
+            event.interestedCount = event._count?.interestedEvents || 0;
             delete event.interestedEvents;
+            delete event._count;
         });
 
         return eventService.getBannerAbsUrl(events);
@@ -721,10 +762,16 @@ const eventService = {
             })
             .sort(orderBy).value;
 
-        if (query.include.interestedEvents) {
+        if (query.include && query.include.interestedEvents) {
             query.include.interestedEvents = {
                 where: {
-                    userId: userId || -1,
+                    userId: userId || ' ',
+                },
+            };
+        } else if (query.select && query.select.interestedEvents) {
+            query.select.interestedEvents = {
+                where: {
+                    userId: userId || ' ',
                 },
             };
         }
@@ -740,8 +787,9 @@ const eventService = {
 
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
-            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
+            event.interestedCount = event._count?.interestedEvents || 0;
             delete event.interestedEvents;
+            delete event._count;
         });
 
         return eventService.getBannerAbsUrl(events);
@@ -769,7 +817,11 @@ const eventService = {
             })
             .sort(orderBy).value;
 
-        if (query.select.interestedEvents) {
+        if (query.include && query.include.interestedEvents) {
+            query.include.interestedEvents = {
+                where: { userId: userId || ' ' },
+            };
+        } else if (query.select && query.select.interestedEvents) {
             query.select.interestedEvents = {
                 where: { userId: userId || ' ' },
             };
@@ -785,34 +837,33 @@ const eventService = {
         }
         events.forEach((event) => {
             event.isInterested = !!(event.interestedEvents && event.interestedEvents.length > 0);
-            event.interestedCount = event.interestedEvents ? event.interestedEvents.length : 0;
+            event.interestedCount = event._count?.interestedEvents || 0;
             delete event.interestedEvents;
+            delete event._count;
         });
 
         return eventService.getBannerAbsUrl(events);
     },
 
     /**
-     * @deprecated Use existsById instead
-     */
-    async exists(organizerId, slug, tx = prismaClient) {
-        return tx.event.findFirst({
-            where: {
-                organizerId,
-                slug,
-            },
-        });
-    },
-
-    /**
-     * @param {number} organizerId
+     * @param {string} organizerId
      * @param {string} slug
-     * @param {object} [projection]
      * @param {TransactionClient | null} [tx]
      * @return {Promise<EventModel | null>}
      */
+    async exists(organizerId, slug, tx = null) {
+        return eventRepository.findBySlug(organizerId, slug, {}, tx);
+    },
+
+    /**
+     * @param {string} organizerId
+     * @param {string} slug
+     * @param {object} [projection]
+     * @param {TransactionClient | null} [tx]
+     * @return {Promise<boolean>}
+     */
     async existsById(organizerId, slug, projection = {}, tx = null) {
-        return !!(await eventRepository.findBySlug(organizerId, slug, {}, tx));
+        return !!(await eventRepository.findBySlug(organizerId, slug, projection, tx));
     },
 
     getBannerAbsUrl(events) {
@@ -838,7 +889,7 @@ const eventService = {
         return slugify(title, { lower: true, strict: true });
     },
 
-    async show(id) {
+    async show(id, userId) {
         const relations = {
             venue: {
                 omit: venueService.DEFAULT_EXCLUDE_FIELDS,
@@ -873,9 +924,13 @@ const eventService = {
             eventTags: {
                 select: { tag: { select: { name: true } } },
             },
+            interestedEvents: true,
+            _count: {
+                select: { interestedEvents: true },
+            },
         };
 
-        const event = await eventService.getById(id, { relations });
+        const event = await eventService.getById(id, { relations, userId });
         if (!event) {
             return {
                 status: 'fail',
@@ -898,11 +953,21 @@ const eventService = {
      * @param {TransactionClient | null} [tx]
      * @returns {Promise<EventModel | null>}
      */
-    findById(id, options = {}, tx = null) {
-        if (!options.include && !options.select) {
-            options.include = this.DEFAULT_RELATIONS;
-        }
-        return eventRepository.findById(id, options, tx);
+    async findById(id, options = {}, tx = null) {
+        const db = tx || prismaClient;
+        
+        // Use PrismaQueryBuilder to safely combine selections, relations, and exclusions
+        const query = new PrismaQueryBuilder({
+            allowedRelations: eventService.ALLOWED_RELATIONS,
+        })
+            .select(options.select || eventService.DEFAULT_SELECTIONS)
+            .include(options.include || eventService.DEFAULT_RELATIONS)
+            .omit(options.omit || eventService.DEFAULT_EXCLUDE_FIELDS).value;
+
+        return eventRepository.findOne({
+            where: { id },
+            ...query,
+        }, tx);
     },
 
     async availability(eventId) {
@@ -1205,6 +1270,13 @@ const eventService = {
                         verifiedItems,
                         tx
                     );
+                    await notificationService.notifyPurchaseSuccess(
+                        userId,
+                        '#',
+                        order.id,
+                        'event',
+                        itemsCount
+                    )
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,
@@ -1465,9 +1537,17 @@ const eventService = {
             : [];
         const interestedIds = myInterests.map((i) => i.eventId);
 
+        const interestCounts = await prismaClient.interestedEvent.groupBy({
+            by: ['eventId'],
+            where: { eventId: { in: eventIds } },
+            _count: { _all: true },
+        });
+        const countsMap = new Map(interestCounts.map((c) => [c.eventId, c._count._all]));
+
         events.forEach((event) => {
             event.ticketTypes?.forEach((ticket) => (ticket.price = parseFloat(ticket.price)));
             event.isInterested = interestedIds.includes(event.id);
+            event.interestedCount = countsMap.get(event.id) || 0;
         });
 
         return eventService.getBannerAbsUrl(events);
@@ -1515,6 +1595,9 @@ const eventService = {
                     where: { status: 'active' },
                     orderBy: { startDate: 'asc' },
                 },
+                _count: {
+                    select: { interestedEvents: true },
+                },
             },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
@@ -1537,7 +1620,9 @@ const eventService = {
             }
 
             event.isInterested = interestedIds.includes(event.id);
+            event.interestedCount = event._count?.interestedEvents || 0;
             delete event.interestedEvents;
+            delete event._count;
 
             return event;
         });
@@ -1683,13 +1768,15 @@ const eventService = {
     async createEventTagsRecord(eventId, tags, tx = null) {
         if (!tags || !tags.length) return [];
 
+        const uniqueTags = [...new Set(tags.map((t) => t.toLowerCase().trim()))].filter(Boolean);
+
         const tagRecords = await Promise.all(
-            tags.map((tag) =>
+            uniqueTags.map((tag) =>
                 tagRepository.upsert(
                     {
-                        where: { name: tag.toLowerCase() },
+                        where: { name: tag },
                         update: {},
-                        create: { name: tag.toLowerCase() },
+                        create: { name: tag },
                     },
                     tx
                 )
@@ -1802,11 +1889,6 @@ const eventService = {
 
         event.pendingOrders = await this.countEventOrdersByStatus(id, OrderStatus.PENDING);
         event.completedOrders = await this.countEventOrdersByStatus(id, OrderStatus.COMPLETED);
-
-        const canBeCancelled = event.canBeCancelled();
-        if (!canBeCancelled) {
-            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_CANNOT_BE_CANCELLED]);
-        }
 
         await eventSessionRepository.cancelSessions(id, tx);
         
