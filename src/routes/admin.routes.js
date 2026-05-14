@@ -7,7 +7,7 @@ import adminValidation from './../validations/adminValidation.js';
 
 import { authLimiter } from './../middlewares/rateLimiter.js';
 import validate from './../middlewares/validate.js';
-import auth from './../middlewares/auth.js';
+import { adminAuth } from './../middlewares/auth.js';
 import authorize from './../middlewares/authorize.js';
 import { restrictToLocalhost } from './../middlewares/network.js';
 import couponValidation from './../validations/couponValidation.js';
@@ -16,7 +16,7 @@ import { upload } from './../middlewares/upload.js';
 /** @type {Router} */
 const router = Router();
 const authLimiterHandler = /** @type {import('express').RequestHandler} */ (authLimiter);
-const adminOnly = [auth, authorize.isAdmin];
+const adminOnly = [adminAuth, authorize.isAdmin];
 
 router.get('/coupons', ...adminOnly, adminController.listCoupons);
 router.post(
