@@ -10,11 +10,12 @@ import OrganizerSuccessMessages from '../constants/messages/success/organizer.js
 const organizerDashboardController = {
     getStats: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
+        const organizer = await organizerDashboardService.getAccessibleOrganizer(userId);
         const [eventStats, ticketStats, orderStats, revenueStats] = await Promise.all([
-            organizerDashboardService.getEventsStats(userId),
-            organizerDashboardService.getTicketStats(userId),
-            organizerDashboardService.getOrderStats(userId),
-            organizerDashboardService.getRevenueStats(userId),
+            organizerDashboardService.getEventsStats(userId, organizer.id),
+            organizerDashboardService.getTicketStats(userId, organizer.id),
+            organizerDashboardService.getOrderStats(userId, organizer.id),
+            organizerDashboardService.getRevenueStats(userId, organizer.id),
         ]);
         return sendSuccess(
             res,
@@ -32,10 +33,11 @@ const organizerDashboardController = {
 
     getAnalytics: asyncWrapper(async (req, res) => {
         const userId = req.user.id;
+        const organizer = await organizerDashboardService.getAccessibleOrganizer(userId);
         const [eventsData, ticketsData, ordersData] = await Promise.all([
-            organizerDashboardService.getEventsData(userId),
-            organizerDashboardService.getTicketsData(userId),
-            organizerDashboardService.getOrdersData(userId),
+            organizerDashboardService.getEventsData(userId, organizer.id),
+            organizerDashboardService.getTicketsData(userId, organizer.id),
+            organizerDashboardService.getOrdersData(userId, organizer.id),
         ]);
         return sendSuccess(
             res,
