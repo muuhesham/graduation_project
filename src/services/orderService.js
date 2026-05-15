@@ -205,33 +205,6 @@ const orderService = {
         });
     },
 
-    /**
-     * @param {object} params
-     * @param {number} params.eventId
-     * @param {Date} params.startDate
-     * @param {Date} params.endDate
-     * @param {TransactionClient} [params.tx]
-     */
-    async getFinanceSummary({ eventId, startDate, endDate, tx }) {
-        const orders = await (tx || prismaClient).order.findMany({
-            where: {
-                status: OrderStatus.COMPLETED,
-                createdAt: {
-                    gte: startDate,
-                    lte: endDate,
-                },
-                orderItems: {
-                    some: { ticketType: { eventId } },
-                },
-            },
-            select: { totalPrice: true },
-        });
-
-        const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
-        const totalOrders = orders.length;
-
-        return { totalRevenue, totalOrders };
-    },
 
     /**
      * @param {object} params
@@ -335,23 +308,23 @@ const orderService = {
                 .filter((item) => item.ticketType.eventId === eventId)
                 .reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
 
-            await tx.user.update({
+            await Promise.all(
+            tx.user.update({
                 where: { id: order.userId },
                 data: { wallet: { increment: eventPrice } },
-            });
-
-            await tx.order.update({
-                where: { id: order.id },
-                data: {
-                    status: OrderStatus.REFUNDED,
-                    totalPrice: { decrement: eventPrice },
-                },
-            });
-
-            await tx.ticket.updateMany({
-                where: { orderId: order.id, ticketType: { eventId } },
-                data: { status: 'expired' },
-            });
+            }),
+            tx.order.update({
+                 where: { id: order.id },
+                 data: {
+                     status: OrderStatus.REFUNDED,
+                     totalPrice: { decrement: eventPrice },
+                 },
+             }),
+             tx.ticket.updateMany({
+                 where: { orderId: order.id, ticketType: { eventId } },
+                 data: { status: 'expired' },
+             }),
+            );
 
             if (order.orderItems.length > 0) {
                 const eventTitle = order.orderItems[0].ticketType.event.title;

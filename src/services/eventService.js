@@ -111,11 +111,9 @@ const eventService = {
         eventSessions: true,
         eventSeatTier: true,
         eventSeat: true,
-        eventRules: {
-            select: { rule: true },
-        },
+        eventRules: true,
         eventTags: {
-            include: { tag: { select: { name: true } } },
+            include: { tag: true },
         },
         interestedEvents: true,
         _count: {
@@ -1274,9 +1272,9 @@ const eventService = {
                         userId,
                         '#',
                         order.id,
-                        'event',
+                        'free event',
                         itemsCount
-                    )
+                    );
                 } else {
                     session = await paymentService.createCheckoutSession(
                         undefined,

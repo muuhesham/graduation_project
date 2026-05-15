@@ -159,8 +159,8 @@ const organizerValidation = {
             .withMessage('Event rule cannot be empty')
             .matches(/^[a-zA-Z0-9\s.,!?'"-():;\u0600-\u06FF،؛؟]+$/)
             .withMessage('Event rules can only contain letters, numbers, and basic punctuation')
-            .isLength({ min: 10, max: 70 })
-            .withMessage('Each event rule must be at least 10 characters long')
+            .isLength({ min: 5, max: 70 })
+            .withMessage('Each event rule must be at least 5 characters long')
             .custom((rule) => {
                 if (!rule) return true;
 
@@ -425,8 +425,8 @@ const organizerValidation = {
             .trim()
             .matches(/^[a-zA-Z0-9\s.,!?'"-():;]+$/)
             .withMessage('Event rules can only contain letters, numbers, and basic punctuation')
-            .isLength({ min: 10, max: 70 })
-            .withMessage('Each event rule must be at least 10 characters long')
+            .isLength({ min: 5, max: 70 })
+            .withMessage('Each event rule must be at least 5 characters long')
             .custom((rule) => {
                 if (!rule) return true;
 

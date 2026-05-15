@@ -8,7 +8,6 @@ import { upload } from '../middlewares/upload.js';
 
 const Router = express.Router();
 
-// DASHBOARD
 Router.get('/stats', auth, authorize.isOrganizer, organizerDashboardController.getStats);
 Router.get('/analytics', auth, authorize.isOrganizer, organizerDashboardController.getAnalytics);
 
