@@ -211,6 +211,9 @@ model Event {
   ticketTypes      TicketType[]
 
   @@unique([organizerId, slug])
+  @@index([organizerId])
+  @@index([venueId])
+  @@index([categoryId])
 }
 
 model EventSession {
@@ -361,6 +364,9 @@ model Ticket {
   orderItem    OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([orderId])
 }
 
 model Order {
@@ -377,6 +383,8 @@ model Order {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   tickets    Ticket[]
+
+  @@index([userId])
 }
 
 model Payout {
@@ -415,6 +423,8 @@ model OrderItem {
   order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
   tickets      Ticket[]
+
+  @@index([ticketTypeId])
 }
 
 model InterestedEvent {
