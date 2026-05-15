@@ -798,7 +798,11 @@ const organizerService = {
 
         return eventService.list({
             where: { organizerId: organizer.id },
-            include: { venue: { select: { name: true } } },
+            include: {
+                venue: { select: { name: true } },
+                eventTags: { include: { tag: { select: { name: true } } } },
+                eventRules: true,
+            },
         });
     },
     /**

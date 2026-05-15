@@ -83,8 +83,26 @@ const organizerController = {
         const userId = req.user.id;
 
         const result = await organizerService.listOrganizerEvents(userId);
+        
+        const paginatedResult = EventResource.paginate(result);
+        
+        if (paginatedResult.events) {
+            paginatedResult.events = paginatedResult.events.map(event => {
+                const {
+                    organizerId,
+                    categoryId,
+                    slug,
+                    category,
+                    deletedAt,
+                    canBeDeleted,
+                    canBeModified,
+                    ...rest
+                } = event;
+                return rest;
+            });
+        }
 
-        return sendSuccess(res, EventResource.paginate(result), 200);
+        return sendSuccess(res, paginatedResult, 200);
     }),
 
     cancelEvent: asyncWrapper(async (req, res) => {

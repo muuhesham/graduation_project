@@ -9,9 +9,7 @@ const organizerDashboardService = {
         return organizer;
     },
 
-    async getEventsData(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getEventsData(userId, organizerId) {
 
         const activeEvents = await prismaClient.event.count({
             where: {
@@ -50,9 +48,7 @@ const organizerDashboardService = {
         };
     },
 
-    async getTicketsData(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getTicketsData(userId, organizerId) {
 
         const totalAgg = await prismaClient.ticketType.aggregate({
             _sum: { quantity: true },
@@ -85,9 +81,7 @@ const organizerDashboardService = {
         };
     },
 
-    async getOrdersData(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getOrdersData(userId, organizerId) {
 
         const [totalOrders, completedOrders, pendingOrders, cancelledOrders] = await Promise.all([
             prismaClient.order.count({
@@ -158,9 +152,7 @@ const organizerDashboardService = {
         };
     },
 
-    async getEventsStats(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getEventsStats(userId, organizerId) {
 
         const totalEvents = await prismaClient.event.count({
             where: { organizerId },
@@ -221,9 +213,8 @@ const organizerDashboardService = {
         };
     },
 
-    async getTicketStats(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getTicketStats(userId, organizerId) {
+
         const [totalTickets, soldTickets] = await Promise.all([
             prismaClient.ticketType.aggregate({
                 _sum: { quantity: true },
@@ -253,9 +244,8 @@ const organizerDashboardService = {
         };
     },
 
-    async getOrderStats(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getOrderStats(userId, organizerId) {
+
         const totalOrders = await prismaClient.order.count({
             where: {
                 orderItems: {
@@ -307,9 +297,8 @@ const organizerDashboardService = {
         };
     },
 
-    async getRevenueStats(userId) {
-        const organizer = await this.getAccessibleOrganizer(userId);
-        const organizerId = organizer.id;
+    async getRevenueStats(userId, organizerId) {
+
         const totalRevenue = await prismaClient.order.aggregate({
             _sum: {
                 totalPrice: true,
