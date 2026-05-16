@@ -175,4 +175,14 @@ export default class OrderRepository extends BaseRepository {
             },
         });
     }
+
+    /**
+     * Public method to manually trigger notifications with specific metadata.
+     * @param {string} event 
+     * @param {object} order 
+     * @param {object} metadata 
+     */
+    async notify(event, order, metadata) {
+        return this._notify(event, order, metadata);
+    }
 }

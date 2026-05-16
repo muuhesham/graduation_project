@@ -2,11 +2,12 @@ import asyncWrapper from '../middlewares/asyncWrapper.js';
 import { parsePagination } from '../utils/paginationHelpers.js';
 import { sendSuccess } from '../utils/response.js';
 import homeService from '../services/homeService.js';
+import CategoryResource from '../resources/CategoryResource.js';
 
 const homeController = {
     latestEvents: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const result = await homeService.latestEvents({userId, limit, page });
 
         return sendSuccess(res, { events: result });
@@ -14,7 +15,7 @@ const homeController = {
 
     newEventsThisWeek: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const result = await homeService.newEventsThisWeek({ userId, limit, page });
 
         return sendSuccess(res, { events: result });
@@ -23,12 +24,12 @@ const homeController = {
     allCategories: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
         const result = await homeService.getCategories({ limit, page });
-        return sendSuccess(res, { categories: result });
+        return sendSuccess(res, { categories: CategoryResource.collection(result) });
     }),
 
     pastEventsAndHighlights: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const result = await homeService.pastEventsAndHighlights({ userId, limit, page });
 
         return sendSuccess(res, { events: result });
@@ -36,7 +37,7 @@ const homeController = {
 
     nearbyEvents: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const result = await homeService.nearbyEvents({ userId, limit, page });
 
         return sendSuccess(res, { events: result });
@@ -44,7 +45,7 @@ const homeController = {
 
     personalizedEvents: asyncWrapper(async (req, res) => {
         const { page, limit } = parsePagination(req.query);
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const result = await homeService.personalizedEvents({ userId, limit, page });
 
         return sendSuccess(res, { events: result });

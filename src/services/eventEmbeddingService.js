@@ -114,6 +114,7 @@ class EventEmbeddingService {
             return;
         }
 
+        console.log(`[Embedding] Syncing event ${id}...`);
         const event = await this.#eventRepository.findById(id, {
             include: {
                 venue: true,
@@ -132,13 +133,19 @@ class EventEmbeddingService {
 
         const store = await this.#getStore();
         if (!store) {
+            console.error(`[Embedding] Store not available for event ${id}`);
             throw new InternalServerError(undefined, undefined, [SearchErrors.SEARCH_FAILED]);
         }
 
         try {
-            await store.delete({ filter: { eventId: id } }).catch(() => {});
+            console.log(`[Embedding] Deleting old index for event ${id}...`);
+            await store.delete({ filter: { eventId: id } }).catch((err) => console.log(`[Embedding] Delete failed for ${id}:`, err.message));
+            
+            console.log(`[Embedding] Adding document for event ${id}...`);
             await store.addDocuments([this.#toDocument(event)], { ids: [randomUUID()] });
+            console.log(`[Embedding] Event ${id} synced successfully.`);
         } catch (error) {
+            console.error(`[Embedding] Failed to sync event ${id}:`, error.message);
             throw new InternalServerError(undefined, undefined, [EventErrors.EVENT_UPDATE_FAILED]);
         }
     }
@@ -175,16 +182,15 @@ class EventEmbeddingService {
             .join(', ');
 
         const content = [
-            `Event Title: ${event.title}`,
-            `Description: ${event.description}`,
-            `Venue: ${event.venue?.name || ''}, ${event.venue?.city || ''}`,
-            `Category: ${event.category?.name || ''}`,
-            `Organizer: ${event.organizer?.name || ''}`,
-            tagNames ? `Tags: ${tagNames}` : '',
-            event.hasSeatMap ? 'Format: Seated event with seat map' : 'Format: Open floor event',
+            `search_document: ${event.title}`,
+            event.description,
+            `Located at ${event.venue?.name || ''} in ${event.venue?.city || ''}.`,
+            `Category: ${event.category?.name || ''}.`,
+            tagNames ? `Keywords: ${tagNames}.` : '',
+            event.hasSeatMap ? 'This is a seated event with a map.' : 'This is an open floor event.',
         ]
             .filter(Boolean)
-            .join('\n');
+            .join(' ');
 
         return new Document({
             pageContent: content,

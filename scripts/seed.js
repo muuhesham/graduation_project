@@ -33,6 +33,8 @@ console.log(`
 ${colors.bright}Seeding Database...${colors.reset}
 `);
 
+runCommand('node scripts/download-seed-images.js', 'Downloading seed images');
+
 if (!runCommand('node prisma/seed.js', 'Seeding database')) {
     log.error('Seeding failed. Make sure migrations have been run successfully.');
     process.exit(1);

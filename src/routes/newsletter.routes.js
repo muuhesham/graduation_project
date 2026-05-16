@@ -22,4 +22,12 @@ Router.get(
     newsletterController.confirmSubscription
 );
 
+Router.post(
+    '/confirm',
+    confirmLimiter,
+    newsletterValidations.confirmBody,
+    validate,
+    newsletterController.confirmSubscriptionJSON
+);
+
 export default Router;

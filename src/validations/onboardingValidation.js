@@ -20,14 +20,15 @@ const onboardingValidations = {
     ],
     updatePreferences: [
         body('preferences')
-            .isArray()
-            .withMessage('Preferences must be an array of strings')
-            .bail()
-            .custom((arr) => arr.length > 0)
-            .withMessage('Preferences array must not be empty')
-            .bail()
-            .custom((arr) => arr.every((p) => typeof p === 'string'))
-            .withMessage('Each preference must be a string'),
+            .isArray({ min: 1 })
+            .withMessage('Preferences must be a non-empty array'),
+        body('preferences.*')
+            .custom((val) => {
+                if (typeof val !== 'string' && typeof val !== 'number') {
+                    throw new Error('Each preference must be a string or a number');
+                }
+                return true;
+            }),
     ],
     updateLocation: [
         body('governorate')

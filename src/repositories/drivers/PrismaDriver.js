@@ -75,13 +75,24 @@ export default class PrismaDriver extends IDriver {
             args.omit = query.omit;
         }
 
-        if (query.sort?.field) {
+        if (query.orderBy) {
+            args.orderBy = query.orderBy;
+        } else if (query.sort?.field) {
             args.orderBy = {
                 [query.sort.field]: query.sort.order || 'desc',
             };
         }
 
+        if (query.skip !== undefined) {
+            args.skip = query.skip;
+        }
+
+        if (query.take !== undefined) {
+            args.take = query.take;
+        }
+
         if (
+            args.skip === undefined &&
             typeof query.pagination?.page === 'number' &&
             typeof query.pagination?.limit === 'number'
         ) {

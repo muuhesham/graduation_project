@@ -19,7 +19,7 @@ export default class CompanyResource extends BaseResource {
         return {
             registrationNumber: company.registrationNumber ?? null,
             taxId: company.taxId ?? null,
-            officialDocumentsPath: company.officialDocumentsPath ?? null,
+            officialDocumentsUrl: company.officialDocumentsUrl ?? null,
         };
     }
 }

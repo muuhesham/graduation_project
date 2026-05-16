@@ -16,7 +16,12 @@ function errorHandler(err, req, res, next) {
     }
 
     if (NODE_ENV !== 'production') {
-        return next(err);
+        return res.status(err.statusCode || 500).json({
+            status: 'error',
+            message: err.message,
+            stack: err.stack,
+            error: err
+        });
     }
 
     return sendError(res, 'An unexpected error occurred', 'INTERNAL_ERROR', null, 500);

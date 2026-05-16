@@ -24,6 +24,11 @@ async function auth(req, res, next) {
         }
 
         req.user = decoded;
+
+        if (decoded.isVerified === false && req.path !== '/request-otp' && req.path !== '/verify-otp') {
+            return sendError(res, 'User email not verified', 'EMAIL_NOT_VERIFIED', null, 403);
+        }
+
         next(); 
     } catch (error) {
         return sendError(res, 'Invalid auth token.', null, null, 403);
@@ -36,6 +41,11 @@ async function adminAuth(req, res, next) {
 
     if (!token) {
         return sendError(res, 'No admin auth token provided', null, null, 401);
+    }
+
+    const isAlive = await authService.isAccessAlive({ accessToken: token });
+    if (!isAlive) {
+        return sendError(res, 'Token revoked', 'REVOKED_TOKEN', null, 401);
     }
 
     try {

@@ -3,11 +3,13 @@
 import EventObserver from './EventObserver.js';
 import OrganizerObserver from './OrganizerObserver.js';
 import CategoryObserver from './CategoryObserver.js';
-import { eventRepository, organizerRepository, categoryRepository } from '../repositories/index.js';
+import OrderObserver from './OrderObserver.js';
+import { eventRepository, organizerRepository, categoryRepository, orderRepository } from '../repositories/index.js';
 
 // Register observers
 eventRepository.observe(new EventObserver());
 organizerRepository.observe(new OrganizerObserver());
 categoryRepository.observe(new CategoryObserver());
+orderRepository.observe(new OrderObserver());
 
 export default {};

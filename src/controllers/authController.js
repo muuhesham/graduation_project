@@ -1,4 +1,6 @@
 import authService from '../services/authService.js';
+import userService from '../services/userService.js';
+import adminService from '../services/adminService.js';
 import { sendSuccess, sendFail, sendError } from '../utils/response.js';
 import {
     CALLBACK_URL,
@@ -11,6 +13,59 @@ import {
 import { google } from 'googleapis';
 import { AuthThirdPartyService } from '../services/thirdPartyAuthService.js';
 
+class GoogleAuthController extends AuthThirdPartyService {
+    constructor() {
+        super();
+        this.oauth2Client = new google.auth.OAuth2(
+            CLIENT_ID,
+            CLIENT_SECRET,
+            'http://' + 'localhost' + ':' + (PORT || 3000) + CALLBACK_URL
+        );
+    }
+
+    getAuthUrl = async (req, res) => {
+        try {
+            const url = this.oauth2Client.generateAuthUrl({
+                access_type: 'offline',
+                scope: ['profile', 'email'],
+            });
+            return sendSuccess(res, { url });
+        } catch (err) {
+            console.error(err);
+            return sendError(res, 'Failed to generate Auth URL', 'AUTH_URL_ERROR', null, 500);
+        }
+    };
+
+    handleCallback = async (req, res) => {
+        try {
+            const { code } = req.query;
+            const { tokens } = await this.oauth2Client.getToken(code);
+            this.oauth2Client.setCredentials(tokens);
+
+            const oauth2 = google.oauth2({
+                auth: this.oauth2Client,
+                version: 'v2',
+            });
+
+            const userInfo = await oauth2.userinfo.get();
+
+            const user = await this.createOrFetchUser(
+                userInfo.data.email,
+                userInfo.data.name,
+                'GOOGLE',
+                userInfo.data.id
+            );
+
+            const result = await this.generateJwt(user);
+
+            return sendSuccess(res, result);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Google OAuth2 authentication failed', 'OAUTH2_ERROR', null, 500);
+        }
+    };
+}
+
 const authController = {
     async register(req, res) {
         try {
@@ -18,102 +73,64 @@ const authController = {
             const result = await authService.register({ name, email, password });
 
             if (result.status === 'fail') {
-                return sendFail(res, result.data, 400);
+                return sendFail(res, result.data);
             }
 
             return sendSuccess(res, result.data, 201);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
-        }
-    },
-
-    async verifyOtp(req, res) {
-        try {
-            const user = req.user;
-            const { otp } = req.body;
-
-            const result = await authService.verifyOtp(user, otp);
-
-            if (result.status === 'fail') {
-                return sendFail(res, result.data, 400);
-            }
-
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Registration failed', 'REGISTRATION_ERROR', null, 500);
         }
     },
 
     async login(req, res) {
         try {
             const { email, password } = req.body;
-
             const result = await authService.login({ email, password });
 
             if (result.status === 'fail') {
-                return sendFail(res, result.data, 400);
+                return sendFail(res, result.data);
             }
 
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Login failed', 'LOGIN_ERROR', null, 500);
         }
     },
 
     async refreshToken(req, res) {
         try {
             const { refreshToken } = req.body;
-
             const result = await authService.refreshToken({ refreshToken });
 
-            if (!result || result.status === 'fail') {
-                return sendFail(res, result.data, 403);
+            if (result.status === 'fail') {
+                return sendFail(res, result.data, 401);
             }
 
-            return sendSuccess(res, result, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Invalid or expired refresh token', 'INVALID_REFRESH', null, 403);
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Token refresh failed', 'REFRESH_ERROR', null, 500);
         }
     },
 
     async logout(req, res) {
         try {
             const { refreshToken } = req.body;
+            const accessToken = req.headers.authorization?.split(' ')[1];
             const user = req.user;
-            const accessToken = req.accessToken;
 
             const result = await authService.logout({ user, accessToken, refreshToken });
-            if (!result || result.status === 'fail') {
-                return sendFail(res, result.data, 400);
-            }
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Logout failed', 'LOGOUT_ERROR', null, 500);
-        }
-    },
-
-    async resendOtp(req, res) {
-        try {
-            const user = req.user;
-
-            const result = await authService.sendOtpMail({
-                user,
-                isFirstTime: false,
-            });
 
             if (result.status === 'fail') {
-                return sendFail(res, result.data, 400);
+                return sendFail(res, result.data, 401);
             }
 
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Logout failed', 'LOGOUT_ERROR', null, 500);
         }
     },
 
@@ -122,10 +139,10 @@ const authController = {
             const { email } = req.body;
             const result = await authService.requestResetPassword({ email });
 
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Password reset request failed', 'RESET_ERROR', null, 500);
         }
     },
 
@@ -134,12 +151,48 @@ const authController = {
             const { email, token, newPassword } = req.body;
             const result = await authService.resetPassword({ email, token, newPassword });
 
-            if (result.status === 'fail') return sendFail(res, result.data, 400);
+            if (result.status === 'fail') {
+                return sendFail(res, result.data);
+            }
 
-            return sendSuccess(res, result.data, 200);
-        } catch (err) {
-            console.error(err);
-            return sendError(res, 'Internal server error', 'INTERNAL_ERROR', null, 500);
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'Password reset failed', 'RESET_ERROR', null, 500);
+        }
+    },
+
+    async resendOtp(req, res) {
+        try {
+            const user = req.user;
+            const result = await authService.sendOtpMail({ user, isFirstTime: false });
+
+            if (result.status === 'fail') {
+                return sendFail(res, result.data);
+            }
+
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'OTP sending failed', 'OTP_ERROR', null, 500);
+        }
+    },
+
+    async verifyOtp(req, res) {
+        try {
+            const { otp } = req.body;
+            const user = req.user;
+
+            const result = await authService.verifyOtp(user, otp);
+
+            if (result.status === 'fail') {
+                return sendFail(res, result.data);
+            }
+
+            return sendSuccess(res, result.data);
+        } catch (error) {
+            console.error(error);
+            return sendError(res, 'OTP verification failed', 'OTP_ERROR', null, 500);
         }
     },
 
@@ -167,76 +220,4 @@ const authController = {
 };
 
 export default authController;
-class GoogleAuthController extends AuthThirdPartyService {
-    constructor() {
-        super();
-        this.oauth2Client = new google.auth.OAuth2(
-            CLIENT_ID,
-            CLIENT_SECRET,
-            'http://' + 'localhost' + ':' + PORT + CALLBACK_URL
-        );
-    }
-
-    getAuthUrl = async (req, res) => {
-        try {
-            const url = this.oauth2Client.generateAuthUrl({
-                access_type: 'offline',
-                scope: ['profile', 'email'],
-            });
-            return sendSuccess(res, { url });
-        } catch (err) {
-            return sendError(
-                res,
-                'Failed to generate Google auth URL',
-                'OAUTH2_URL_ERROR',
-                null,
-                500
-            );
-        }
-    };
-
-    handleCallback = async (req, res) => {
-        const code = req.query.code;
-        if (!code) return sendFail(res, { error: 'Missing code' });
-
-        try {
-            const { tokens } = await this.oauth2Client.getToken(code);
-            const { id_token } = tokens;
-            if (!id_token) return sendFail(res, { error: 'Missing id_token' });
-
-            const ticket = await this.oauth2Client.verifyIdToken({
-                idToken: id_token,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
-
-            const { email, name, sub: providerId } = ticket.getPayload();
-
-            const user = await this.createOrFetchUser(email, name, 'GOOGLE', providerId);
-            if (!user) {
-                return sendError(
-                    res,
-                    'Failed to create or fetch user',
-                    'USER_FETCH_ERROR',
-                    null,
-                    500
-                );
-            }
-
-            const result = await this.generateJwt(user);
-            if (result.status === 'fail') return sendFail(res, result.data, 400);
-
-            const accessToken = result.data.accessToken?.token;
-            const refreshToken = result.data.refreshToken;
-            const expiresIn = result.data.accessToken?.expiresIn;
-
-            const redirectUrl = `${GOOGLE_REDIRECT_URL}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
-
-            return res.redirect(redirectUrl);
-        } catch (error) {
-            console.error(error);
-            return sendError(res, 'Google OAuth2 authentication failed', 'OAUTH2_ERROR', null, 500);
-        }
-    };
-}
-
 export const googleAuthController = new GoogleAuthController();

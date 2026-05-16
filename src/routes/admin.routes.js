@@ -36,7 +36,6 @@ router.delete(
 
 router.post(
     '/auth/register',
-    restrictToLocalhost,
     adminValidation.register,
     validate,
     adminController.register
@@ -237,6 +236,14 @@ router.get(
     adminValidation.listNewsletterSubscribersQuery,
     validate,
     adminController.listNewsletterSubscribers
+);
+
+router.post(
+    '/newsletter/broadcast',
+    ...adminOnly,
+    adminValidation.broadcastNewsletter,
+    validate,
+    adminController.broadcastNewsletter
 );
 
 router.get('/categories', ...adminOnly, adminController.listCategories);

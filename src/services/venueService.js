@@ -41,6 +41,7 @@ const venueService = {
         },
         tx = prismaClient
     ) {
+        const normalized = state.replaceAll(' ', '_').toUpperCase();
         const governorate = await tx.governorate.findUnique({
             where: { name: normalized },
             select: { id: true },

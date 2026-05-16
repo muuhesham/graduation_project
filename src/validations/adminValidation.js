@@ -142,6 +142,21 @@ class AdminValidation {
         query('q').optional().isString().trim(),
     ];
 
+    broadcastNewsletter = [
+        body('subject')
+            .isString()
+            .withMessage('Subject must be a string')
+            .trim()
+            .notEmpty()
+            .withMessage('Subject is required'),
+        body('content')
+            .isString()
+            .withMessage('Content must be a string')
+            .trim()
+            .notEmpty()
+            .withMessage('Content is required'),
+    ];
+
     categoryIdParam = [param('id').toInt().isInt().withMessage('Invalid category ID')];
 
     createCategory = [

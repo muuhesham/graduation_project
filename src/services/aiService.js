@@ -2,7 +2,7 @@
 
 import { OllamaEmbeddings } from '@langchain/ollama';
 import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
-import { OLLAMA_BASE_URL, OLLAMA_DIMENSION, OLLAMA_MODEL } from '../config/env.js';
+import { OLLAMA_BASE_URL, OLLAMA_DIMENSION, OLLAMA_MODEL, OLLAMA_TIMEOUT } from '../config/env.js';
 
 import AIErrors from './../constants/errors/ai.js';
 import TimeoutError from './../errors/TimeoutError.js';
@@ -70,8 +70,14 @@ class AIService {
     async embed(text) {
         this.#validateText(text);
 
+        // Nomic models perform better when queries are prefixed
+        const query = text.startsWith('search_query:') ? text : `search_query: ${text}`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT);
+
         try {
-            return await this.getEmbeddings().embedQuery(text);
+            return await this.getEmbeddings().embedQuery(query, { signal: controller.signal });
         } catch (error) {
             if (
                 error instanceof Error &&
@@ -91,6 +97,8 @@ class AIService {
                     code: AIErrors.OLLAMA_UNAVAILABLE.code,
                 },
             ]);
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
@@ -101,8 +109,11 @@ class AIService {
     async embedBatch(texts) {
         this.#validateTexts(texts);
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT * 2);
+
         try {
-            return await this.getEmbeddings().embedDocuments(texts);
+            return await this.getEmbeddings().embedDocuments(texts, { signal: controller.signal });
         } catch (error) {
             if (
                 error instanceof Error &&
@@ -122,6 +133,8 @@ class AIService {
                     code: AIErrors.OLLAMA_UNAVAILABLE.code,
                 },
             ]);
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 

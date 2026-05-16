@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 const app = express();
+app.set('trust proxy', 1);
 import { UPLOADS_ROOT } from './services/storage/localDriver.js';
 import './observers/registry.js';
 
@@ -17,6 +18,9 @@ app.use(cors(corsOptions));
 app.use(activityLogger);
 
 app.use('/uploads', express.static(UPLOADS_ROOT));
+
+// Health check endpoint for Docker
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 //! ROUTES
 import authRoutes from './routes/auth.routes.js';

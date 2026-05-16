@@ -11,24 +11,16 @@ import ConflictError from '../errors/ConflictError.js';
 import asyncWrapper from '../middlewares/asyncWrapper.js';
 import NewsletterSuccess from '../constants/messages/success/newsletter.js';
 
-class NewsletterController {
-    /**
-     * @param {import('express').Request} req
-     * @param {import('express').Response} res
-     */
-    subscribe = asyncWrapper(async (req, res) => {
+const newsletterController = {
+    subscribe: asyncWrapper(async (req, res) => {
         const { email, language } = req.body;
 
         await newsletterService.subscribe(email, language);
         
         return sendSuccess(res, NewsletterSuccess.SUBSCRIBE_SENT);
-    });
+    }),
 
-    /**
-     * @param {import('express').Request} req
-     * @param {import('express').Response} res
-     */
-    confirmSubscription = asyncWrapper(async (req, res) => {
+    confirmSubscription: asyncWrapper(async (req, res) => {
         const token = req.params.token;
 
         if (!token) {
@@ -44,7 +36,18 @@ class NewsletterController {
             }
             return res.redirect(NEWSLETTER_CONFIRMATION_FAILURE_URL || '/');
         }
-    });
-}
+    }),
 
-export const newsletterController = new NewsletterController();
+    confirmSubscriptionJSON: asyncWrapper(async (req, res) => {
+        const { token } = req.body;
+
+        const result = await newsletterService.confirmSubscription(token);
+        
+        return sendSuccess(res, {
+            message: 'Newsletter subscription confirmed successfully',
+            subscriber: result
+        });
+    }),
+};
+
+export { newsletterController };

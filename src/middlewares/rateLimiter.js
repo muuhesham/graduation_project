@@ -51,7 +51,7 @@ function rateLimiter({
             );
         },
         skipFailedRequests: false,
-        skipSuccessfulRequests: false,
+        skipSuccessfulRequests: false, validate: { default: false, xForwardedForHeader: false, singleCount: false }, validate: { default: false, xForwardedForHeader: false, singleCount: false },
     });
 }
 

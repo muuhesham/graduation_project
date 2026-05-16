@@ -48,6 +48,7 @@ class SearchService {
     #CACHE_TTL = 60;
     #CACHE_PREFIX = 'search:embedding:';
     #MIN_QUERY_FOR_CACHE = 12;
+    #MIN_SIMILARITY = 0.55;
 
     /**
      * @param {SearchServiceDeps} deps
@@ -63,17 +64,31 @@ class SearchService {
      * @param {SearchOptions} options
      * @returns {Promise<SearchResult>}
      */
-    async search({ query, limit, page, filters = {} }) {
-        const semanticQuery = this.#prepareSemanticQuery(query);
+    async search({ query = '', limit, page, filters = {} }) {
         const pagination = { page, limit };
 
-        const aiResult = await this.#trySemanticSearch(semanticQuery, filters, pagination);
+        // Prioritize fast keyword search
+        const keywordResult = await this.#performKeywordSearch(query, filters, pagination);
 
-        if (aiResult?.data?.length) {
-            return aiResult;
+        // If we found direct matches, return them immediately to keep search fast
+        if (keywordResult?.data?.length > 0) {
+            return keywordResult;
         }
 
-        return this.#performKeywordSearch(query, filters, pagination);
+        // Only fallback to slow semantic search if no keyword matches found
+        try {
+            const semanticQuery = this.#prepareSemanticQuery(query);
+            const aiResult = await this.#trySemanticSearch(semanticQuery, filters, pagination);
+
+            // Only return AI results if they pass the human-relevance threshold
+            if (aiResult?.data?.length && aiResult.data[0].similarity >= this.#MIN_SIMILARITY) {
+                return aiResult;
+            }
+        } catch (error) {
+            console.error('[SearchService] Search execution error:', error.message);
+        }
+
+        return keywordResult;
     }
 
     /**
@@ -151,15 +166,39 @@ class SearchService {
      * @param {{ page: number, limit: number }} pagination
      * @returns {Promise<SearchResult>}
      */
-    #performKeywordSearch(query, filters, pagination) {
-        const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    async #performKeywordSearch(query, filters, pagination) {
+        const terms = query
+            .trim()
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((word) => word.length > 2 && !SEARCH_STOP_WORDS.has(word));
+
         const filterClause = this.#buildFilterClause(filters);
+
+        // If no valid keywords are left after filtering stop words, 
+        // we only filter by the explicit filters (category, price, etc.)
+        // But if those are also empty, we return empty to avoid "showing everything" for a miss.
+        if (terms.length === 0) {
+            const hasFilters = Object.keys(filterClause).length > 0;
+            if (!hasFilters && query.trim().length > 0) {
+                return {
+                    data: [],
+                    pagination: makePagination({ total: 0, page: pagination.page, limit: pagination.limit })
+                };
+            }
+            return this.#eventService.searchByKeywords({ where: filterClause, pagination });
+        }
 
         const orConditions = terms.flatMap(term => 
             KEYWORD_SEARCH_PATHS.map(path => this.#buildNestedWhere(path, { contains: term, mode: 'insensitive' }))
         );
 
-        const where = orConditions.length ? { OR: orConditions, ...filterClause } : filterClause;
+        const where = {
+            AND: [
+                { OR: orConditions },
+                filterClause
+            ]
+        };
 
         return this.#eventService.searchByKeywords({ where, pagination });
     }
@@ -205,6 +244,20 @@ class SearchService {
             };
         }
 
+        if (filters.date) {
+            const dateRange = this.#calculateDateRange(filters.date);
+            if (dateRange) {
+                clause.eventSessions = {
+                    some: {
+                        startDate: {
+                            gte: dateRange.start,
+                            lte: dateRange.end,
+                        }
+                    }
+                };
+            }
+        }
+
         if (Array.isArray(filters.tags) && filters.tags.length) {
             clause.eventTags = {
                 some: { tag: { name: { in: filters.tags.map(t => t.toLowerCase()) } } }
@@ -212,6 +265,34 @@ class SearchService {
         }
 
         return clause;
+    }
+
+    /**
+     * @param {string} dateKeyword
+     * @returns {{ start: Date, end: Date } | null}
+     */
+    #calculateDateRange(dateKeyword) {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        switch (dateKeyword.toLowerCase()) {
+            case 'today':
+                return { start, end };
+            case 'tomorrow':
+                start.setDate(start.getDate() + 1);
+                end.setDate(end.getDate() + 1);
+                return { start, end };
+            case 'next week':
+                end.setDate(end.getDate() + 7);
+                return { start, end };
+            case 'next month':
+                end.setMonth(end.getMonth() + 1);
+                return { start, end };
+            default:
+                return null;
+        }
     }
 }
 

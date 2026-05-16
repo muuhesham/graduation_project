@@ -142,11 +142,11 @@ const otpService = {
         const record = await otpRepository.findOne({ where: { email } }, tx);
 
         if (!record || record.code !== otp) {
-            throw new BadRequestError(undefined, undefined, [OtpErrors.INVALID_OTP]);
+            throw new BadRequestError(OtpErrors.INVALID_OTP.message, OtpErrors.INVALID_OTP.code);
         }
 
         if (record.isUsed || new Date() > record.expiresAt) {
-            throw new BadRequestError(undefined, undefined, [OtpErrors.EXPIRED_OTP]);
+            throw new BadRequestError(OtpErrors.EXPIRED_OTP.message, OtpErrors.EXPIRED_OTP.code);
         }
 
         await otpRepository.delete({ where: { email } }, tx);
@@ -162,11 +162,11 @@ const otpService = {
         const record = await phoneOtpRepository.findOne({ where: { phone } }, tx);
 
         if (!record || record.code !== otp) {
-            throw new BadRequestError(undefined, undefined, [OtpErrors.INVALID_OTP]);
+            throw new BadRequestError(OtpErrors.INVALID_OTP.message, OtpErrors.INVALID_OTP.code);
         }
 
         if (record.isUsed || new Date() > record.expiresAt) {
-            throw new BadRequestError(undefined, undefined, [OtpErrors.EXPIRED_OTP]);
+            throw new BadRequestError(OtpErrors.EXPIRED_OTP.message, OtpErrors.EXPIRED_OTP.code);
         }
 
         await phoneOtpRepository.delete({ where: { phone } }, tx);

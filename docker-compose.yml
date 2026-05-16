@@ -3,6 +3,7 @@ x-app-runtime: &app-runtime
     REDIS_URL: redis://redis:6379
     MAIL_HOST: mailhog
     MAIL_PORT: 1025
+    BIND_HOST: 0.0.0.0
     OLLAMA_BASE_URL: http://ollama:11434
 
 services:
@@ -78,7 +79,7 @@ services:
         environment:
             <<: *app-runtime
         ports:
-            - '3000:8000'
+            - '3000:3000'
         volumes:
             - ./uploads:/app/uploads
             - ./logs:/app/logs
@@ -135,7 +136,7 @@ services:
             STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
         command: >-
             listen
-            --forward-to http://app:8000/api/v1/payments/webhook
+            --forward-to http://app:3000/api/v1/payments/webhook
             --events checkout.session.completed,payment_intent.payment_failed
         volumes:
             - stripe_data:/root/.config/stripe

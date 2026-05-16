@@ -13,6 +13,7 @@ import mailService from './mailService.js';
 import otpService from './otpService.js';
 import cacheService from './cacheService.js';
 import { prisma as prismaClient } from '../config/db.js';
+import { adminRepository } from '../repositories/index.js';
 import crypto from 'crypto';
 import AuthProvider from '../constants/enums/authProvider.js';
 import AppError from '../errors/AppError.js';
@@ -32,11 +33,18 @@ const authService = {
             return createdUser;
         }
 
-        const { accessToken, type, expiresIn, language } = authService.generateAccessToken(createdUser);
-        const [refreshToken] = await Promise.all([
-            authService.generateRefreshToken(createdUser),
-            authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
-        ]);
+        const { accessToken, type, expiresIn } = authService.generateAccessToken(createdUser);
+        let refreshToken = null;
+
+        try {
+            const results = await Promise.all([
+                authService.generateRefreshToken(createdUser),
+                authService.sendOtpMail({ user: createdUser, isFirstTime: true }),
+            ]);
+            refreshToken = results[0];
+        } catch (error) {
+            console.error('[AuthService] Post-registration background tasks failed:', error);
+        }
 
         return {
             data: {
@@ -99,6 +107,8 @@ const authService = {
             name: user.name,
             email: user.email,
             role: user.role,
+            isVerified: !!user.isVerified,
+            isCompleted: !!user.isCompleted,
         };
 
         const token = jwt.sign(payload, JWT_KEY, { expiresIn: authService.JWT_EXPIRATION });
@@ -205,10 +215,14 @@ const authService = {
         const encodedEmail = encodeURIComponent(email);
         const URL = `${FRONT_URL}/en/reset-password?email=${encodedEmail}&token=${token}`;
 
-        await Promise.all([
-            authService.createPasswordToken(email, token),
-            mailService.sendPasswordResetJob(user, URL, authService.PASSWORD_RESET_EXPIRATION),
-        ]);
+        try {
+            await Promise.all([
+                authService.createPasswordToken(email, token),
+                mailService.sendPasswordResetJob(user, URL, authService.PASSWORD_RESET_EXPIRATION),
+            ]);
+        } catch (error) {
+            console.error('[AuthService] Failed to initiate password reset background tasks:', error);
+        }
 
         return {
             status: 'success',
@@ -283,9 +297,22 @@ const authService = {
 
         if (!isFirstTime) {
             userData = await userService.findByEmail(user.email);
+            if (!userData) {
+                userData = await adminRepository.findByEmail(user.email);
+                if (userData) userData.role = 'admin';
+            }
         }
 
-        if (userData.isVerified) {
+        if (!userData) {
+            return {
+                status: 'fail',
+                data: { error: 'User not found' },
+            };
+        }
+
+        const isVerified = userData.role === 'admin' ? userData.isApproved : userData.isVerified;
+
+        if (isVerified) {
             return {
                 status: 'fail',
                 data: { error: 'Email already verified' },
@@ -326,6 +353,10 @@ const authService = {
             status: 'success',
             data: { message: 'Email verified successfully' },
         };
+    },
+
+    async verifyEmailOtpRecord(email, otp, tx = null) {
+        return otpService.verifyEmailOtpRecord(email, otp, tx);
     },
 
     /**

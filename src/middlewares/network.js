@@ -19,7 +19,8 @@ export function restrictToLocalhost(req, res, next) {
     const isLocal =
         remoteAddress === '127.0.0.1' ||
         remoteAddress === '::1' ||
-        remoteAddress === '::ffff:' ||
+        remoteAddress.startsWith('172.') || // Docker default network
+        remoteAddress.startsWith('192.168.') ||
         remoteAddress === '::ffff:127.0.0.1';
 
     if (!isLocal) {

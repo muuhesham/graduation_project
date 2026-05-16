@@ -33,7 +33,7 @@ console.log(`
 ${colors.bright}Running Database Migrations...${colors.reset}
 `);
 
-if (!runCommand('npx prisma migrate dev', 'Running database migrations')) {
+if (!runCommand('./node_modules/.bin/prisma migrate deploy', 'Running database migrations')) {
     log.error('Migration failed. Make sure your database is running and .env is configured correctly.');
     process.exit(1);
 }

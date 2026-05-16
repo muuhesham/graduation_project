@@ -258,21 +258,25 @@ const paymentService = {
                 })
                 .filter((url) => url !== null);
 
-            await mailService.sendPurchaseConfirmationJob(
-                buyer,
-                {
-                    title: eventDetails.title,
-                    description: eventDetails.description,
-                    date: eventDate,
-                    time: eventTime,
-                    venueName: eventDetails.venue.name,
-                    venueAddress: eventDetails.venue.address,
-                },
-                ticketDetails,
-                finalAmountPaid.toFixed(2),
-                orderId,
-                qrCodes
-            );
+            try {
+                await mailService.sendPurchaseConfirmationJob(
+                    buyer,
+                    {
+                        title: eventDetails.title,
+                        description: eventDetails.description,
+                        date: eventDate,
+                        time: eventTime,
+                        venueName: eventDetails.venue.name,
+                        venueAddress: eventDetails.venue.address,
+                    },
+                    ticketDetails,
+                    finalAmountPaid.toFixed(2),
+                    orderId,
+                    qrCodes
+                );
+            } catch (error) {
+                console.error('[PaymentService] Failed to send purchase confirmation email:', error);
+            }
 
             await Promise.all([
                 notificationService.notifyPurchaseSuccess(

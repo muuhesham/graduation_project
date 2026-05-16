@@ -33,6 +33,7 @@ import { pluck } from '../../helpers/pluck.js';
  * @property {number} [maxPrice]
  * @property {boolean} [hasSeatMap]
  * @property {string[]} [tags]
+ * @property {string} [date]
  */
 
 export const SEARCH_FILTER_KEYS = [
@@ -43,6 +44,7 @@ export const SEARCH_FILTER_KEYS = [
     'hasSeatMap',
     'tag',
     'tags',
+    'date',
 ];
 
 /**
@@ -87,19 +89,18 @@ export function normalizeSearchTagValues(value) {
  * @returns {SearchFiltersDTO} Filter object for Prisma
  */
 export function pickSearchFilters(query) {
-    const pickedFilters = /** @type {SearchFiltersDTO & { tag?: string[]; tags?: string[] }} */ (
-        pluck(query, SEARCH_FILTER_KEYS)
-    );
+    const pickedFilters = /** @type {Record<string, any>} */ (pluck(query, SEARCH_FILTER_KEYS));
 
-    const tags = [...(pickedFilters.tag || []), ...(pickedFilters.tags || [])];
+    const tags = normalizeSearchTagValues(pickedFilters.tag || pickedFilters.tags || []);
 
     return {
-        ...(pickedFilters.categoryId !== undefined ? { categoryId: pickedFilters.categoryId } : {}),
-        ...(pickedFilters.organizerId ? { organizerId: pickedFilters.organizerId } : {}),
-        ...(pickedFilters.minPrice !== undefined ? { minPrice: pickedFilters.minPrice } : {}),
-        ...(pickedFilters.maxPrice !== undefined ? { maxPrice: pickedFilters.maxPrice } : {}),
-        ...(pickedFilters.hasSeatMap !== undefined ? { hasSeatMap: pickedFilters.hasSeatMap } : {}),
-        ...(tags.length ? { tags: [...new Set(tags)] } : {}),
+        ...(pickedFilters.categoryId !== undefined ? { categoryId: Number(pickedFilters.categoryId) } : {}),
+        ...(pickedFilters.organizerId ? { organizerId: String(pickedFilters.organizerId) } : {}),
+        ...(pickedFilters.minPrice !== undefined ? { minPrice: parseFloat(String(pickedFilters.minPrice)) } : {}),
+        ...(pickedFilters.maxPrice !== undefined ? { maxPrice: parseFloat(String(pickedFilters.maxPrice)) } : {}),
+        ...(pickedFilters.hasSeatMap !== undefined ? { hasSeatMap: pickedFilters.hasSeatMap === 'true' || pickedFilters.hasSeatMap === true } : {}),
+        ...(pickedFilters.date ? { date: String(pickedFilters.date) } : {}),
+        ...(tags.length ? { tags } : {}),
     };
 }
 

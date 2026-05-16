@@ -24,6 +24,7 @@ class UserValidation {
         body('description').optional().trim().isString(),
         body('websiteUrl').optional().trim().isString(),
         body('contactName').optional().trim().isString(),
+        body('contactPersonName').optional().trim().isString(),
         body('instagramUrl')
             .optional()
             .trim()
@@ -187,7 +188,16 @@ class UserValidation {
         body('profilePhotoPath').optional().trim().isString(),
 
         body('officialDocument').custom((_, { req }) => {
-            if (!req.file) {
+            const files = req.files;
+            let officialDoc;
+
+            if (Array.isArray(files)) {
+                officialDoc = files.find((f) => f.fieldname === 'officialDocument');
+            } else {
+                officialDoc = files?.['officialDocument']?.[0];
+            }
+
+            if (!officialDoc) {
                 if (req.body.type === organizerTypes.COMPANY) {
                     throw new Error('officialDocument is required for company organizers');
                 }
@@ -196,12 +206,12 @@ class UserValidation {
 
             const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
-            if (!allowedMimeTypes.includes(req.file.mimetype)) {
+            if (!allowedMimeTypes.includes(officialDoc.mimetype)) {
                 throw new Error('officialDocument must be PDF or image (jpeg/png/webp)');
             }
 
             const maxFileSizeInBytes = 5 * 1024 * 1024;
-            if (req.file.size > maxFileSizeInBytes) {
+            if (officialDoc.size > maxFileSizeInBytes) {
                 throw new Error('officialDocument must be 5MB or smaller');
             }
 

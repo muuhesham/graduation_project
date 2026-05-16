@@ -17,8 +17,9 @@ const profileService = {
 
     async updateMyProfile({ userId, allowedData }) {
         if (allowedData.governorate) {
+            const governorateName = allowedData.governorate.trim().toUpperCase().replace(/\s+/g, '_');
             const governorateRecord = await prismaClient.governorate.findUnique({
-                where: { name: allowedData.governorate },
+                where: { name: governorateName },
             });
 
             if (!governorateRecord) {

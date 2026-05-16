@@ -17,6 +17,7 @@ const organizerController = {
             sessions,
             eventRules,
             tags,
+            location,
         } = req.body;
 
         if (priceTiers && typeof priceTiers === 'string') {
@@ -43,6 +44,10 @@ const organizerController = {
             tags = JSON.parse(tags);
         }
 
+        if (location && typeof location === 'string') {
+            location = JSON.parse(location);
+        }
+
         const event = await organizerService.createOrganizerEvent(userId, {
             ...req.body,
             priceTiers,
@@ -51,6 +56,7 @@ const organizerController = {
             sessions,
             eventRules,
             tags,
+            location,
             banner,
         });
 
@@ -71,8 +77,53 @@ const organizerController = {
         const userId = req.user.id;
         const banner = req.file;
 
+        let {
+            priceTiers,
+            seatsData,
+            tickets,
+            sessions,
+            eventRules,
+            tags,
+            location,
+        } = req.body;
+
+        if (priceTiers && typeof priceTiers === 'string') {
+            priceTiers = JSON.parse(priceTiers);
+        }
+
+        if (seatsData && typeof seatsData === 'string') {
+            seatsData = JSON.parse(seatsData);
+        }
+
+        if (tickets && typeof tickets === 'string') {
+            tickets = JSON.parse(tickets);
+        }
+
+        if (sessions && typeof sessions === 'string') {
+            sessions = JSON.parse(sessions);
+        }
+
+        if (eventRules && typeof eventRules === 'string') {
+            eventRules = JSON.parse(eventRules);
+        }
+
+        if (tags && typeof tags === 'string') {
+            tags = JSON.parse(tags);
+        }
+
+        if (location && typeof location === 'string') {
+            location = JSON.parse(location);
+        }
+
         const event = await organizerService.updateOrganizerEvent(userId, eventId, {
             ...req.body,
+            priceTiers,
+            seatsData,
+            tickets,
+            sessions,
+            eventRules,
+            tags,
+            location,
             banner,
         });
 
@@ -129,6 +180,24 @@ const organizerController = {
         const organizer = await organizerService.getPublicProfile(id, currentUserId);
 
         return sendSuccess(res, { organizer: OrganizerPublicResource.make(organizer) });
+    }),
+
+    follow: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const { id: organizerId } = req.params;
+
+        await organizerService.follow(userId, organizerId);
+
+        return sendSuccess(res, { message: 'You are now following this organizer' }, 201);
+    }),
+
+    unfollow: asyncWrapper(async (req, res) => {
+        const userId = req.user.id;
+        const { id: organizerId } = req.params;
+
+        await organizerService.unfollow(userId, organizerId);
+
+        return sendSuccess(res, { message: 'You have unfollowed this organizer' }, 200);
     }),
 };
 

@@ -21,7 +21,6 @@ const cacheService = {
     },
 
     async remember(key, fetchFunction, ttl = 3600, ...args) {
-        key = cacheService.constructKey(key);
         let data = await this.get(key);
         if (data !== null) return data;
 
