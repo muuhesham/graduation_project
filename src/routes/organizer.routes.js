@@ -12,6 +12,9 @@ import optionalAuth from '../middlewares/optionalAuth.js';
 
 const Router = express.Router();
 
+// CRUD OPERATIONS FOR ORGANIZER EVENTS
+
+Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
 
 Router.post(
     '/events',
@@ -57,8 +60,6 @@ Router.delete(
     organizerController.deleteEvent
 );
 
-Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
-
 Router.patch(
     '/events/:eventId',
     auth,
@@ -75,6 +76,22 @@ Router.get(
     organizerValidation.organizerIdParam,
     validate,
     organizerController.getPublicProfile
+);
+
+Router.post(
+    '/:id/follow',
+    auth,
+    organizerValidation.organizerIdParam,
+    validate,
+    organizerController.follow
+);
+
+Router.delete(
+    '/:id/unfollow',
+    auth,
+    organizerValidation.organizerIdParam,
+    validate,
+    organizerController.unfollow
 );
 
 export default Router;

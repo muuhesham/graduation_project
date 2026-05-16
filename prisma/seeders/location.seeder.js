@@ -69,10 +69,6 @@ export default async function seedLocations(prisma, options = {}) {
 
     console.log('🌱 Seeding locations (countries, states, cities)...');
 
-    await prisma.city.deleteMany();
-    await prisma.state.deleteMany();
-    await prisma.country.deleteMany();
-
     const countries = [];
     const states = [];
     const cities = [];

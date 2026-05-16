@@ -19,7 +19,13 @@ async function optionalAuth(req, res, next) {
 
     try {
         req.accessToken = token;
-        req.user = jwt.verify(token, JWT_KEY);
+        const decoded = jwt.verify(token, JWT_KEY);
+        
+        if (decoded.role === 'admin') {
+            req.user = {};
+        } else {
+            req.user = decoded;
+        }
     } catch (err) {
         req.user = {};
     }

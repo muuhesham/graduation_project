@@ -15,6 +15,7 @@ const categoryService = {
         name: true,
         imageDisk: true,
         imagePath: true,
+        createdAt: true,
     },
 
     DEFAULT_EXCLUDE_FIELDS: {
@@ -29,12 +30,18 @@ const categoryService = {
 
     MAX_LIMIT: 10,
 
+    /**
+     * @deprecated Use repository findUnique instead
+     */
     async getByCategory(categoryName, tx = prismaClient) {
         return tx.category.findUnique({
             where: { name: categoryName },
         });
     },
 
+    /**
+     * Get all categories using the new repository architecture.
+     */
     async getAll({ selections, relations, exclude, limit, page, orderBy, filters } = {}) {
         const query = new PrismaQueryBuilder({
             maxLimit: categoryService.MAX_LIMIT,
@@ -50,6 +57,9 @@ const categoryService = {
         return categoryRepository.findMany(query);
     },
 
+    /**
+     * @deprecated Use list with attendee filters instead
+     */
     async getPreferences({ userId, tx = prismaClient }) {
         return await tx.category.findMany({
             where: {
@@ -76,16 +86,25 @@ const categoryService = {
         });
     },
 
+    /**
+     * @deprecated Use list() instead
+     */
     async getAllCategories() {
         return await prismaClient.category.findMany({
-            select: { id: true, name: true },
+            select: { 
+                id: true, 
+                name: true,
+                imagePath: true,
+                imageDisk: true,
+                createdAt: true,
+            },
             orderBy: { name: 'asc' },
         });
     },
 
     /**
      * @param {import('./../types/shared').RepositoryReadOptions} [options]
-     * @returns {Promise<import('../types/models').Category[]>}
+     * @returns {Promise<import('../models/Category').default[]>}
      */
     async list(options = {}) {
         return categoryRepository.findMany(options);

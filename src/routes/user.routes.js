@@ -12,7 +12,6 @@ import { upload } from '../middlewares/upload.js';
 
 import assertMultipart from './../middlewares/assertMultipart.js';
 import validate from '../middlewares/validate.js';
-import { param } from 'express-validator';
 
 const Router = express.Router();
 const apiLimiterHandler = /** @type {import('express').RequestHandler} */ (apiLimiter);
@@ -23,7 +22,7 @@ Router.patch(
     apiLimiterHandler,
     assertMultipart,
     auth,
-    upload.single('officialDocument'),
+    upload.any(),
     userValidation.upgradeToOrganizer,
     validate,
     userController.upgradeToOrganizer
@@ -47,6 +46,14 @@ Router.post(
     userValidation.verifyOrganizerContactEmail,
     validate,
     userController.verifyOrganizerContactEmail
+);
+
+Router.get(
+    '/organizer/status',
+    apiLimiterHandler,
+    auth,
+    authorize.isOrganizer,
+    userController.getOrganizerStatus
 );
 
 Router.get('/tickets', apiLimiterHandler, auth, userController.getUserTickets);

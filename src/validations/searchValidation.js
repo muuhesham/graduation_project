@@ -10,6 +10,7 @@ class SearchValidation {
     /** @type {ValidationChain[]} */
     search = [
         query('q')
+            .optional({ checkFalsy: true })
             .customSanitizer((value, { req }) => {
                 req.query ??= {};
 
@@ -17,7 +18,7 @@ class SearchValidation {
                     query: normalizedQuery,
                     pageOverride,
                     limitOverride,
-                } = normalizeSearchQueryInput(value);
+                } = normalizeSearchQueryInput(value || '');
 
                 if (!req.query.page && pageOverride) {
                     req.query.page = pageOverride;
@@ -30,8 +31,6 @@ class SearchValidation {
                 return normalizedQuery;
             })
             .trim()
-            .notEmpty()
-            .withMessage(SearchErrors.SEARCH_QUERY_REQUIRED.message)
             .isLength({ min: 2 })
             .withMessage(SearchErrors.QUERY_MIN_LENGTH.message)
             .isLength({ max: 200 })

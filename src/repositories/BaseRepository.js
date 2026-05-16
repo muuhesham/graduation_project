@@ -175,6 +175,9 @@ export default class BaseRepository {
             pagination,
             page,
             limit,
+            skip,
+            take,
+            orderBy,
             q,
             where,
             withDeleted,
@@ -218,6 +221,18 @@ export default class BaseRepository {
 
         if (options.omit) {
             query.omit = options.omit;
+        }
+
+        if (options.skip !== undefined) {
+            query.skip = options.skip;
+        }
+
+        if (options.take !== undefined) {
+            query.take = options.take;
+        }
+
+        if (options.orderBy !== undefined) {
+            query.orderBy = options.orderBy;
         }
 
         const pagination = options.pagination || this._paginationAliases(options);

@@ -24,7 +24,7 @@ import organizerPolicy from './../policies/OrganizerPolicy.js';
 import OrganizerFactory from './../factories/OrganizerFactory.js';
 import OrganizerVerificationStatus from './../constants/enums/organizerVerificationStatus.js';
 import OrganizerStatus from './../constants/enums/organizerStatus.js';
-import { Company } from '../models/index.js';
+import { Company, Organizer } from '../models/index.js';
 
 /**
  * @typedef {import('./../types/shared').TransactionClient} TransactionClient
@@ -141,30 +141,48 @@ const organizerService = {
     /**
      * @param {string} userId
      * @param {OrganizerCreateDTO} dto
-     * @param {any} [file]
+     * @param {any} [files]
      * @param {TransactionClient | null} [tx]
      * @returns {Promise<Organizer>}
      */
-    async createRecord(userId, dto, file = null, tx = null) {
-        if (file && dto.type === 'company') {
-            const saved = await fileService.save(file, Company.getUploadPath(userId));
+    async createRecord(userId, dto, files = null, tx = null) {
+        let officialDocument, photo;
+
+        if (Array.isArray(files)) {
+            officialDocument = files.find((f) => f.fieldname === 'officialDocument');
+            photo = files.find((f) => f.fieldname === 'photo');
+        } else {
+            officialDocument = files?.['officialDocument']?.[0];
+            photo = files?.['photo']?.[0];
+        }
+
+        if (officialDocument && dto.type?.toUpperCase() === 'COMPANY') {
+            const saved = await fileService.save(officialDocument, Company.getUploadPath(userId));
             if (saved) {
                 dto.officialDocumentsDisk = saved.disk;
                 dto.officialDocumentsPath = saved.url;
             }
         }
 
+        if (photo) {
+            const saved = await fileService.save(photo, Organizer.getUploadPath(userId, 'logos'));
+            if (saved) {
+                dto.logoDisk = saved.disk;
+                dto.logoPath = saved.url;
+            }
+        }
+
         const normalizedOrganizerData = {
             ...dto,
-            contactName: dto.contactPersonName || dto.contactName,
+            contactName: dto.contactPersonName || dto.contactName || dto.ownerName || dto.name,
             websiteUrl: dto.website || dto.websiteUrl,
             verificationStatus: OrganizerVerificationStatus.UNDER_REVIEW,
             status: OrganizerStatus.ACTIVE,
         };
 
         await Promise.all([
-            this.ensureUniqueConstraints(userId, dto),
-            this.ensureReferenceConstraints(userId, dto),
+            this.ensureUniqueConstraints(userId, normalizedOrganizerData),
+            this.ensureReferenceConstraints(userId, normalizedOrganizerData),
         ]);
 
         const organizer = await organizerRepository.runInTransaction(async (transaction) => {
@@ -186,7 +204,14 @@ const organizerService = {
             return createdOrganizer;
         });
 
-        return /** @type {Organizer} */ (await this.findById(organizer.id, tx));
+        const fullOrganizer = /** @type {Organizer} */ (await this.findById(organizer.id, tx));
+
+        // Trigger OTP for contact email verification
+        this.sendEmailOtp(fullOrganizer, fullOrganizer.contactEmail).catch((err) =>
+            console.error('Failed to send organizer contact email OTP:', err)
+        );
+
+        return fullOrganizer;
     },
 
     /**
@@ -1160,6 +1185,50 @@ const organizerService = {
         }
 
         return organizer;
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} organizerId
+     */
+    async follow(userId, organizerId) {
+        const organizer = await this.findById(organizerId);
+
+        if (!organizer) {
+            throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
+        }
+
+        const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
+
+        if (isFollowing) {
+            throw new ConflictError('You are already following this organizer');
+        }
+
+        return organizerFollowerRepository.create({
+            userId,
+            organizerId,
+        });
+    },
+
+    /**
+     * @param {string} userId
+     * @param {string} organizerId
+     */
+    async unfollow(userId, organizerId) {
+        const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
+
+        if (!isFollowing) {
+            throw new ConflictError('You are not following this organizer');
+        }
+
+        return organizerFollowerRepository.delete({
+            where: {
+                userId_organizerId: {
+                    userId,
+                    organizerId,
+                },
+            },
+        });
     },
 };
 

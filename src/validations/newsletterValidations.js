@@ -18,6 +18,15 @@ const newsletterValidations = {
             .notEmpty()
             .withMessage('Token cannot be empty'),
     ],
+    confirmBody: [
+        body('token')
+            .exists()
+            .withMessage('Token is required')
+            .isString()
+            .withMessage('Token must be a string')
+            .notEmpty()
+            .withMessage('Token cannot be empty'),
+    ],
 };
 
 export default newsletterValidations;

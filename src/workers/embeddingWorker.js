@@ -39,17 +39,21 @@ const embeddingWorker = new Worker(
 );
 
 embeddingWorker.on('completed', (job) => {
-    console.log(`Embedding job ${job.id} completed for event ${job.data?.eventId}`);
+    console.log(`[Embedding Worker] Job ${job.id} completed for event ${job.data?.eventId}`);
 });
 
 embeddingWorker.on('failed', (job, err) => {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`Embedding job ${job?.id} failed for event ${job.data?.eventId}:`, message);
+    console.error(`[Embedding Worker] Job ${job?.id} failed for event ${job?.data?.eventId}:`, message);
 });
 
 embeddingWorker.on('error', (err) => {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('Embedding worker error:', message);
+    console.error('[Embedding Worker] General error:', message);
+});
+
+embeddingWorker.on('active', (job) => {
+    console.log(`[Embedding Worker] Job ${job.id} started for event ${job.data?.eventId}`);
 });
 
 export default embeddingWorker;

@@ -177,7 +177,7 @@ export default class EventRepository extends BaseRepository {
      * @param {any} [tx]
      */
     restoreDeleted(id, tx = null) {
-        return super.update(
+        return this.withTrashed().update(
             {
                 where: { id, deletedAt: { not: null } },
                 data: { deletedAt: null },

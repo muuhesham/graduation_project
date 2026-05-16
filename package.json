@@ -14,7 +14,7 @@
         "queue:mail-worker": "node src/workers/mailWorker.js",
         "queue:sms-worker": "node src/workers/smsWorker.js",
         "queue:embedding-worker": "node src/workers/embeddingWorker.js",
-        "stripe:listen": "stripe listen --forward-to localhost:8000/api/v1/payments/webhook",
+        "stripe:listen": "stripe listen --forward-to localhost:3000/api/v1/payments/webhook",
         "stripe:trigger": "stripe trigger payment_intent.succeeded"
     },
     "keywords": [
@@ -82,7 +82,6 @@
         "nodemailer": "^7.0.9",
         "openai": "^6.35.0",
         "pg": "^8.20.0",
-        "project-root": "file:../..",
         "qrcode": "^1.5.4",
         "rate-limit-redis": "^4.2.3",
         "rate-limiter-flexible": "^11.0.1",
@@ -104,5 +103,8 @@
         "prisma": "^6.18.0",
         "supertest": "^7.2.2",
         "twillio-sms-mock": "^1.0.0"
+    },
+    "prisma": {
+        "seed": "node prisma/seed.js"
     }
 }

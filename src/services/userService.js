@@ -91,16 +91,16 @@ const userService = {
     /**
      * @param {string} userId
      * @param {UpgradeToOrganizerDTO} organizerData
-     * @param {any} [file]
+     * @param {any} [files]
      * @returns {Promise<Organizer>}
      */
-    async upgradeToOrganizer(userId, organizerData, file) {
+    async upgradeToOrganizer(userId, organizerData, files) {
         const user = await userRepository.findById(userId, { include: { Organizer: true } });
         userPolicy.canUpgrade(user);
 
         return userRepository.runInTransaction(async (tx) => {
             await this.updateRole(userId, userRoles.ORGANIZER, tx);
-            return organizerService.createRecord(userId, organizerData, file, tx);
+            return organizerService.createRecord(userId, organizerData, files, tx);
         });
     },
 
@@ -268,6 +268,17 @@ const userService = {
                 phone: number,
             },
         });
+    },
+
+    /**
+     * @returns {Promise<string[]>}
+     */
+    async getAllUserEmails() {
+        const users = await userRepository.findMany({
+            where: { deletedAt: null },
+            select: { email: true },
+        });
+        return users.map((u) => u.email);
     },
 
     /**

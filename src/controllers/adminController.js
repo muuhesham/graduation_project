@@ -614,6 +614,21 @@ class AdminController {
         }
     );
 
+    broadcastNewsletter = asyncWrapper(
+        /**
+         * @param {AuthRequest & { body: { subject: string, content: string } }} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const adminId = req.user.id;
+            const { subject, content } = req.body;
+
+            await this.#adminService.broadcastNewsletter(adminId, { subject, content });
+
+            return sendSuccess(res, { message: 'Newsletter broadcasted successfully' });
+        }
+    );
+
     listCategories = asyncWrapper(
         /**
          * @param {AuthRequest} req

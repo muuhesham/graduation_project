@@ -1,9 +1,3 @@
--- CreateEnum
-CREATE TYPE "EventStatus" AS ENUM ('active', 'cancelled');
-
--- AlterTable
-ALTER TABLE "Event" ADD COLUMN     "status" "EventStatus" NOT NULL DEFAULT 'active';
-
 -- CreateTable
 CREATE TABLE "event_search_documents" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),

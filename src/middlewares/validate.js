@@ -90,7 +90,9 @@ function validate(req, res, next) {
     }
 
     const errorsByField = {};
-    for (const err of result.array()) {
+    const validationErrors = result.array();
+    console.error('Validation failed:', JSON.stringify(validationErrors, null, 2));
+    for (const err of validationErrors) {
         const field = err.param || err.path || 'general';
         if (!errorsByField[field]) {
             const normalized = normalizeValidationMessage(err.msg);

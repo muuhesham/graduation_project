@@ -61,12 +61,14 @@ class OnboardingController {
     updateBasic = async (req, res) => {
         try {
             const { id } = req.user;
-            const birthDate = new Date(sanitize(req.body.birthDate));
-            const gender = sanitize(req.body.gender);
+            const birthDateStr = req.body.birthDate;
+            const gender = req.body.gender;
 
-            if (!birthDate || !gender) {
+            if (!birthDateStr || !gender) {
                 return sendFail(res, { message: 'Missing required fields' }, 400);
             }
+
+            const birthDate = new Date(birthDateStr);
 
             const user = await prisma.user.findUnique({
                 where: { id },
@@ -107,7 +109,7 @@ class OnboardingController {
     updatePreferences = async (req, res) => {
         try {
             const { id } = req.user;
-            const preferences = req.body.preferences?.map((preference) => sanitize(preference));
+            const preferences = req.body.preferences;
 
             const user = await prisma.user.findUnique({
                 where: { id },
@@ -125,12 +127,22 @@ class OnboardingController {
             }
 
             const categories = await prisma.category.findMany({
-                where: { name: { in: preferences } },
+                where: {
+                    OR: [
+                        { name: { in: preferences.filter(p => typeof p === 'string') } },
+                        { id: { in: preferences.filter(p => typeof p === 'number' || !isNaN(parseInt(p))).map(p => parseInt(p)) } }
+                    ]
+                },
             });
 
             if (categories.length === 0) {
                 return sendFail(res, { message: 'No valid categories found' }, 400);
             }
+
+            // Remove existing preferences to avoid duplicates and allow updating
+            await prisma.attendeeFavoriteCategory.deleteMany({
+                where: { attendeeId: id }
+            });
 
             await Promise.all(
                 categories.map((category) =>
@@ -153,11 +165,13 @@ class OnboardingController {
     updateLocation = async (req, res) => {
         try {
             const { id } = req.user;
-            const governorateName = sanitize(req.body.governorate).trim();
+            const governorateInput = req.body.governorate;
 
-            if (!governorateName) {
+            if (!governorateInput) {
                 return sendFail(res, { message: 'Governorate is required' }, 400);
             }
+
+            const governorateName = String(governorateInput).trim().toUpperCase().replace(/\s+/g, '_');
 
             const user = await prisma.user.findUnique({
                 where: { id },
@@ -173,12 +187,11 @@ class OnboardingController {
                 where: { name: governorateName },
             });
 
-            const governorateId = governorate?.id;
-
             if (!governorate) {
-
                 return sendFail(res, { message: 'Governorate not found' }, 404);
             }
+
+            const governorateId = governorate.id;
 
             const updatedUser = await prisma.user.update({
                 where: { id },

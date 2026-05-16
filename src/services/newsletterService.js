@@ -4,6 +4,7 @@ import { newsletterRepository } from './../repositories/index.js';
 import jwt from 'jsonwebtoken';
 import { NEWSLETTER_JWT_KEY, NEWSLETTER_JWT_EXPIRY, APP_URL } from '../config/env.js';
 import mailService from './mailService.js';
+import userService from './userService.js';
 import ConflictError from '../errors/ConflictError.js';
 import NewsletterErrors from '../constants/messages/errors/newsletter.js';
 
@@ -15,21 +16,27 @@ import NewsletterErrors from '../constants/messages/errors/newsletter.js';
  * @typedef {import('@prisma/client').Language} Language
  * @typedef {import('jsonwebtoken').Secret} Secret
  * @typedef {import('./../repositories/NewsletterRepository').default} NewsletterRepository
+ * @typedef {typeof import('./userService').default} UserService
  */
 
 class NewsletterService {
     /** @type {NewsletterRepository} */
     #newsletterRepository;
 
+    /** @type {UserService} */
+    #userService;
+
     /** @type {typeof mailService} */
     #mailService;
 
     /**
      * @param {NewsletterRepository} newsletterRepository
+     * @param {UserService} userService
      * @param {typeof mailService} mailService
      */
-    constructor(newsletterRepository, mailService) {
+    constructor(newsletterRepository, userService, mailService) {
         this.#newsletterRepository = newsletterRepository;
+        this.#userService = userService;
         this.#mailService = mailService;
     }
 
@@ -48,9 +55,14 @@ class NewsletterService {
         }
 
         const token = this.signSubscriptionToken(email, language);
-        const confirmationUrl = `${APP_URL}/api/v1/newsletter/confirm/${token}`;
+        // Point link to frontend confirmation page instead of backend API
+        const confirmationUrl = `${FRONT_URL}/${language}/newsletter/confirmation?token=${token}`;
 
-        await this.#mailService.sendNewsletterConfirmationJob(confirmationUrl, email, language);
+        try {
+            await this.#mailService.sendNewsletterConfirmationJob(confirmationUrl, email, language);
+        } catch (error) {
+            console.error('[NewsletterService] Failed to send confirmation email:', error);
+        }
     }
 
     /**
@@ -68,7 +80,10 @@ class NewsletterService {
 
         const existing = await this.#newsletterRepository.findByEmail(email);
         if (existing) {
-            throw new ConflictError(undefined, undefined, [NewsletterErrors.ALREADY_SUBSCRIBED]);
+            throw new ConflictError(
+                NewsletterErrors.ALREADY_SUBSCRIBED.message,
+                NewsletterErrors.ALREADY_SUBSCRIBED.code
+            );
         }
 
         const subscriber = await this.#newsletterRepository.create({
@@ -104,7 +119,8 @@ class NewsletterService {
         }
 
         const secret = /** @type {Secret} */ (NEWSLETTER_JWT_KEY);
-        const expiresIn = /** @type {any} */ (NEWSLETTER_JWT_EXPIRY);
+        // Ensure expiresIn is either a string (e.g. '1h') or a positive number
+        const expiresIn = NEWSLETTER_JWT_EXPIRY || '1h';
 
         return jwt.sign({ email, language }, secret, {
             expiresIn,
@@ -118,14 +134,25 @@ class NewsletterService {
      * @returns {Promise<void>}
      */
     async broadcast(payload) {
-        const subscribers = await this.#newsletterRepository.findMany();
+        const [subscribers, userEmails] = await Promise.all([
+            this.#newsletterRepository.findMany({ select: { email: true } }),
+            this.#userService.getAllUserEmails(),
+        ]);
 
-        for (const subscriber of subscribers) {
-            await this.#mailService.sendRawMail({
-                to: subscriber.email,
-                subject: payload.subject,
-                body: payload.content,
-            });
+        const recipientEmails = new Set();
+        subscribers.forEach((s) => recipientEmails.add(s.email));
+        userEmails.forEach((email) => recipientEmails.add(email));
+
+        for (const email of recipientEmails) {
+            try {
+                await this.#mailService.sendRawMail({
+                    to: email,
+                    subject: payload.subject,
+                    body: payload.content,
+                });
+            } catch (error) {
+                console.error(`[NewsletterService] Failed to send broadcast to ${email}:`, error);
+            }
         }
     }
 
@@ -138,5 +165,5 @@ class NewsletterService {
     }
 }
 
-export default new NewsletterService(newsletterRepository, mailService);
+export default new NewsletterService(newsletterRepository, userService, mailService);
 export { NewsletterService };

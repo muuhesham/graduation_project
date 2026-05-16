@@ -17,7 +17,7 @@ const accessLogStream = fs.createWriteStream(
 );
 
 morgan.token('user-id', (req) => {
-    return req.user ? req.user.id : 'guest';
+    return req.user?.id || 'guest';
 });
 
 morgan.token('timestamp', () => {
@@ -27,10 +27,10 @@ morgan.token('timestamp', () => {
 const fileFormat = ':timestamp | :method :url | Status: :status | :response-time ms | IP: :remote-addr | User: :user-id | Agent: :user-agent';
 
 const consoleFormat = (tokens, req, res) => {
-    const status = Number(tokens.status(req, res));
+    const status = Number(tokens.status(req, res)) || 0;
     const method = tokens.method(req, res);
     const url = tokens.url(req, res);
-    const responseTime = tokens['response-time'](req, res);
+    const responseTime = tokens['response-time'](req, res) || '0';
     const userId = tokens['user-id'](req, res);
     const timestamp = tokens.timestamp(req, res);
     const ip = tokens['remote-addr'](req, res);
@@ -56,11 +56,12 @@ const fileLogger = morgan(fileFormat, {
 const consoleLogger = morgan(consoleFormat);
 
 const activityLogger = (req, res, next) => {
-    fileLogger(req, res, () => {});
-    
-    consoleLogger(req, res, () => {});
-    
-    next();
+    // We want both loggers to run on request completion
+    // Morgan handles this if we call it as a middleware
+    fileLogger(req, res, (err) => {
+        if (err) return next(err);
+        consoleLogger(req, res, next);
+    });
 };
 
 export { activityLogger };

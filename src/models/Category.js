@@ -35,6 +35,9 @@ class Category extends BaseModel {
 
         let path = categoryData.imagePath;
         if (!path.startsWith('/') && !path.startsWith('http')) {
+            if (!path.startsWith('categories/')) {
+                path = `categories/${path}`;
+            }
             path = `/uploads/${path}`;
         }
 

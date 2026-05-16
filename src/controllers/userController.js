@@ -23,16 +23,14 @@ const userController = {
      */
     upgradeToOrganizer: asyncWrapper(
         /**
-         * @param {UpgradeToOrganizerWithFileRequest} req
+         * @param {any} req
          * @param {Response} res
          * @returns {Promise<Response>}
          */
         async (req, res) => {
             const userId = req.user.id;
 
-            const organizer = await userService.upgradeToOrganizer(userId, req.body, req.file);
-
-            await organizerService.requestEmailOtp(userId);
+            const organizer = await userService.upgradeToOrganizer(userId, req.body, req.files);
 
             return sendSuccess(
                 res,
@@ -41,8 +39,7 @@ const userController = {
                 },
                 201
             );
-        }
-    ),
+        }    ),
 
     resendOrganizerEmailOtp: asyncWrapper(
         /**
@@ -56,6 +53,25 @@ const userController = {
             return sendSuccess(
                 res,
                 OrganizerSuccessMessages.ORGANIZER_CONTACT_EMAIL_VERIFICATION_SENT
+            );
+        }
+    ),
+
+    getOrganizerStatus: asyncWrapper(
+        /**
+         * @param {AuthenticatedRequestNoBody} req
+         * @param {Response} res
+         */
+        async (req, res) => {
+            const userId = req.user.id;
+            const organizer = await organizerService.getByUserId(userId);
+
+            return sendSuccess(
+                res,
+                {
+                    organizer: OrganizerResource.make(organizer),
+                },
+                200
             );
         }
     ),

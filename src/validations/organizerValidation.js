@@ -344,7 +344,7 @@ const organizerValidation = {
 
         body('banner').custom(async (value, { req }) => {
             if (!req.file) {
-                throw new Error('Banner image is required');
+                return true;
             }
 
             const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];

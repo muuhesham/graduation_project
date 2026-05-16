@@ -1,8 +1,15 @@
 import { faker } from '@faker-js/faker';
+
+const categories = [
+    'Technology', 'Music', 'Sports', 'Education', 'Business', 
+    'Art & Culture', 'Food & Drink', 'Networking', 'Health', 'Travel'
+];
+
 function categoryFactory() {
     return {
-        name: `${faker.commerce.department()}-${faker.string.alphanumeric(3)}`,
-        imagePath: faker.image.url(),
+        name: faker.helpers.arrayElement(categories),
+        imagePath: faker.image.url({ category: 'nature' }),
     }
 }
+
 export default categoryFactory;

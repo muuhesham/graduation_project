@@ -125,15 +125,16 @@ class OrganizerPolicy {
         if (!organizer) {
             throw new NotFoundError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOUND]);
         }
+
+        if (!organizer.isContactEmailVerified) {
+            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED]);
+        }
+
         if (organizer.verificationStatus !== organizerVerificationStatus.APPROVED) {
             throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_APPROVED]);
         }
         if (organizer.status !== organizerStatus.ACTIVE) {
             throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_ACCOUNT_NOT_ACTIVE]);
-        }
-
-        if (!organizer.isContactEmailVerified) {
-            throw new ForbiddenError(undefined, undefined, [OrganizerErrors.ORGANIZER_CONTACT_EMAIL_NOT_VERIFIED]);
         }
     }
 }

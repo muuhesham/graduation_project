@@ -133,6 +133,16 @@ class AdminService {
     }
 
     /**
+     * @param {string} email
+     */
+    async markApproved(email) {
+        return this.#adminRepository.update({
+            where: { email },
+            data: { isApproved: true },
+        });
+    }
+
+    /**
      * @param {AdminRegisterDTO} dto
      */
     async register({ name, email, password }) {
@@ -230,6 +240,7 @@ class AdminService {
                 name: admin.name,
                 email: admin.email,
                 role: 'admin',
+                isApproved: admin.isApproved,
             },
             JWT_KEY,
             { expiresIn }
@@ -362,25 +373,7 @@ class AdminService {
             reviewedBy: id,
         });
 
-        await this.#sendApprovedMail(updatedOrganizer);
-
         return updatedOrganizer;
-    }
-
-    /**
-     * @param {Organizer} organizer
-     */
-    async #sendApprovedMail(organizer) {
-        return this.#mailService.sendQueued({
-            to: organizer.contactEmail,
-            subject: 'Your Organizer Profile has been Approved!',
-            templateName: 'organizerApprovedMail',
-            variables: {
-                name: organizer.name || 'Organizer',
-                dashboardUrl: `${FRONT_URL}/organizer/dashboard`,
-                plainText: `Congratulations! Your organizer profile has been approved. You can now access your dashboard at: ${FRONT_URL}/organizer/dashboard`,
-            },
-        });
     }
 
     /**
@@ -538,58 +531,44 @@ class AdminService {
     /**
      * @param {number} id
      * @param {AdminListEventsOptionsDTO} [options]
-     async listEvents(id, options = { page: 1, limit: 20 }) {
-         await this.#assertApprovedAdmin(id);
+     */
+    async listEvents(id, options = { page: 1, limit: 20 }) {
+        await this.#assertApprovedAdmin(id);
 
-         const { withTrashed, status, ...rest } = options;
-         const where = {};
+        const { withTrashed, status, ...rest } = options;
+        const where = {};
 
-         if (status) {
-             where.status = status;
-         }
+        if (status) {
+            where.status = status;
+        }
 
-         if (withTrashed) {
-             // If listing deleted events, exclude cancelled ones as they cannot be restored
-             where.deletedAt = { not: null };
-             where.status = { not: 'cancelled' };
-         }
+        if (withTrashed) {
+            // If listing deleted events, exclude cancelled ones as they cannot be restored
+            where.deletedAt = { not: null };
+            where.status = { not: 'cancelled' };
+        }
 
-         return this.#eventService.list({
-             ...rest,
-             where: {
-                 ...(rest.where || {}),
-                 ...where,
-             },
-             include: {
-                 ...(options.include || {}),
-                 category: true,
-                 eventTags: {
-                     include: {
-                         tag: {
-                             select: {
-                                 name: true,
-                             },
-                         },
-                     },
-                 },
-             },
-             withTrashed,
-         });
-     }
-                        sold: true,
-                        orderItems: {
+        return this.#eventService.list({
+            ...rest,
+            where: {
+                ...(rest.where || {}),
+                ...where,
+            },
+            withTrashed,
+            include: {
+                ...(options.include || {}),
+                category: true,
+                eventTags: {
+                    include: {
+                        tag: {
                             select: {
-                                order: {
-                                    select: {
-                                        id: true,
-                                        status: true,
-                                    },
-                                },
+                                name: true,
                             },
                         },
                     },
                 },
             },
+            withTrashed,
         });
     }
 
@@ -905,6 +884,17 @@ class AdminService {
             pendingPayoutAmount: pendingTotals.grossAmount,
             pendingOrganizerCount: pendingTotals.organizers,
         };
+    }
+
+    /**
+     * @param {number} adminId
+     * @param {object} payload
+     * @param {string} payload.subject
+     * @param {string} payload.content
+     */
+    async broadcastNewsletter(adminId, payload) {
+        await this.#assertApprovedAdmin(adminId);
+        return this.#newsletterService.broadcast(payload);
     }
 
     /**

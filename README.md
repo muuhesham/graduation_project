@@ -75,62 +75,45 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Getting Started
 
-### Prerequisites
+### 1. Docker Setup (Recommended)
 
-- Node.js (v18+)
-- PostgreSQL (v14+)
-- Redis 7+
-
-### 1. Clone the repository
+This is the fastest way to get the backend, database, and all workers running with one command.
 
 ```bash
-git clone https://github.com/muuhesham/graduation_project.git
-cd graduation_project
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Configure environment variables
-
-Create a local environment file from the provided template:
-
-```bash
-cp .env.example .env
-```
-
-*Update `.env` with your actual database, Redis, and external service credentials.*
-
-### 4. Guided Setup
-
-Alternatively, use the built-in setup script to automate folder creation and basic configuration:
-
-```bash
-npm run setup
-```
-
-### 5. Database Initialization
-
-```bash
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
-```
-
-### 6. Start the server
-
-```bash
-npm run dev
+# Navigate to the root directory
+cd ../../
+docker compose up --build backend db redis
 ```
 
 ---
 
-## 🐳 Docker Setup
+### 2. Manual Setup (Development)
+
+If you need to run the backend standalone for development:
+
+1. **Prerequisites:** Ensure you have PostgreSQL 16 and Redis 7 running locally.
+2. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Configure Environment:**
+   ```bash
+   cp .env.example .env  # Update your local DB_URL and REDIS_URL
+   ```
+4. **Initialization:**
+   ```bash
+   npm run setup         # Runs migrations, generates Prisma, and seeds DB
+   ```
+5. **Start Server:**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 🐳 Docker Containerization (Service Details)
 
 Docker is the recommended way to run the full stack with consistent configuration.
 

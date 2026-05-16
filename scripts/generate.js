@@ -33,7 +33,7 @@ console.log(`
 ${colors.bright}Generating Prisma Client...${colors.reset}
 `);
 
-if (!runCommand('npx prisma generate', 'Generating Prisma Client')) {
+if (!runCommand('./node_modules/.bin/prisma generate', 'Generating Prisma Client')) {
     log.error('Prisma Client generation failed. Make sure prisma is installed.');
     process.exit(1);
 }

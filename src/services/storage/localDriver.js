@@ -37,7 +37,9 @@ const localDriver = {
         if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
             return filePath;
         }
-        return `${APP_URL}${filePath}`;
+        const baseUrl = APP_URL.endsWith('/') ? APP_URL.slice(0, -1) : APP_URL;
+        const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+        return `${baseUrl}${normalizedPath}`;
     },
 };
 

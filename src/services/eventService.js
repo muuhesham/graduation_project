@@ -16,6 +16,7 @@ import AppError from '../errors/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
 import {
     eventRepository,
+    orderRepository,
     tagRepository,
     eventTagRepository,
     eventSessionRepository,
@@ -872,7 +873,12 @@ const eventService = {
         return events.map((event) => {
             const { bannerDisk, bannerPath } = event;
 
-            const absUrl = bannerPath ? fileService.getAbsUrl(bannerPath, bannerDisk) : null;
+            let normalizedPath = bannerPath;
+            if (bannerPath && !bannerPath.startsWith('/') && !bannerPath.startsWith('http')) {
+                normalizedPath = `/uploads/${bannerPath}`;
+            }
+
+            const absUrl = normalizedPath ? fileService.getAbsUrl(normalizedPath, bannerDisk) : null;
 
             const { bannerDisk: _, bannerPath: __, updatedAt: ___, ...eventData } = event;
 
@@ -936,10 +942,17 @@ const eventService = {
                 data: { message: 'Event not found' },
             };
         }
+
+        let isFollowing = false;
+        if (userId && event.organizer?.id) {
+            isFollowing = await organizerFollowerRepository.isFollowing(userId, event.organizer.id);
+        }
+
         const { eventRules, eventTags, ...eventData } = event;
 
         return {
             ...eventData,
+            isFollowing,
             rules: eventRules?.map((r) => r.rule) || [],
             tags: eventTags?.map((t) => t.tag.name) || [],
         };
@@ -1140,6 +1153,11 @@ const eventService = {
                     throw new NotFoundError('Tier not found');
                 }
 
+                const matchedTicketType = event.ticketTypes.find((tier) => tier.name === tierName);
+                if (!matchedTicketType) {
+                    throw new NotFoundError(`Ticket type "${tierName}" not found for this event`);
+                }
+
                 const reservationKey = `reservation:event:${id}:seat:${key}`;
                 const reservation = await redis.get(reservationKey);
                 if (reservation) {
@@ -1174,9 +1192,7 @@ const eventService = {
                     seatIndex: number,
                     tierNumber: Number(tierId),
                     price,
-                    ticketTypeId: Number(
-                        event.ticketTypes.find((tier) => tier.name === tierName)?.id
-                    ),
+                    ticketTypeId: Number(matchedTicketType.id),
                     name: tierName,
                     quantity: 1,
                 });
@@ -1203,21 +1219,23 @@ const eventService = {
                 throw new ConflictError(`Invalid quantity for ${reqTicket.name}`);
             }
 
-            totalPrice += parseFloat(dbTicket.price) * reqTicket.quantity;
+            const price = event.type === 'free' ? 0 : parseFloat(dbTicket.price);
+
+            totalPrice += price * reqTicket.quantity;
             itemsCount += reqTicket.quantity;
 
             lineItems.push({
                 price_data: {
                     currency: 'usd',
                     product_data: { name: dbTicket.name },
-                    unit_amount: Math.round(parseFloat(dbTicket.price) * 100),
+                    unit_amount: Math.round(price * 100),
                 },
                 quantity: reqTicket.quantity,
             });
 
             verifiedItems.push({
                 ticketTypeId: dbTicket.id,
-                price: dbTicket.price,
+                price: price,
                 name: dbTicket.name,
                 quantity: reqTicket.quantity,
             });
@@ -1239,7 +1257,7 @@ const eventService = {
                     userId,
                     totalPrice,
                     itemsCount,
-                    parseInt(totalPrice) === 0 ? OrderStatus.COMPLETED : OrderStatus.PENDING,
+                    totalPrice <= 0 ? OrderStatus.COMPLETED : OrderStatus.PENDING,
                     {
                         selections: {
                             id: true,
@@ -1249,7 +1267,7 @@ const eventService = {
                             userId: true,
                         },
                         relations: {},
-                        filter: {},
+                        filters: {},
                     },
                     tx
                 );
@@ -1267,13 +1285,6 @@ const eventService = {
                         orderItems,
                         verifiedItems,
                         tx
-                    );
-                    await notificationService.notifyPurchaseSuccess(
-                        userId,
-                        '#',
-                        order.id,
-                        'free event',
-                        itemsCount
                     );
                 } else {
                     session = await paymentService.createCheckoutSession(
@@ -1295,6 +1306,15 @@ const eventService = {
                 timeout: 15000, // 15 seconds
             }
         );
+
+        // Notify OUTSIDE the transaction for free tickets
+        if (totalPrice === 0) {
+            orderService.notify('completed', order, {
+                itemsCount,
+                eventTitle: event.title,
+                eventId: event.id,
+            });
+        }
 
         return {
             status: 'success',
@@ -1462,13 +1482,26 @@ const eventService = {
                 where: { name: 'CAIRO' },
                 select: { id: true },
             });
-            governorateId = cairo.id;
+            governorateId = cairo?.id;
         }
 
-        const { otherGovsIdsSorted } = await prismaClient.governorate.findUnique({
+        if (!governorateId) {
+            const firstGov = await prismaClient.governorate.findFirst({
+                select: { id: true },
+            });
+            governorateId = firstGov?.id;
+        }
+
+        if (!governorateId) {
+            return [];
+        }
+
+        const gov = await prismaClient.governorate.findUnique({
             where: { id: governorateId },
             select: { otherGovsIdsSorted: true },
         });
+
+        const otherGovsIdsSorted = gov?.otherGovsIdsSorted || [governorateId];
 
         const offset = (page - 1) * limit;
 
