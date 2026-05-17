@@ -40,18 +40,23 @@ const chatbotService = {
             return bestMatch.a;
         }
 
-        const systemPrompt = await chatbotService.generateContext({ userId });
-        const response = await openai.chat.completions.create({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: message },
-            ],
-            max_tokens: 300,
-            temperature: 0.1,
-        });
+        try {
+            const systemPrompt = await chatbotService.generateContext({ userId });
+            const response = await openai.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: message },
+                ],
+                max_tokens: 300,
+                temperature: 0.1,
+            });
 
-        return response.choices[0].message.content;
+            return response.choices[0].message.content;
+        } catch (error) {
+            console.error('[ChatbotService] AI Error:', error.message);
+            throw error;
+        }
     },
 
     async generateContext({ userId }) {
