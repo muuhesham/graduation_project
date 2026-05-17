@@ -28,10 +28,21 @@ export default class EventSessionRepository extends BaseRepository {
     /**
      * @param {number} eventId
      */
-    cancelSessions(eventId) {
+    cancelSessions(eventId, tx = null) {
         return super.updateMany({
             where: { eventId },
             data: { status: SessionStatus.CANCELLED },
-        });
+        }, tx);
+    }
+
+    /**
+     * @param {number} eventId
+     * @param {any} [tx]
+     */
+    restoreSessions(eventId, tx = null) {
+        return super.updateMany({
+            where: { eventId },
+            data: { status: SessionStatus.ACTIVE },
+        }, tx);
     }
 }

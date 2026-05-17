@@ -543,9 +543,8 @@ class AdminService {
         }
 
         if (withTrashed) {
-            // If listing deleted events, exclude cancelled ones as they cannot be restored
+            // If listing deleted events, include both soft-deleted and cancelled ones
             where.deletedAt = { not: null };
-            where.status = { not: 'cancelled' };
         }
 
         return this.#eventService.list({

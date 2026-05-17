@@ -517,7 +517,16 @@ const eventService = {
         }
 
         if (event.status === EventStatus.CANCELLED) {
-            throw new ConflictError(undefined, undefined, [EventErrors.EVENT_RESTORE_CANCELLED]);
+            return eventRepository.runInTransaction(async (tx) => {
+                await eventSessionRepository.restoreSessions(id, tx);
+                return eventRepository.update({
+                    where: { id },
+                    data: { 
+                        status: EventStatus.ACTIVE,
+                        deletedAt: null 
+                    }
+                }, tx);
+            });
         }
 
         return eventRepository.restoreDeleted(id);
@@ -895,6 +904,7 @@ const eventService = {
 
     async show(id, userId) {
         const relations = {
+            organizer: true,
             venue: {
                 omit: venueService.DEFAULT_EXCLUDE_FIELDS,
             },
