@@ -62,9 +62,9 @@ export function initSocket(server) {
                     timeStamp: new Date().toISOString(),
                 });
             } catch (err) {
-                console.error('Chatbot Error:', err);
+                console.error('[Socket] Chatbot Event Error:', err);
                 socket.emit('chatbot-reply', {
-                    text: 'sorry, there was an error processing your request. Please try again later.',
+                    message: 'sorry, there was an error processing your request. Please try again later.',
                 });
             } finally {
                 socket.emit('chatbot-reply', { isTyping: false });
