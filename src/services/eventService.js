@@ -25,6 +25,7 @@ import {
 import EventErrors from './../constants/messages/errors/event.js';
 import { addEmbeddingJob, EmbeddingJobType } from '../queues/embeddingQueue.js';
 import notificationService from './notificationService.js';
+import { organizerFollowerRepository } from './../repositories/index.js';
 
 /**
  * @typedef {import('@prisma/client').Prisma} PrismaClient
