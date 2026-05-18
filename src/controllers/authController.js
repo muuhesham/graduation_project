@@ -56,6 +56,15 @@ class GoogleAuthController extends AuthThirdPartyService {
                 userInfo.data.id
             );
 
+
+            const accessToken = result.data.accessToken?.token;
+            const refreshToken = result.data.refreshToken;
+            const expiresIn = result.data.accessToken?.expiresIn;
+
+            const redirectUrl = ` ${GOOGLE_REDIRECT_URL}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+
+            res.redirect(redirectUrl);
+
             const result = await this.generateJwt(user);
 
             return sendSuccess(res, result);

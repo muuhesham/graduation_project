@@ -7,6 +7,7 @@ import mailService from './mailService.js';
 import userService from './userService.js';
 import ConflictError from '../errors/ConflictError.js';
 import NewsletterErrors from '../constants/messages/errors/newsletter.js';
+import { FRONT_URL } from '../config/env.js';
 
 /**
  * @typedef {import('./../types/models').NewsletterSubscriber} NewsletterSubscriber
