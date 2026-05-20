@@ -70,6 +70,7 @@ const chatbotService = {
                     select: {
                         name: true,
                         email: true,
+                        gender: true,
                         wallet: true,
                         location: true,
                         languagePreference: true,

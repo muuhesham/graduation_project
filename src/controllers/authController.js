@@ -9,6 +9,8 @@ import {
     HOSTNAME,
     PORT,
     GOOGLE_REDIRECT_URL,
+    FRONT_URL,
+    APP_URL,
 } from '../config/env.js';
 import { google } from 'googleapis';
 import { AuthThirdPartyService } from '../services/thirdPartyAuthService.js';
@@ -19,7 +21,7 @@ class GoogleAuthController extends AuthThirdPartyService {
         this.oauth2Client = new google.auth.OAuth2(
             CLIENT_ID,
             CLIENT_SECRET,
-            'http://' + 'localhost' + ':' + (PORT || 3000) + CALLBACK_URL
+            APP_URL + CALLBACK_URL
         );
     }
 
@@ -60,13 +62,15 @@ class GoogleAuthController extends AuthThirdPartyService {
             const accessToken = result.data.accessToken?.token;
             const refreshToken = result.data.refreshToken;
             const expiresIn = result.data.accessToken?.expiresIn;
-            const redirectUrl = ` ${GOOGLE_REDIRECT_URL}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+            
+            const baseUrl = GOOGLE_REDIRECT_URL || `${FRONT_URL}/en/google/callback`;
+            const redirectUrl = `${baseUrl}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
             res.redirect(redirectUrl);
 
             return sendSuccess(res, result);
         } catch (error) {
-            console.error(error);
+            console.error('Google Auth Callback Error:', error);
             return sendError(res, 'Google OAuth2 authentication failed', 'OAUTH2_ERROR', null, 500);
         }
     };
@@ -84,7 +88,6 @@ const authController = {
 
             return sendSuccess(res, result.data, 201);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Registration failed', 'REGISTRATION_ERROR', null, 500);
         }
     },
@@ -100,7 +103,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Login failed', 'LOGIN_ERROR', null, 500);
         }
     },
@@ -116,7 +118,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Token refresh failed', 'REFRESH_ERROR', null, 500);
         }
     },
@@ -135,7 +136,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Logout failed', 'LOGOUT_ERROR', null, 500);
         }
     },
@@ -147,7 +147,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Password reset request failed', 'RESET_ERROR', null, 500);
         }
     },
@@ -163,7 +162,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'Password reset failed', 'RESET_ERROR', null, 500);
         }
     },
@@ -179,7 +177,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'OTP sending failed', 'OTP_ERROR', null, 500);
         }
     },
@@ -197,7 +194,6 @@ const authController = {
 
             return sendSuccess(res, result.data);
         } catch (error) {
-            console.error(error);
             return sendError(res, 'OTP verification failed', 'OTP_ERROR', null, 500);
         }
     },

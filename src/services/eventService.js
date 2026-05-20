@@ -14,6 +14,7 @@ import ticketTypeService from './ticketTypeService.js';
 import { redis } from '../config/redis.js';
 import AppError from '../errors/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
+import { APP_CURRENCY } from '../config/env.js';
 import {
     eventRepository,
     orderRepository,
@@ -1188,7 +1189,7 @@ const eventService = {
 
                 lineItems.push({
                     price_data: {
-                        currency: 'usd',
+                        currency: APP_CURRENCY.toLowerCase(),
                         product_data: {
                             name: `Row ${String.fromCharCode(65 + row)}, Seat ${number + 1}`,
                         },
@@ -1237,7 +1238,7 @@ const eventService = {
 
             lineItems.push({
                 price_data: {
-                    currency: 'usd',
+                    currency: APP_CURRENCY.toLowerCase(),
                     product_data: { name: dbTicket.name },
                     unit_amount: Math.round(price * 100),
                 },

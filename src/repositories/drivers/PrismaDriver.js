@@ -163,12 +163,13 @@ export default class PrismaDriver extends IDriver {
      */
     async findMany(resource, query, tx = null) {
         const db = tx || this.client;
-        return this._model(db, resource).findMany(this._toFindArgs(query));
+        const args = this._toFindArgs(query);
+        return this._model(db, resource).findMany(args);
     }
 
     /**
      * @param {ResourceName} resource
-     * @param {DriverRecord} args
+     * @param {Record<string, any>} args
      * @param {PrismaClient | TransactionClient | null} [tx]
      */
     async aggregate(resource, args, tx = null) {
@@ -183,7 +184,8 @@ export default class PrismaDriver extends IDriver {
      */
     async count(resource, query = {}, tx = null) {
         const db = tx || this.client;
-        return this._model(db, resource).count({ where: query.where || {} });
+        const where = query.where || {};
+        return this._model(db, resource).count({ where });
     }
 
     /**

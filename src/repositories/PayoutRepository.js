@@ -24,4 +24,14 @@ export default class PayoutRepository extends BaseRepository {
     constructor(driver) {
         super(driver, Payout);
     }
+
+    /**
+     * @param {string | number} id
+     * @param {object} [options]
+     * @param {TransactionClient} [tx]
+     * @returns {Promise<PayoutType | null>}
+     */
+    async findById(id, options = {}, tx = null) {
+        return this.findOne({ ...options, where: { id } }, tx);
+    }
 }

@@ -1,5 +1,10 @@
 import { prisma as prismaClient } from '../config/db.js';
-import AppError from '../errors/AppError.js';
+import OrderStatus from '../constants/enums/orderStatus.js';
+import EventErrors from '../constants/messages/errors/event.js';
+import ReviewErrors from '../constants/messages/errors/review.js';
+import ConflictError from '../errors/ConflictError.js';
+import ForbiddenError from '../errors/ForbiddenError.js';
+import NotFoundError from '../errors/NotFoundError.js';
 
 const eventReviewService = {
     async create({ userId, eventId, rating, comment  }) {
@@ -11,12 +16,13 @@ const eventReviewService = {
         });
 
         if(!exist){
-            throw new AppError(`Event not found`, 404);
+            throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
         }
 
         if(exist.organizer.userId === userId){
-            throw new AppError(`You can not review your own event`, 400);
+            throw new ConflictError(undefined, undefined, [ReviewErrors.CANNOT_REVIEW_OWN_EVENT]);
         }
+
         const review = await prismaClient.eventReview.create({
             data: {
                 userId,
@@ -43,11 +49,11 @@ const eventReviewService = {
         });
 
         if (!existingReview) {
-            throw new AppError('Review not found', 404);
+            throw new NotFoundError(undefined, undefined, [ReviewErrors.REVIEW_NOT_FOUND]);
         }
 
         if (existingReview.userId !== userId) {
-            throw new AppError('You can only update your own reviews', 401);
+            throw new ForbiddenError(undefined, undefined, [ReviewErrors.UNAUTHORIZED_REVIEW_ACTION]);
         }
 
         const updatedReview = await prismaClient.eventReview.update({
@@ -77,11 +83,11 @@ const eventReviewService = {
         });
 
         if (!existingReview) {
-            throw new AppError('Review not found', 400);
+            throw new NotFoundError(undefined, undefined, [ReviewErrors.REVIEW_NOT_FOUND]);
         }
 
         if (existingReview.userId !== userId) {
-            throw new AppError('You can only delete your own reviews', 401);
+            throw new ForbiddenError(undefined, undefined, [ReviewErrors.UNAUTHORIZED_REVIEW_ACTION]);
         }
 
         await prismaClient.eventReview.delete({
@@ -124,28 +130,36 @@ const eventReviewService = {
     },
 
     async getUserEventReview({userId, eventId}) {
-        const review = await prismaClient.eventReview.findUnique({
-            where: {
-                userId_eventId: {
-                    userId,
-                    eventId
-                },
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
+        const [review, event] = await Promise.all([
+            prismaClient.eventReview.findUnique({
+                where: {
+                    userId_eventId: {
+                        userId,
+                        eventId
                     },
                 },
-            },
-        });
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                },
+            }),
+            prismaClient.event.findUnique({
+                where: { id: eventId },
+                select: { organizer: { select: { userId: true } } }
+            })
+        ]);
+
+        const canReview = event?.organizer.userId !== userId;
 
         if(review == null){
-           return { review: 0 };
+           return { review: 0, canReview };
         }
 
-        return review;
+        return { ...review, canReview };
     },
 
 };

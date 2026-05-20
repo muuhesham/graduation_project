@@ -52,10 +52,13 @@ async function seedUsers(prisma) {
     console.log('✅ Regular user created: user@fa3liat.com / password@123');
 
     // 4. Create random users
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 50; i++) {
         const data = await userFactory();
         const user = await prisma.user.create({
-            data: data,
+            data: {
+                ...data,
+                role: i < 5 ? 'organizer' : 'user' // Mix in a few more organizers
+            },
         });
         users.push(user);
     }

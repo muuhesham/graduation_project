@@ -27,7 +27,31 @@ import { makePagination } from '../resources/helpers/pagination.js';
  */
 
 const SEARCH_STOP_WORDS = new Set([
-    'a', 'an', 'and', 'are', 'at', 'be', 'for', 'from', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'our', 'the', 'to', 'we', 'where', 'with', 'you', 'your'
+    'a',
+    'an',
+    'and',
+    'are',
+    'at',
+    'be',
+    'for',
+    'from',
+    'i',
+    'in',
+    'is',
+    'it',
+    'me',
+    'my',
+    'of',
+    'on',
+    'or',
+    'our',
+    'the',
+    'to',
+    'we',
+    'where',
+    'with',
+    'you',
+    'your',
 ]);
 
 const KEYWORD_SEARCH_PATHS = [
@@ -67,25 +91,26 @@ class SearchService {
     async search({ query = '', limit, page, filters = {} }) {
         const pagination = { page, limit };
 
-        // Prioritize fast keyword search
         const keywordResult = await this.#performKeywordSearch(query, filters, pagination);
 
-        // If we found direct matches, return them immediately to keep search fast
         if (keywordResult?.data?.length > 0) {
             return keywordResult;
         }
 
-        // Only fallback to slow semantic search if no keyword matches found
         try {
             const semanticQuery = this.#prepareSemanticQuery(query);
-            const aiResult = await this.#trySemanticSearch(semanticQuery, filters, pagination);
 
-            // Only return AI results if they pass the human-relevance threshold
+            const aiResult = await this.#trySemanticSearch(semanticQuery, filters, pagination);
             if (aiResult?.data?.length && aiResult.data[0].similarity >= this.#MIN_SIMILARITY) {
                 return aiResult;
             }
         } catch (error) {
-            console.error('[SearchService] Search execution error:', error.message);
+            if (
+                error instanceof TimeoutError ||
+                (error instanceof Error && error.name === 'AbortError')
+            ) {
+                throw error;
+            }
         }
 
         return keywordResult;
@@ -114,7 +139,7 @@ class SearchService {
     async #trySemanticSearch(query, filters, pagination) {
         try {
             const embedding = await this.#getEmbedding(query);
-            
+
             const result = await this.#eventEmbeddingService.searchByEmbedding(embedding, {
                 filters,
                 limit: pagination.limit,
@@ -130,16 +155,18 @@ class SearchService {
                 pagination: makePagination({
                     total: result.total,
                     page: pagination.page,
-                    limit: pagination.limit
+                    limit: pagination.limit,
                 }),
             };
         } catch (error) {
-            if (error instanceof TimeoutError || (error instanceof Error && error.name === 'AbortError')) {
+            if (
+                error instanceof TimeoutError ||
+                (error instanceof Error && error.name === 'AbortError')
+            ) {
                 throw error;
             }
-            
+
             const message = error instanceof Error ? error.message : String(error);
-            console.error('[SearchService] AI search failed:', message);
             return null;
         }
     }
@@ -175,29 +202,29 @@ class SearchService {
 
         const filterClause = this.#buildFilterClause(filters);
 
-        // If no valid keywords are left after filtering stop words, 
-        // we only filter by the explicit filters (category, price, etc.)
-        // But if those are also empty, we return empty to avoid "showing everything" for a miss.
         if (terms.length === 0) {
             const hasFilters = Object.keys(filterClause).length > 0;
             if (!hasFilters && query.trim().length > 0) {
                 return {
                     data: [],
-                    pagination: makePagination({ total: 0, page: pagination.page, limit: pagination.limit })
+                    pagination: makePagination({
+                        total: 0,
+                        page: pagination.page,
+                        limit: pagination.limit,
+                    }),
                 };
             }
             return this.#eventService.searchByKeywords({ where: filterClause, pagination });
         }
 
-        const orConditions = terms.flatMap(term => 
-            KEYWORD_SEARCH_PATHS.map(path => this.#buildNestedWhere(path, { contains: term, mode: 'insensitive' }))
+        const orConditions = terms.flatMap((term) =>
+            KEYWORD_SEARCH_PATHS.map((path) =>
+                this.#buildNestedWhere(path, { contains: term, mode: 'insensitive' })
+            )
         );
 
         const where = {
-            AND: [
-                { OR: orConditions },
-                filterClause
-            ]
+            AND: [{ OR: orConditions }, filterClause],
         };
 
         return this.#eventService.searchByKeywords({ where, pagination });
@@ -212,7 +239,7 @@ class SearchService {
         const keys = [...path];
         const lastKey = keys.pop();
         if (!lastKey) return {};
-        
+
         let nested = { [lastKey]: value };
         while (keys.length) {
             const key = keys.pop();
@@ -232,15 +259,23 @@ class SearchService {
         if (filters.categoryId !== undefined) clause.categoryId = filters.categoryId;
         if (filters.organizerId) clause.organizerId = filters.organizerId;
         if (filters.hasSeatMap !== undefined) clause.hasSeatMap = filters.hasSeatMap;
-        
+
+        if (filters.location) {
+            clause.venue = {
+                governorate: {
+                    name: filters.location.toUpperCase(),
+                },
+            };
+        }
+
         if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
             clause.ticketTypes = {
                 some: {
                     price: {
                         ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
-                        ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {})
-                    }
-                }
+                        ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
+                    },
+                },
             };
         }
 
@@ -252,15 +287,15 @@ class SearchService {
                         startDate: {
                             gte: dateRange.start,
                             lte: dateRange.end,
-                        }
-                    }
+                        },
+                    },
                 };
             }
         }
 
         if (Array.isArray(filters.tags) && filters.tags.length) {
             clause.eventTags = {
-                some: { tag: { name: { in: filters.tags.map(t => t.toLowerCase()) } } }
+                some: { tag: { name: { in: filters.tags.map((t) => t.toLowerCase()) } } },
             };
         }
 
@@ -297,6 +332,6 @@ class SearchService {
 }
 
 export default new SearchService({
-    services: { aiService, cacheService, eventService, eventEmbeddingService }
+    services: { aiService, cacheService, eventService, eventEmbeddingService },
 });
 export { SearchService };

@@ -152,11 +152,25 @@ export default class OrderRepository extends BaseRepository {
      * @returns {Promise<OrderType[]>}
      */
     async getPendingPayoutOrders(since) {
+        const now = new Date();
         return this.findMany({
             where: {
                 status: OrderStatus.COMPLETED,
                 createdAt: { gte: since },
                 isPaidOut: false,
+                orderItems: {
+                    some: {
+                        ticketType: {
+                            event: {
+                                eventSessions: {
+                                    every: {
+                                        endDate: { lt: now },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             },
             include: {
                 orderItems: {

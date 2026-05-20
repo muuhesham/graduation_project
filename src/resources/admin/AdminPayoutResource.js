@@ -25,7 +25,7 @@ export default class AdminPayoutResource extends BaseResource {
     static toArray(result) {
         return {
             id: result.id ?? null,
-            processedBy: Number(result?.adminId ?? result?.processedBy ?? 0),
+            processedBy: result?.admin?.name ?? Number(result?.adminId ?? result?.processedBy ?? 0),
             processedAt: result?.createdAt?.toISOString() ?? result?.processedAt ?? new Date().toISOString(),
             window: {
                 days: Number(result?.window?.days ?? 0),
@@ -37,7 +37,10 @@ export default class AdminPayoutResource extends BaseResource {
                 orders: Number(result?.orderCount ?? result?.totals?.orders ?? 0),
                 grossAmount: Number(result?.amount ?? result?.totals?.grossAmount ?? 0),
             },
-            payouts: Array.isArray(result?.payouts) ? result.payouts : (Array.isArray(result?.items) ? result.items : []),
+            payouts: (Array.isArray(result?.items) ? result.items : (Array.isArray(result?.payouts) ? result.payouts : [])).map(item => ({
+                ...item,
+                organizer: item?.organizer?.name ?? item?.organizerId ?? item?.organizer ?? '—'
+            })),
         };
     }
 

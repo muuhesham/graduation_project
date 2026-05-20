@@ -119,6 +119,16 @@ const OrganizerErrors = Object.freeze({
         code: 'ORGANIZER_NOT_SUSPENDED',
         message: 'Organizer is not suspended',
     },
+
+    ORGANIZER_ALREADY_FOLLOWED: {
+        code: 'ORGANIZER_ALREADY_FOLLOWED',
+        message: 'You are already following this organizer',
+    },
+
+    ORGANIZER_NOT_FOLLOWED: {
+        code: 'ORGANIZER_NOT_FOLLOWED',
+        message: 'You are not following this organizer',
+    },
 });
 
 export default OrganizerErrors;

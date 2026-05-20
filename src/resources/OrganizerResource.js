@@ -44,6 +44,7 @@ export default class OrganizerResource extends BaseResource {
             youtubeUrl: organizer.youtubeUrl ?? null,
             logoUrl: organizer.logoUrl ?? null,
             coverUrl: organizer.coverUrl ?? null,
+            stripeAccountId: organizer.stripeAccountId ?? null,
             isContactPhoneVerified: organizer.isContactPhoneVerified ?? false,
             isContactEmailVerified: organizer.isContactEmailVerified ?? false,
             status: organizer.status ?? null,

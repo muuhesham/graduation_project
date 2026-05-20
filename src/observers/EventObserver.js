@@ -4,6 +4,7 @@ import BaseObserver from './BaseObserver.js';
 
 import fileService from '../services/fileService.js';
 import mailService from '../services/mailService.js';
+import notificationService from '../services/notificationService.js';
 import { prisma } from '../config/db.js';
 import { FRONT_URL } from '../config/env.js';
 
@@ -65,6 +66,13 @@ export default class EventObserver extends BaseObserver {
                 });
 
                 await Promise.allSettled(emailPromises);
+
+                const followerUserIds = organizer.followers.map((f) => f.userId);
+                notificationService
+                    .notifyNewEventToFollowers(followerUserIds, organizer.name, event.id, event.title)
+                    .catch((err) =>
+                        console.error('Failed to send socket notifications to followers:', err)
+                    );
             }
         } catch (err) {
             console.error(`Failed to notify followers for new event ${event.id}:`, err);

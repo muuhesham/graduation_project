@@ -5,11 +5,12 @@ import { faker } from '@faker-js/faker';
 
 async function seedEvents(prisma, { categories, venues, organizers }) {
     let events = [];
-    console.log('Seeding events: 500 records...');
+    const countToSeed = 300; // Reduced for performance but higher quality
+    console.log(`Seeding events: ${countToSeed} records with enhanced realism...`);
 
     const tags = await prisma.tag.findMany();
 
-    const createSession = (status = SessionStatus.ACTIVE, offsetDays = 0) => {
+    const createSession = (offsetDays = 0) => {
         const start = new Date();
         start.setDate(start.getDate() + offsetDays);
         start.setHours(faker.number.int({ min: 9, max: 20 }), 0, 0, 0);
@@ -17,7 +18,7 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
         const end = new Date(start);
         end.setHours(end.getHours() + faker.number.int({ min: 2, max: 6 }));
 
-        return { startDate: start, endDate: end, status };
+        return { startDate: start, endDate: end, status: SessionStatus.ACTIVE };
     };
 
     if (!categories.length || !venues.length || !organizers.length) {
@@ -25,7 +26,7 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
         return [];
     }
 
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < countToSeed; i++) {
         const scenario = egyptianScenarios[i % egyptianScenarios.length];
         const venue = venues[Math.floor(Math.random() * venues.length)];
         const organizer = organizers[Math.floor(Math.random() * organizers.length)];
@@ -38,12 +39,15 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
         );
         const finalTags = matchedTags.length > 0 ? matchedTags.slice(0, 3) : tags.slice(0, 3);
 
-        let status = EventStatus.ACTIVE;
-        let offset = faker.number.int({ min: -30, max: 365 });
+        // Date Buckets for homepage variety
+        let offset;
+        if (i < 20) offset = faker.number.int({ min: 0, max: 2 }); // Starting Soon
+        else if (i < 50) offset = faker.number.int({ min: 3, max: 7 }); // This Week
+        else if (i < 100) offset = faker.number.int({ min: -30, max: -1 }); // Past Events
+        else offset = faker.number.int({ min: 8, max: 365 }); // Future
 
-        const rand = Math.random();
-        if (rand > 0.9) status = EventStatus.CANCELLED;
-        else if (offset < 0) status = EventStatus.ACTIVE;
+        let status = EventStatus.ACTIVE;
+        if (Math.random() > 0.95) status = EventStatus.CANCELLED;
 
         const baseData = eventFactory({
             title: `${scenario.topic} ${faker.number.int({ min: 2025, max: 2027 })}`,
@@ -54,7 +58,18 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
 
         delete baseData._scenario;
 
-        const isSeated = Math.random() > 0.8;
+        // Logical Tickets
+        const ticketTypesData = scenario.tiers.map((tierName, idx) => {
+            const range = scenario.priceRange;
+            const price = range.min === 0 ? 0 : Math.round(range.min + (range.max - range.min) * (idx / scenario.tiers.length));
+            return {
+                name: tierName,
+                price: price,
+                quantity: idx === 0 ? 300 : 50, // More general tickets, fewer VIP
+            };
+        });
+
+        const isSeated = Math.random() > 0.85;
 
         const event = await prisma.event.create({
             data: {
@@ -68,36 +83,25 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
                     })),
                 },
                 ticketTypes: {
-                    create: [
-                        {
-                            name: 'Standard',
-                            price: faker.number.int({ min: 100, max: 500 }),
-                            quantity: 200,
-                        },
-                        {
-                            name: 'VIP',
-                            price: faker.number.int({ min: 800, max: 2500 }),
-                            quantity: 50,
-                        },
-                    ],
+                    create: ticketTypesData,
                 },
                 eventSessions: {
-                    create: [createSession(SessionStatus.ACTIVE, offset)],
+                    create: [createSession(offset)],
                 },
                 eventSeatTier: isSeated
                     ? {
                           create: [
                               {
                                   tierNumber: 1,
-                                  name: 'Premium Row',
-                                  price: 1500,
+                                  name: 'Main Hall',
+                                  price: ticketTypesData[0].price + 100,
                                   color: '#4F46E5',
-                                  numberOfRows: 5,
-                                  numberOfColumns: 10,
+                                  numberOfRows: 8,
+                                  numberOfColumns: 12,
                                   seats: {
-                                      create: Array.from({ length: 50 }).map((_, idx) => ({
-                                          rowIndex: Math.floor(idx / 10),
-                                          seatIndex: idx % 10,
+                                      create: Array.from({ length: 96 }).map((_, idx) => ({
+                                          rowIndex: Math.floor(idx / 12),
+                                          seatIndex: idx % 12,
                                       })),
                                   },
                               },
@@ -108,10 +112,10 @@ async function seedEvents(prisma, { categories, venues, organizers }) {
         });
         events.push(event);
 
-        if ((i + 1) % 100 === 0) console.log(`Events: Processed ${i + 1} records...`);
+        if ((i + 1) % 50 === 0) console.log(`Events: Processed ${i + 1} records...`);
     }
 
-    console.log('✅ Events seeded.');
+    console.log('✅ Events seeded with logical dates and pricing.');
     return events;
 }
 

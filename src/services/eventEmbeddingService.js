@@ -110,42 +110,77 @@ class EventEmbeddingService {
     async sync(eventId) {
         const id = Number(eventId);
         if (isNaN(id)) {
-            console.warn('[Embedding] Invalid eventId:', eventId);
             return;
         }
 
-        console.log(`[Embedding] Syncing event ${id}...`);
         const event = await this.#eventRepository.findById(id, {
             include: {
-                venue: true,
+                venue: { include: { governorate: true } },
                 category: true,
                 organizer: true,
                 eventTags: { include: { tag: true } },
                 ticketTypes: { select: { price: true } },
+                eventSessions: true,
             },
         });
 
         if (!event) {
-            console.log(`[Embedding] Event ${id} not found for sync. Deleting from index.`);
             await this.remove(id);
             return;
         }
 
         const store = await this.#getStore();
         if (!store) {
-            console.error(`[Embedding] Store not available for event ${id}`);
             throw new InternalServerError(undefined, undefined, [SearchErrors.SEARCH_FAILED]);
         }
 
         try {
-            console.log(`[Embedding] Deleting old index for event ${id}...`);
-            await store.delete({ filter: { eventId: id } }).catch((err) => console.log(`[Embedding] Delete failed for ${id}:`, err.message));
+            await store.delete({ filter: { eventId: id } }).catch(() => {});
             
-            console.log(`[Embedding] Adding document for event ${id}...`);
             await store.addDocuments([this.#toDocument(event)], { ids: [randomUUID()] });
-            console.log(`[Embedding] Event ${id} synced successfully.`);
         } catch (error) {
-            console.error(`[Embedding] Failed to sync event ${id}:`, error.message);
+            throw new InternalServerError(undefined, undefined, [EventErrors.EVENT_UPDATE_FAILED]);
+        }
+    }
+
+    /**
+     * @param {number[]} eventIds
+     */
+    async syncMany(eventIds) {
+        const ids = eventIds.map(Number).filter((id) => !isNaN(id));
+        if (!ids.length) return;
+
+        const events = await this.#eventRepository.findMany({
+            where: { id: { in: ids } },
+            include: {
+                venue: { include: { governorate: true } },
+                category: true,
+                organizer: true,
+                eventTags: { include: { tag: true } },
+                ticketTypes: { select: { price: true } },
+                eventSessions: true,
+            },
+        });
+
+        if (!events.length) return;
+
+        const store = await this.#getStore();
+        if (!store) {
+            throw new InternalServerError(undefined, undefined, [SearchErrors.SEARCH_FAILED]);
+        }
+
+        try {
+            await Promise.all(
+                events.map((event) =>
+                    store.delete({ filter: { eventId: Number(event.id) } }).catch(() => {})
+                )
+            );
+
+            const documents = events.map((event) => this.#toDocument(event));
+            const uuids = events.map(() => randomUUID());
+
+            await store.addDocuments(documents, { ids: uuids });
+        } catch (error) {
             throw new InternalServerError(undefined, undefined, [EventErrors.EVENT_UPDATE_FAILED]);
         }
     }
@@ -163,7 +198,6 @@ class EventEmbeddingService {
         try {
             await store.delete({ filter: { eventId: id } });
         } catch (error) {
-            console.warn('[Embedding] Remove failed:', error.message);
         }
     }
 
@@ -175,6 +209,12 @@ class EventEmbeddingService {
         const prices = Array.isArray(event.ticketTypes)
             ? event.ticketTypes.map((t) => Number(t.price)).filter((p) => isFinite(p))
             : [];
+
+        const sessions = Array.isArray(event.eventSessions) ? event.eventSessions : [];
+        const futureSessions = sessions
+            .filter((s) => s.status === 'active' && new Date(s.startDate) >= new Date())
+            .map((s) => new Date(s.startDate).getTime())
+            .sort((a, b) => a - b);
 
         const tagNames = (event.eventTags || [])
             .map((et) => et.tag?.name)
@@ -201,6 +241,8 @@ class EventEmbeddingService {
                 hasSeatMap: Boolean(event.hasSeatMap),
                 minTicketPrice: prices.length ? Math.min(...prices) : null,
                 maxTicketPrice: prices.length ? Math.max(...prices) : null,
+                governorateName: event.venue?.governorate?.name || null,
+                nextSessionDate: futureSessions.length ? futureSessions[0] : null,
             },
         });
     }
@@ -231,9 +273,6 @@ class EventEmbeddingService {
             return this.#store;
         } catch (error) {
             this.#storeUnavailable = true;
-            const message =
-                error instanceof Error ? error.message : 'Failed to initialize PGVectorStore';
-            console.error('[VectorStore]', message);
             return null;
         } finally {
             this.#storeInitPromise = null;
@@ -268,7 +307,47 @@ class EventEmbeddingService {
         if (filters.hasSeatMap !== undefined) vf.hasSeatMap = filters.hasSeatMap;
         if (filters.minPrice !== undefined) vf.maxTicketPrice = { gte: filters.minPrice };
         if (filters.maxPrice !== undefined) vf.minTicketPrice = { lte: filters.maxPrice };
+        if (filters.location) vf.governorateName = filters.location.toUpperCase();
+
+        if (filters.date) {
+            const range = this.#calculateDateRange(filters.date);
+            if (range) {
+                vf.nextSessionDate = {
+                    gte: range.start.getTime(),
+                    lte: range.end.getTime(),
+                };
+            }
+        }
+
         return vf;
+    }
+
+    /**
+     * @param {string} dateKeyword
+     * @returns {{ start: Date, end: Date } | null}
+     */
+    #calculateDateRange(dateKeyword) {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        switch (dateKeyword.toLowerCase()) {
+            case 'today':
+                return { start, end };
+            case 'tomorrow':
+                start.setDate(start.getDate() + 1);
+                end.setDate(end.getDate() + 1);
+                return { start, end };
+            case 'next week':
+                end.setDate(end.getDate() + 7);
+                return { start, end };
+            case 'next month':
+                end.setMonth(end.getMonth() + 1);
+                return { start, end };
+            default:
+                return null;
+        }
     }
 }
 

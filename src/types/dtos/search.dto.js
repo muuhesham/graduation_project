@@ -45,6 +45,7 @@ export const SEARCH_FILTER_KEYS = [
     'tag',
     'tags',
     'date',
+    'location',
 ];
 
 /**
@@ -100,6 +101,7 @@ export function pickSearchFilters(query) {
         ...(pickedFilters.maxPrice !== undefined ? { maxPrice: parseFloat(String(pickedFilters.maxPrice)) } : {}),
         ...(pickedFilters.hasSeatMap !== undefined ? { hasSeatMap: pickedFilters.hasSeatMap === 'true' || pickedFilters.hasSeatMap === true } : {}),
         ...(pickedFilters.date ? { date: String(pickedFilters.date) } : {}),
+        ...(pickedFilters.location ? { location: String(pickedFilters.location) } : {}),
         ...(tags.length ? { tags } : {}),
     };
 }

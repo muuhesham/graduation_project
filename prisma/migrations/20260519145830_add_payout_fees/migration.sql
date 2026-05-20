@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Payout" ADD COLUMN     "netAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "platformFee" DECIMAL(10,2) NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "PayoutItem" ADD COLUMN     "grossAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "platformFee" DECIMAL(10,2) NOT NULL DEFAULT 0;

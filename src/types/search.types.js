@@ -1,103 +1,108 @@
-/** Search-related shared typedefs. */
+// @ts-check
 
-/** @typedef {{ name?: string | null; city?: string | null }} IndexableVenue */
-
-/** @typedef {{ name?: string | null }} IndexableCategory */
-
-/** @typedef {{ price?: number | string | null }} IndexableTicketType */
-
-/** @typedef {{ tag?: { name?: string | null } | null }} IndexableEventTag */
+import { pluck } from '../../helpers/pluck.js';
 
 /**
- * @typedef {Object} IndexableEvent
- * @property {number | string} id
- * @property {string} organizerId
- * @property {number | null | undefined} [categoryId]
- * @property {boolean | null | undefined} [hasSeatMap]
- * @property {string} title
- * @property {string} slug
- * @property {string | null | undefined} [description]
- * @property {string | null | undefined} [type]
- * @property {string | null | undefined} [mode]
- * @property {IndexableVenue | null | undefined} [venue]
- * @property {IndexableCategory | null | undefined} [category]
- * @property {IndexableEventTag[] | null | undefined} [eventTags]
- * @property {IndexableTicketType[] | null | undefined} [ticketTypes]
+ * @typedef {Object} SearchQueryDTO
+ * @property {string} query - Search query string
+ * @property {number} [page=1] - Page number. Default is `1`
+ * @property {number} [limit=10] - Results per page. Default is `10`
+ * @property {string} [categoryId] - Optional category filter
+ * @property {string} [organizerId] - Optional organizer filter
  */
 
 /**
- * @typedef {import('./models/event.model').Event & {
- *     slug?: string | null;
- *     description?: string | null;
- *     createdAt?: string | Date | null;
- *     hasSeatMap?: boolean | null;
- *     bannerUrl?: string | null;
- *     venue?: { name?: string | null; city?: string | null } | null;
- *     ticketTypes?: any[] | null;
- *     eventTags?: any[] | null;
- *     isInterested?: boolean | null;
- *     similarity?: number | null;
- * }} SearchEvent
+ * @typedef {Object} PaginationParams
+ * @property {number} page - Current page number
+ * @property {number} limit - Results per page
+ * @property {number} total - Total number of results
+ * @property {number} totalPages - Total number of pages
  */
 
 /**
- * Shared search filters
- *
- * @typedef {Object} SearchFilters
+ * @typedef {Object} SearchResponseDTO
+ * @property {Event[]} data - Array of events
+ * @property {PaginationParams} pagination - Pagination metadata
+ */
+
+/**
+ * @typedef {Object} SearchFiltersDTO
  * @property {number} [categoryId]
  * @property {string} [organizerId]
  * @property {number} [minPrice]
  * @property {number} [maxPrice]
  * @property {boolean} [hasSeatMap]
  * @property {string[]} [tags]
+ * @property {string} [date]
  */
 
-/**
- * Validated search query shape after express-validator sanitization/defaulting
- *
- * @typedef {SearchFilters & {
- *     q: string;
- *     page: number;
- *     limit: number;
- * }} ValidatedSearchQuery
- */
+export const SEARCH_FILTER_KEYS = [
+    'categoryId',
+    'organizerId',
+    'minPrice',
+    'maxPrice',
+    'hasSeatMap',
+    'tag',
+    'tags',
+    'date',
+    'location',
+];
 
 /**
- * Shared pagination input
- *
- * @typedef {Object} SearchPagination
- * @property {number} page
- * @property {number} limit
+ * @param {unknown} q
+ * @returns {{ query: string; pageOverride?: string; limitOverride?: string }}
  */
+export function normalizeSearchQueryInput(q) {
+    const rawQuery =
+        typeof q === 'string' ? q : Array.isArray(q) && typeof q[0] === 'string' ? q[0] : '';
+
+    if (!rawQuery.includes('?')) {
+        return { query: rawQuery };
+    }
+
+    const [queryText, embeddedParams] = rawQuery.split('?', 2);
+    const params = new URLSearchParams(embeddedParams || '');
+
+    return {
+        query: queryText,
+        pageOverride: params.get('page') || undefined,
+        limitOverride: params.get('limit') || undefined,
+    };
+}
 
 /**
- * Pagination metadata interface
- *
- * @typedef {Object} PaginationMeta
- * @property {number} page - Current page number
- * @property {number} limit - Items per page
- * @property {number} total - Total items count
- * @property {number} totalPages - Total pages count
- * @property {boolean} hasNext - Has next page
- * @property {boolean} hasPrev - Has previous page
+ * @param {unknown} value
+ * @returns {string[]}
  */
+export function normalizeSearchTagValues(value) {
+    const values = Array.isArray(value) ? value : [value];
+
+    return values
+        .flatMap((entry) => String(entry).split(','))
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean);
+}
 
 /**
- * Search service response shape
+ * Picks already-normalized search filters from validated query params.
  *
- * @typedef {Object} SearchResult
- * @property {SearchEvent[]} data - Array of search events before resource transformation
- * @property {PaginationMeta} pagination - Pagination metadata
+ * @param {Record<string, unknown>} query - Express query object
+ * @returns {SearchFiltersDTO} Filter object for Prisma
  */
+export function pickSearchFilters(query) {
+    const pickedFilters = /** @type {Record<string, any>} */ (pluck(query, SEARCH_FILTER_KEYS));
 
-/**
- * Search service options interface
- *
- * @typedef {Object} SearchOptions
- * @property {number} limit
- * @property {number} page
- * @property {SearchFilters} [filters] - Additional filters
- * @property {string} query - Search query text
- */
+    const tags = normalizeSearchTagValues(pickedFilters.tag || pickedFilters.tags || []);
+
+    return {
+        ...(pickedFilters.categoryId !== undefined ? { categoryId: Number(pickedFilters.categoryId) } : {}),
+        ...(pickedFilters.organizerId ? { organizerId: String(pickedFilters.organizerId) } : {}),
+        ...(pickedFilters.minPrice !== undefined ? { minPrice: parseFloat(String(pickedFilters.minPrice)) } : {}),
+        ...(pickedFilters.maxPrice !== undefined ? { maxPrice: parseFloat(String(pickedFilters.maxPrice)) } : {}),
+        ...(pickedFilters.hasSeatMap !== undefined ? { hasSeatMap: pickedFilters.hasSeatMap === 'true' || pickedFilters.hasSeatMap === true } : {}),
+        ...(pickedFilters.date ? { date: String(pickedFilters.date) } : {}),
+        ...(tags.length ? { tags } : {}),
+    };
+}
 
 export {};

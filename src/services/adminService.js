@@ -23,7 +23,7 @@ import PayoutStatus from '../constants/enums/payoutStatus.js';
 import PayoutItemStatus from '../constants/enums/payoutItemStatus.js';
 
 import { Order } from './../models/index.js';
-import { adminRepository, payoutRepository } from './../repositories/index.js';
+import { adminRepository, payoutRepository, orderRepository } from './../repositories/index.js';
 
 import InternalServerError from './../errors/InternalServerError.js';
 import NotFoundError from './../errors/NotFoundError.js';
@@ -74,7 +74,8 @@ import adminPolicy from './../policies/AdminPolicy.js';
  *
  * @property {object} repositories
  * @property {AdminRepository} repositories.adminRepository
- * @property {any} repositories.payoutRepository
+ * @property {import('./../repositories/PayoutRepository').default} repositories.payoutRepository
+ * @property {import('./../repositories/OrderRepository').default} repositories.orderRepository
  */
 
 class AdminService {
@@ -102,8 +103,11 @@ class AdminService {
     /** @type {AdminRepository} */
     #adminRepository;
 
-    /** @type {any} */
+    /** @type {import('./../repositories/PayoutRepository').default} */
     #payoutRepository;
+
+    /** @type {import('./../repositories/OrderRepository').default} */
+    #orderRepository;
 
     /** @type {typeof adminPolicy} */
     #adminPolicy = adminPolicy;
@@ -121,6 +125,7 @@ class AdminService {
         this.#categoryService = services.categoryService;
         this.#adminRepository = repositories.adminRepository;
         this.#payoutRepository = repositories.payoutRepository;
+        this.#orderRepository = repositories.orderRepository;
     }
 
     /**
@@ -788,6 +793,8 @@ class AdminService {
                     {
                         adminId,
                         amount: totals.grossAmount,
+                        platformFee: totals.platformFee,
+                        netAmount: totals.netAmount,
                         organizerCount: totals.organizers,
                         orderCount: totals.orders,
                         startDate: window.from,
@@ -797,6 +804,8 @@ class AdminService {
                             create: pendingSettlements.map((item) => ({
                                 organizerId: item.organizerId,
                                 amount: item.grossAmount,
+                                netAmount: item.netAmount,
+                                platformFee: item.platformFee,
                                 status: PayoutItemStatus.PAID,
                             })),
                         },
@@ -812,19 +821,17 @@ class AdminService {
         const transfers = await this.#prepareTransferBatch(pendingSettlements, payoutRecord.id);
         await paymentService.executePayoutBatch(transfers);
 
-        return {
-            id: payoutRecord.id,
-            status: payoutRecord.status,
-            processedBy: adminId,
-            processedAt: payoutRecord.createdAt.toISOString(),
-            window: {
-                days,
-                from: window.from.toISOString(),
-                to: window.to.toISOString(),
+        // Fetch with relations for resource mapping
+        return this.#payoutRepository.findById(payoutRecord.id, {
+            include: {
+                admin: true,
+                items: {
+                    include: {
+                        organizer: true,
+                    },
+                },
             },
-            totals,
-            payouts: pendingSettlements,
-        };
+        });
     }
 
     /**
@@ -837,7 +844,7 @@ class AdminService {
             const organizer = await this.#organizerService.findById(item.organizerId);
             if (organizer?.stripeAccountId) {
                 batch.push({
-                    amount: item.grossAmount,
+                    amount: item.netAmount,
                     accountId: organizer.stripeAccountId,
                     referenceId: payoutId,
                 });
@@ -852,36 +859,73 @@ class AdminService {
      */
     async getPayoutHistory(id, pagination = {}) {
         await this.#assertApprovedAdmin(id);
-        return payoutRepository.paginate({
+        return this.#payoutRepository.paginate({
             ...pagination,
-            include: { admin: true },
+            include: {
+                admin: true,
+                items: {
+                    include: {
+                        organizer: true,
+                    },
+                },
+            },
         });
     }
 
     /**
      * @param {number} id
      * @param {object} [options]
-     * @param {number} [options.days] - Look for payouts in the last X days
+     * @param {number} [options.days] - Filter metrics by the last X days
      */
     async getFinanceSummary(id, options = {}) {
         await this.#assertApprovedAdmin(id);
         const days = options.days || 0;
         const since = days > 0 ? Order.payoutWindow(days).from : new Date(0);
 
-        const [totalVolume, orders] = await Promise.all([
-            this.#orderService.revenueByStatus(OrderStatus.COMPLETED),
-            this.#orderService.getPendingPayoutOrders({
-                since,
-            }),
-        ]);
+        const payoutAggregates = await this.#payoutRepository.aggregate({
+            where: days > 0 ? { createdAt: { gte: since } } : {},
+            _sum: {
+                amount: true,
+                platformFee: true,
+                netAmount: true,
+                orderCount: true,
+            },
+            _count: {
+                id: true,
+            },
+        });
 
-        const pendingSettlements = Order.computePayouts(orders);
+        const orderAggregates = await this.#orderRepository.aggregate({
+            where: {
+                status: OrderStatus.COMPLETED,
+                ...(days > 0 ? { createdAt: { gte: since } } : {}),
+            },
+            _sum: {
+                totalPrice: true,
+                itemsCount: true,
+            },
+            _count: {
+                id: true,
+            },
+        });
+
+        const pendingOrders = await this.#orderService.getPendingPayoutOrders({
+            since: days > 0 ? since : new Date(0),
+        });
+        const pendingSettlements = Order.computePayouts(pendingOrders);
         const pendingTotals = Order.payoutTotals(pendingSettlements);
 
+        const activeOrganizersCount = await this.#organizerService.countAllOrganizers();
+
         return {
-            totalVolume: Order.parseAmount(totalVolume),
-            pendingPayoutAmount: pendingTotals.grossAmount,
-            pendingOrganizerCount: pendingTotals.organizers,
+            totalRevenue: Order.parseAmount(orderAggregates._sum.totalPrice),
+            totalPaidOut: Order.parseAmount(payoutAggregates._sum.netAmount),
+            platformFees: Order.parseAmount(payoutAggregates._sum.platformFee),
+            pendingPayouts: pendingTotals.grossAmount,
+            totalOrders: orderAggregates._count.id,
+            totalTicketsSold: Order.parseAmount(orderAggregates._sum.itemsCount),
+            activeOrganizers: activeOrganizersCount,
+            payoutsProcessed: payoutAggregates._count.id,
         };
     }
 
@@ -948,6 +992,7 @@ export default new AdminService({
     repositories: {
         adminRepository,
         payoutRepository,
+        orderRepository,
     },
 });
 

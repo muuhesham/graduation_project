@@ -121,6 +121,27 @@ const notificationService = {
         );
     },
 
+    async notifyNewEventToFollowers(followersIds, organizerName, eventId, eventTitle) {
+        try {
+            const notifications = await Promise.all(
+                followersIds.map((userId) =>
+                    notificationService.sendNotification(
+                        userId,
+                        'USER',
+                        'NEW_EVENT_FROM_FOLLOWED',
+                        'New Event from Organizer!',
+                        `An organizer you follow, ${organizerName}, just created a new event: "${eventTitle}".`,
+                        eventId
+                    )
+                )
+            );
+            return notifications;
+        } catch (error) {
+            console.error('Failed to notify followers about new event:', error);
+            return null;
+        }
+    },
+
     async broadcastAnnouncement(title, message) {
         try {
             const io = getIO();

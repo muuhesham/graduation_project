@@ -71,6 +71,18 @@ class SearchValidation {
             .isFloat({ min: 0 })
             .withMessage(SearchErrors.MAX_PRICE_POSITIVE.message),
 
+        query('location')
+            .optional()
+            .trim()
+            .isString()
+            .withMessage('Location must be a string'),
+
+        query('date')
+            .optional()
+            .trim()
+            .isIn(['Today', 'Tomorrow', 'Next week', 'Next month'])
+            .withMessage('Invalid date filter'),
+
         query('hasSeatMap')
             .optional()
             .toBoolean()

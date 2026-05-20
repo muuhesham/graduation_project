@@ -1,6 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -192,12 +192,12 @@ model Event {
   description      String
   type             EventType              @default(ticketed)
   mode             EventMode              @default(single)
-  status           EventStatus            @default(active)
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   deletedAt        DateTime?
   hasSeatMap       Boolean                @default(false)
-  embedding        Unsupported("vector(768)")?
+  embedding        Unsupported("vector")?
+  status           EventStatus            @default(active)
   coupons          Coupon[]
   category         Category?              @relation(fields: [categoryId], references: [id])
   organizer        Organizer              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
@@ -398,6 +398,8 @@ model Payout {
   endDate        DateTime
   status         PayoutStatus @default(COMPLETED)
   createdAt      DateTime     @default(now())
+  netAmount      Decimal      @default(0) @db.Decimal(10, 2)
+  platformFee    Decimal      @default(0) @db.Decimal(10, 2)
   orders         Order[]
   admin          Admin        @relation(fields: [adminId], references: [id])
   items          PayoutItem[]
@@ -409,6 +411,8 @@ model PayoutItem {
   organizerId String
   amount      Decimal          @db.Decimal(10, 2)
   status      PayoutItemStatus @default(PAID)
+  platformFee Decimal          @default(0) @db.Decimal(10, 2)
+  netAmount   Decimal          @default(0) @db.Decimal(10, 2)
   organizer   Organizer        @relation(fields: [organizerId], references: [id])
   payout      Payout           @relation(fields: [payoutId], references: [id], onDelete: Cascade)
 }
@@ -522,7 +526,7 @@ model event_search_documents {
   id        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   content   String?
   metadata  Json?
-  embedding Unsupported("vector(768)")?
+  embedding Unsupported("vector")?
 }
 
 enum Role {

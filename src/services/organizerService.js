@@ -433,43 +433,43 @@ const organizerService = {
 
         organizerPolicy.canCreateEvent(organizer);
 
-        return organizerRepository.runInTransaction(async (tx) => {
-            const venue = await venueService.createRecord(input.location, tx);
+        return organizerRepository.runInTransaction(
+            async (tx) => {
+                const venue = await venueService.createRecord(input.location, tx);
 
-            const event = await eventService.createRecord(
-                organizer.id,
-                {
-                    ...input,
-                    venueId: venue.id,
-                    categoryId: category.id,
-                },
-                tx
-            );
+                const event = await eventService.createRecord(
+                    organizer.id,
+                    {
+                        ...input,
+                        venueId: venue.id,
+                        categoryId: category.id,
+                    },
+                    tx
+                );
 
-            await eventService.createSessionsRecord(event.id, input.sessions, tx);
-            await ticketTypeService.createBulkRecord(
-                event.id,
-                input.tickets,
-                { eventType: input.type },
-                tx
-            );
-            await this.handleEventSubResources(event.id, input, tx);
+                await eventService.createSessionsRecord(event.id, input.sessions, tx);
+                await ticketTypeService.createBulkRecord(
+                    event.id,
+                    input.tickets,
+                    { eventType: input.type },
+                    tx
+                );
+                await this.handleEventSubResources(event.id, input, tx);
 
-            if (event.hasSeatMap) {
-                await this.handleSeatMapResources(event.id, input, tx);
+                if (event.hasSeatMap) {
+                    await this.handleSeatMapResources(event.id, input, tx);
+                }
+
+                notificationService
+                    .notifyEventCreated(organizer.id, event.id, event.title, category.name)
+                    .catch((err) => console.error('Failed to send creation notification:', err));
+
+                return /** @type {EventHydrated} */ (await eventService.findById(event.id, {}, tx));
+            },
+            {
+                timeout: 30000,
             }
-
-            notificationService.notifyEventCreated(
-                organizer.id,
-                event.id,
-                event.title,
-                category.name
-            ).catch(err => console.error('Failed to send creation notification:', err));
-
-            return /** @type {EventHydrated} */ (await eventService.findById(event.id, {}, tx));
-        }, {
-            timeout: 30000,
-        });
+        );
     },
 
     /**
@@ -625,11 +625,15 @@ const organizerService = {
             }
 
             const interestedUsers = await prismaClient.interestedEvent.findMany({
-                where: {eventId},
+                where: { eventId },
                 select: { userId: true },
             });
             const userIds = interestedUsers.map((user) => user.userId);
-            await notificationService.notifyEventUpdated(eventId, result.updatedEvent.title, userIds);
+            await notificationService.notifyEventUpdated(
+                eventId,
+                result.updatedEvent.title,
+                userIds
+            );
 
             return {
                 status: 'success',
@@ -666,55 +670,62 @@ const organizerService = {
 
         organizerPolicy.canUpdateEvent(organizer, event);
 
-        return organizerRepository.runInTransaction(async (tx) => {
-            if (input.location) {
-                await venueService.updateRecord(event.venueId, input.location, tx);
+        return organizerRepository.runInTransaction(
+            async (tx) => {
+                if (input.location) {
+                    await venueService.updateRecord(event.venueId, input.location, tx);
+                }
+
+                await eventService.updateRecord(eventId, organizer.id, input, tx);
+
+                if (input.sessions?.length > 0) {
+                    await eventService.deleteSessionsRecord(eventId, tx);
+                    await eventService.createSessionsRecord(eventId, input.sessions, tx);
+                }
+
+                if (input.eventRules !== undefined) {
+                    await eventService.updateEventRulesRecord(eventId, input.eventRules, tx);
+                }
+                if (input.tags !== undefined) {
+                    await eventService.updateEventTagsRecord(eventId, input.tags, tx);
+                }
+
+                const updatedEvent = await eventService.findById(eventId, {}, tx);
+
+                // Notify organizer about update
+                notificationService
+                    .sendNotification(
+                        organizer.id,
+                        'ORGANIZER',
+                        'EVENT_UPDATED',
+                        'Event updated!',
+                        `Your event "${updatedEvent.title}" has been updated successfully.`,
+                        updatedEvent.id
+                    )
+                    .catch((err) => console.error('Failed to send update notification:', err));
+
+                // Notify interested users
+                const interestedUsers = await prismaClient.interestedEvent.findMany({
+                    where: { eventId: Number(eventId) },
+                    select: { userId: true },
+                });
+
+                if (interestedUsers.length > 0) {
+                    notificationService
+                        .notifyEventUpdated(
+                            updatedEvent.id,
+                            updatedEvent.title,
+                            interestedUsers.map((u) => u.userId)
+                        )
+                        .catch((err) => console.error('Failed to notify interested users:', err));
+                }
+
+                return updatedEvent;
+            },
+            {
+                timeout: 30000,
             }
-
-            await eventService.updateRecord(eventId, organizer.id, input, tx);
-
-            if (input.sessions?.length > 0) {
-                await eventService.deleteSessionsRecord(eventId, tx);
-                await eventService.createSessionsRecord(eventId, input.sessions, tx);
-            }
-
-            if (input.eventRules !== undefined) {
-                await eventService.updateEventRulesRecord(eventId, input.eventRules, tx);
-            }
-            if (input.tags !== undefined) {
-                await eventService.updateEventTagsRecord(eventId, input.tags, tx);
-            }
-
-            const updatedEvent = await eventService.findById(eventId, {}, tx);
-
-            // Notify organizer about update
-            notificationService.sendNotification(
-                organizer.id,
-                'ORGANIZER',
-                'EVENT_UPDATED',
-                'Event updated!',
-                `Your event "${updatedEvent.title}" has been updated successfully.`,
-                updatedEvent.id
-            ).catch(err => console.error('Failed to send update notification:', err));
-
-            // Notify interested users
-            const interestedUsers = await prismaClient.interestedEvent.findMany({
-                where: { eventId: Number(eventId) },
-                select: { userId: true },
-            });
-
-            if (interestedUsers.length > 0) {
-                notificationService.notifyEventUpdated(
-                    updatedEvent.id,
-                    updatedEvent.title,
-                    interestedUsers.map(u => u.userId)
-                ).catch(err => console.error('Failed to notify interested users:', err));
-            }
-
-            return updatedEvent;
-        }, {
-            timeout: 30000,
-        });
+        );
     },
 
     /**
@@ -736,15 +747,17 @@ const organizerService = {
 
         const ticketsCount = await prismaClient.ticket.count({
             where: {
-                ticketType: { eventId: Number(eventId) }
-            }
+                ticketType: { eventId: Number(eventId) },
+            },
         });
 
         if (ticketsCount > 0) {
-            throw new ConflictError(undefined, undefined, [{
-                code: 'EVENT_HAS_TICKETS',
-                message: "The event related to tickets can't be deleted",
-            }]);
+            throw new ConflictError(undefined, undefined, [
+                {
+                    code: 'EVENT_HAS_TICKETS',
+                    message: "The event related to tickets can't be deleted",
+                },
+            ]);
         }
 
         return eventService.softDelete(eventId);
@@ -861,21 +874,28 @@ const organizerService = {
             throw new NotFoundError(undefined, undefined, [EventErrors.EVENT_NOT_FOUND]);
         }
 
-        return organizerRepository.runInTransaction(async (tx) => {
-            await eventService.cancelEvent(eventId, tx);
-            await orderService.refundOrders({ eventId, tx });
+        return organizerRepository.runInTransaction(
+            async (tx) => {
+                await eventService.cancelEvent(eventId, tx);
+                await orderService.refundOrders({ eventId, tx });
 
-            notificationService.sendNotification(
-                organizer.id,
-                'ORGANIZER',
-                'EVENT_CANCELLED',
-                'Event cancelled!',
-                `Your event "${event.title}" has been cancelled. All associated tickets will be refunded.`,
-                eventId
-            ).catch(err => console.error('Failed to send cancellation notification:', err));
-        }, {
-            timeout: 15000,
-        });
+                notificationService
+                    .sendNotification(
+                        organizer.id,
+                        'ORGANIZER',
+                        'EVENT_CANCELLED',
+                        'Event cancelled!',
+                        `Your event "${event.title}" has been cancelled. All associated tickets will be refunded.`,
+                        eventId
+                    )
+                    .catch((err) =>
+                        console.error('Failed to send cancellation notification:', err)
+                    );
+            },
+            {
+                timeout: 15000,
+            }
+        );
     },
 
     /**
@@ -1044,10 +1064,10 @@ const organizerService = {
             'linkedinUrl',
             'youtubeUrl',
             'address',
+            'stripeAccountId',
         ]);
 
         if (updateData.contactEmail && updateData.contactEmail !== organizer.contactEmail) {
-            // Check for uniqueness
             const existing = await organizerRepository.findOne({
                 where: { contactEmail: updateData.contactEmail },
             });
@@ -1060,7 +1080,6 @@ const organizerService = {
         }
 
         if (updateData.contactPhone && updateData.contactPhone !== organizer.contactPhone) {
-            // Check for uniqueness
             const existing = await organizerRepository.findOne({
                 where: { contactPhone: updateData.contactPhone },
             });
@@ -1201,7 +1220,9 @@ const organizerService = {
         const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
 
         if (isFollowing) {
-            throw new ConflictError('You are already following this organizer');
+            throw new ConflictError(undefined, undefined, [
+                OrganizerErrors.ORGANIZER_ALREADY_FOLLOWED,
+            ]);
         }
 
         return organizerFollowerRepository.create({
@@ -1218,7 +1239,7 @@ const organizerService = {
         const isFollowing = await organizerFollowerRepository.isFollowing(userId, organizerId);
 
         if (!isFollowing) {
-            throw new ConflictError('You are not following this organizer');
+            throw new ConflictError(undefined, undefined, [OrganizerErrors.ORGANIZER_NOT_FOLLOWED]);
         }
 
         return organizerFollowerRepository.delete({

@@ -500,6 +500,7 @@ const organizerValidation = {
         body('linkedinUrl').optional().trim().isURL().withMessage('Invalid LinkedIn URL'),
         body('youtubeUrl').optional().trim().isURL().withMessage('Invalid YouTube URL'),
         body('address').optional().trim().isLength({ max: 255 }).withMessage('Address too long'),
+        body('stripeAccountId').optional().trim().isString().withMessage('Stripe Account ID must be a string'),
     ],
 
     verifyPhoneOtp: [

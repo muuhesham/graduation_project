@@ -4,7 +4,6 @@ import { newsletterRepository } from './../repositories/index.js';
 import jwt from 'jsonwebtoken';
 import { NEWSLETTER_JWT_KEY, NEWSLETTER_JWT_EXPIRY, APP_URL } from '../config/env.js';
 import mailService from './mailService.js';
-import userService from './userService.js';
 import ConflictError from '../errors/ConflictError.js';
 import NewsletterErrors from '../constants/messages/errors/newsletter.js';
 import { FRONT_URL } from '../config/env.js';
@@ -24,20 +23,15 @@ class NewsletterService {
     /** @type {NewsletterRepository} */
     #newsletterRepository;
 
-    /** @type {UserService} */
-    #userService;
-
     /** @type {typeof mailService} */
     #mailService;
 
     /**
      * @param {NewsletterRepository} newsletterRepository
-     * @param {UserService} userService
      * @param {typeof mailService} mailService
      */
-    constructor(newsletterRepository, userService, mailService) {
+    constructor(newsletterRepository, mailService) {
         this.#newsletterRepository = newsletterRepository;
-        this.#userService = userService;
         this.#mailService = mailService;
     }
 
@@ -56,7 +50,6 @@ class NewsletterService {
         }
 
         const token = this.signSubscriptionToken(email, language);
-        // Point link to frontend confirmation page instead of backend API
         const confirmationUrl = `${FRONT_URL}/${language}/newsletter/confirmation?token=${token}`;
 
         try {
@@ -76,7 +69,7 @@ class NewsletterService {
         }
 
         const { email, language } = /** @type {{ email: string, language: Language }} */ (
-            jwt.verify(token, NEWSLETTER_JWT_KEY)
+            jwt.verify(token, NEWSLETTER_JWT_KEY, { clockTolerance: 3600 })
         );
 
         const existing = await this.#newsletterRepository.findByEmail(email);
@@ -120,7 +113,6 @@ class NewsletterService {
         }
 
         const secret = /** @type {Secret} */ (NEWSLETTER_JWT_KEY);
-        // Ensure expiresIn is either a string (e.g. '1h') or a positive number
         const expiresIn = NEWSLETTER_JWT_EXPIRY || '1h';
 
         return jwt.sign({ email, language }, secret, {
@@ -135,14 +127,12 @@ class NewsletterService {
      * @returns {Promise<void>}
      */
     async broadcast(payload) {
-        const [subscribers, userEmails] = await Promise.all([
-            this.#newsletterRepository.findMany({ select: { email: true } }),
-            this.#userService.getAllUserEmails(),
-        ]);
+        const subscribers = await this.#newsletterRepository.findMany({
+            select: { email: true },
+        });
 
         const recipientEmails = new Set();
         subscribers.forEach((s) => recipientEmails.add(s.email));
-        userEmails.forEach((email) => recipientEmails.add(email));
 
         for (const email of recipientEmails) {
             try {
@@ -166,5 +156,5 @@ class NewsletterService {
     }
 }
 
-export default new NewsletterService(newsletterRepository, userService, mailService);
+export default new NewsletterService(newsletterRepository, mailService);
 export { NewsletterService };

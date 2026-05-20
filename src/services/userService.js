@@ -271,17 +271,6 @@ const userService = {
     },
 
     /**
-     * @returns {Promise<string[]>}
-     */
-    async getAllUserEmails() {
-        const users = await userRepository.findMany({
-            where: { deletedAt: null },
-            select: { email: true },
-        });
-        return users.map((u) => u.email);
-    },
-
-    /**
      * @param {UserListOptions} [options]
      */
     async list(options = {}) {

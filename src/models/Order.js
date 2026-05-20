@@ -22,6 +22,12 @@ class Order extends BaseModel {
     }
 
     /**
+     * Platform fee percentage taken by the system.
+     * @type {number}
+     */
+    static PLATFORM_FEE_PERCENT = 0.10;
+
+    /**
      * @return {CastDefinition[]}
      */
     static getCastDefinitions() {
@@ -59,16 +65,20 @@ class Order extends BaseModel {
     }
 
     /**
-     * @param {Array<{ grossAmount: number, ordersCount: number }>} payouts
+     * @param {Array<{ grossAmount: number, platformFee: number, netAmount: number, ordersCount: number }>} payouts
      */
     static payoutTotals(payouts) {
         const grossAmount = payouts.reduce((acc, item) => acc + item.grossAmount, 0);
+        const platformFee = payouts.reduce((acc, item) => acc + item.platformFee, 0);
+        const netAmount = payouts.reduce((acc, item) => acc + item.netAmount, 0);
         const orders = payouts.reduce((acc, item) => acc + item.ordersCount, 0);
 
         return {
             organizers: payouts.length,
             orders,
             grossAmount: Number(grossAmount.toFixed(2)),
+            platformFee: Number(platformFee.toFixed(2)),
+            netAmount: Number(netAmount.toFixed(2)),
         };
     }
 
@@ -107,14 +117,22 @@ class Order extends BaseModel {
         }
 
         return Array.from(summaryMap.values())
-            .map((org) => ({
-                organizerId: org.organizerId,
-                organizerName: org.organizerName,
-                organizerEmail: org.organizerEmail,
-                grossAmount: Number(org.grossAmount.toFixed(2)),
-                ordersCount: org.uniqueOrders.size,
-                ticketsSold: org.ticketsSold,
-            }))
+            .map((org) => {
+                const grossAmount = Number(org.grossAmount.toFixed(2));
+                const platformFee = Number((grossAmount * Order.PLATFORM_FEE_PERCENT).toFixed(2));
+                const netAmount = Number((grossAmount - platformFee).toFixed(2));
+
+                return {
+                    organizerId: org.organizerId,
+                    organizerName: org.organizerName,
+                    organizerEmail: org.organizerEmail,
+                    grossAmount,
+                    platformFee,
+                    netAmount,
+                    ordersCount: org.uniqueOrders.size,
+                    ticketsSold: org.ticketsSold,
+                };
+            })
             .sort((a, b) => b.grossAmount - a.grossAmount);
     }
 
