@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma">
   <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
 </p>
 
 **Fa3liat** is a comprehensive web application platform for creating events, managing tickets, and handling online payments. The platform supports both general-admission and seat-based events with multiple ticket tiers, organizer onboarding workflows, and AI-assisted event discovery.
@@ -15,6 +16,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [Screenshots & Demo](#-screenshots--demo)
 - [Main Features](#-main-features)
 - [Tech Stack](#-tech-stack)
 - [Installation & Setup](#-installation--setup)
@@ -42,6 +44,14 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 - 📧 **Background Workers** - Reliable email, SMS, and AI processing using BullMQ.
 - 📍 **Venue & Location Core** - Detailed location hierarchy and seating map configurations.
 - 📱 **Mobile API** - Specialized endpoints for mobile ticket scanning.
+
+---
+
+## 📸 Screenshots & Demo
+
+| Dashboard | Event Search | Ticket Scanning |
+| :---: | :---: | :---: |
+| [![Dashboard](docs/images/dashboard.png)](docs/images/dashboard.png) | [![Search](docs/images/search.png)](docs/images/search.png) | [![Scan](docs/images/scan.png)](docs/images/scan.png) |
 
 ---
 
@@ -166,6 +176,18 @@ docker compose --profile stripe up --build
 ## 🔗 API Endpoints
 
 The API is versioned and mounted under `/api/v1`.
+
+### Interactive API Documentation (Swagger)
+We provide comprehensive, interactive API documentation using **Swagger UI**. This tool automatically parses our route definitions to provide an up-to-date reference for the entire API.
+
+- **Access Point:** [`/api-docs`](http://localhost:3000/api-docs) (replace `localhost:3000` with your server's host and port).
+- **Key Features:**
+    - **Explore Endpoints:** View all available routes grouped by module.
+    - **Interactive Testing:** Execute API requests directly from your browser using the "Try it out" button.
+    - **Schema Visualization:** Inspect detailed request body schemas, query parameters, and response structures.
+    - **Auto-generated:** The documentation automatically syncs with our code-based API annotations.
+
+### Endpoint Modules
 
 | Module | Base Path | Description |
 | :--- | :--- | :--- |
