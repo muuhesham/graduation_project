@@ -6,6 +6,16 @@ import newsletterValidations from '../validations/newsletterValidations.js';
 
 const Router = express.Router();
 
+/**
+ * @openapi
+ * /api/v1/newsletter/subscribe:
+ *   post:
+ *     summary: Subscribe to newsletter
+ *     tags: [Newsletter]
+ *     responses:
+ *       200:
+ *         description: Subscription successful
+ */
 Router.post(
     '/subscribe',
     subscribeLimiter,
@@ -14,6 +24,22 @@ Router.post(
     newsletterController.subscribe
 );
 
+/**
+ * @openapi
+ * /api/v1/newsletter/confirm/{token}:
+ *   get:
+ *     summary: Confirm newsletter subscription
+ *     tags: [Newsletter]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Subscription confirmed
+ */
 Router.get(
     '/confirm/:token',
     confirmLimiter,
@@ -22,6 +48,16 @@ Router.get(
     newsletterController.confirmSubscription
 );
 
+/**
+ * @openapi
+ * /api/v1/newsletter/confirm:
+ *   post:
+ *     summary: Confirm newsletter subscription (JSON)
+ *     tags: [Newsletter]
+ *     responses:
+ *       200:
+ *         description: Subscription confirmed
+ */
 Router.post(
     '/confirm',
     confirmLimiter,

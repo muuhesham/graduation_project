@@ -11,21 +11,53 @@ import validate from './../middlewares/validate.js';
 const router = Router();
 
 /**
- * @param {string} q - Search query (2-200 characters, required)
- * @param {number} [page=1] - Page number for pagination. Default is `1`
- * @param {number} [limit=10] - Results per page (1-50, default 10). Default is `10`
- * @param {number} [categoryId] - Optional category filter
- * @param {string} [organizerId] - Optional organizer filter
- * @param {number} [minPrice] - Optional minimum ticket price
- * @param {number} [maxPrice] - Optional maximum ticket price
- * @param {boolean} [hasSeatMap] - Optional seat-map filter
- * @param {string | string[]} [tag] - Optional tag filter; can be repeated
- * @param {string | string[]} [tags] - Optional comma-separated or repeated tag filter
- * @route GET /api/v1/search
- * @middleware searchValidation.search
- * @middleware validate
- * @middleware apiLimiter
- * @handler searchController.search
+ * @openapi
+ * /api/v1/search:
+ *   get:
+ *     summary: Search for events
+ *     tags: [Search]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: organizerId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: hasSeatMap
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *     responses:
+ *       200:
+ *         description: Search results
  */
 router.get('/search', apiLimiter, searchValidation.search, validate, searchController.search);
 

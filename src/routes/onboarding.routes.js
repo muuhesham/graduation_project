@@ -7,8 +7,28 @@ import onboardingValidations from '../validations/onboardingValidation.js';
 
 const Router = express.Router();
 
+/**
+ * @openapi
+ * /api/v1/onboarding/status:
+ *   get:
+ *     summary: Get onboarding status
+ *     tags: [Onboarding]
+ *     responses:
+ *       200:
+ *         description: Onboarding status
+ */
 Router.get('/status', statusLimiter, auth, onboardingController.getStatus);
 
+/**
+ * @openapi
+ * /api/v1/onboarding/basic:
+ *   patch:
+ *     summary: Update basic onboarding details
+ *     tags: [Onboarding]
+ *     responses:
+ *       200:
+ *         description: Basic details updated
+ */
 Router.patch(
     '/basic',
     onboardingWriteLimiter,
@@ -18,6 +38,16 @@ Router.patch(
     onboardingController.updateBasic
 );
 
+/**
+ * @openapi
+ * /api/v1/onboarding/preferences:
+ *   patch:
+ *     summary: Update onboarding preferences
+ *     tags: [Onboarding]
+ *     responses:
+ *       200:
+ *         description: Preferences updated
+ */
 Router.patch(
     '/preferences',
     onboardingWriteLimiter,
@@ -27,6 +57,16 @@ Router.patch(
     onboardingController.updatePreferences
 );
 
+/**
+ * @openapi
+ * /api/v1/onboarding/location:
+ *   patch:
+ *     summary: Update onboarding location
+ *     tags: [Onboarding]
+ *     responses:
+ *       200:
+ *         description: Location updated
+ */
 Router.patch(
     '/location',
     onboardingWriteLimiter,

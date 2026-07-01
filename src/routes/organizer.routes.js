@@ -12,10 +12,28 @@ import optionalAuth from '../middlewares/optionalAuth.js';
 
 const Router = express.Router();
 
-// CRUD OPERATIONS FOR ORGANIZER EVENTS
-
+/**
+ * @openapi
+ * /api/v1/organizer/events:
+ *   get:
+ *     summary: List organizer events
+ *     tags: [Organizer]
+ *     responses:
+ *       200:
+ *         description: List of events
+ */
 Router.get('/events', auth, authorize.isOrganizer, organizerController.listEvents);
 
+/**
+ * @openapi
+ * /api/v1/organizer/events:
+ *   post:
+ *     summary: Create an event
+ *     tags: [Organizer]
+ *     responses:
+ *       201:
+ *         description: Event created
+ */
 Router.post(
     '/events',
     publicLimiter,
@@ -37,6 +55,22 @@ Router.post(
     organizerController.createEvent
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/events/{eventId}:
+ *   put:
+ *     summary: Update an event
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event updated
+ */
 Router.put(
     '/events/:eventId',
     publicLimiter,
@@ -50,6 +84,22 @@ Router.put(
     organizerController.updateEvent
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/events/{eventId}:
+ *   delete:
+ *     summary: Delete an event
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event deleted
+ */
 Router.delete(
     '/events/:eventId',
     publicLimiter,
@@ -60,6 +110,22 @@ Router.delete(
     organizerController.deleteEvent
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/events/{eventId}:
+ *   patch:
+ *     summary: Cancel an event
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event cancelled
+ */
 Router.patch(
     '/events/:eventId',
     auth,
@@ -69,6 +135,22 @@ Router.patch(
     organizerController.cancelEvent
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/{id}:
+ *   get:
+ *     summary: Get organizer public profile
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Organizer profile
+ */
 Router.get(
     '/:id',
     publicLimiter,
@@ -78,6 +160,22 @@ Router.get(
     organizerController.getPublicProfile
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/{id}/follow:
+ *   post:
+ *     summary: Follow an organizer
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Follow successful
+ */
 Router.post(
     '/:id/follow',
     auth,
@@ -86,6 +184,22 @@ Router.post(
     organizerController.follow
 );
 
+/**
+ * @openapi
+ * /api/v1/organizer/{id}/unfollow:
+ *   delete:
+ *     summary: Unfollow an organizer
+ *     tags: [Organizer]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Unfollow successful
+ */
 Router.delete(
     '/:id/unfollow',
     auth,
