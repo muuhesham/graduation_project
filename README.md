@@ -9,6 +9,8 @@
 
 **Fa3liat** is a comprehensive web application platform for creating events, managing tickets, and handling online payments. The platform supports both general-admission and seat-based events with multiple ticket tiers, organizer onboarding workflows, and AI-assisted event discovery.
 
+> 💡 **Looking for the full application?** 
+> To view or run the entire project (including Backend, Frontend Web, and Mobile App), please visit the repository: https://github.com/muuhesham/source_code_gp.
 ---
 
 ## 📋 Table of Contents
