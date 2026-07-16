@@ -49,6 +49,9 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 
 ## 📸 Screenshots & Demo
 
+### 🚀 Live Demo 
+* 🔗 [Watch Live Demo (Google Drive)](https://drive.google.com/drive/folders/1ZYVKVTpJjSawZfwO7PDVc2_0u5-4er9S?usp=drive_link)
+
 ### 💻 Web Application
 <img width="1600" height="790" alt="WhatsApp Image 2026-07-16 at 11 50 34 AM" src="https://github.com/user-attachments/assets/397e80fb-57b5-4617-8d6b-d713b2d782f7" />
 <img width="1600" height="780" alt="WhatsApp Image 2026-07-16 at 11 51 28 AM" src="https://github.com/user-attachments/assets/69ecec31-9445-48a0-8b6f-53c30d65a150" />
