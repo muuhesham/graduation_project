@@ -1,5 +1,3 @@
-# Fa3liat — Event Management & E-Ticketing Web Application
-
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
   <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js">
@@ -49,9 +47,20 @@ Fa3liat is an event management and ticketing platform built with modern web tech
 
 ## 📸 Screenshots & Demo
 
-| Dashboard | Event Search | Ticket Scanning |
-| :---: | :---: | :---: |
-| [![Dashboard](docs/images/dashboard.png)](docs/images/dashboard.png) | [![Search](docs/images/search.png)](docs/images/search.png) | [![Scan](docs/images/scan.png)](docs/images/scan.png) |
+### 💻 Web Application
+<img width="1600" height="790" alt="WhatsApp Image 2026-07-16 at 11 50 34 AM" src="https://github.com/user-attachments/assets/397e80fb-57b5-4617-8d6b-d713b2d782f7" />
+<img width="1600" height="780" alt="WhatsApp Image 2026-07-16 at 11 51 28 AM" src="https://github.com/user-attachments/assets/69ecec31-9445-48a0-8b6f-53c30d65a150" />
+<img width="1055" height="591" alt="fc512ee5-8354-4086-b58a-ff72de98b7e6" src="https://github.com/user-attachments/assets/0a991d8b-901e-489f-8736-08f804af2a9b" />
+<img width="1054" height="757" alt="WhatsApp Image 2026-07-16 at 11 52 52 AM" src="https://github.com/user-attachments/assets/c8e580d9-5014-4d21-bca3-10c55cf8a7dc" />
+<img width="1600" height="791" alt="WhatsApp Image 2026-07-16 at 11 51 15 AM" src="https://github.com/user-attachments/assets/ea5b5be1-fed8-4386-91f9-086a16e9d9f9" />
+
+### 📱 Mobile Application
+<img width="300" height="580" alt="b29ab7d9-b874-44d5-a28c-f43b842a0587" src="https://github.com/user-attachments/assets/2f05d175-63fc-40aa-b5db-5bd698e90709" />
+
+### QR-CODE TICKET
+<img width="647" height="637" alt="WhatsApp Image 2026-07-16 at 12 51 57 PM" src="https://github.com/user-attachments/assets/805b1ea6-53d6-4c8e-a004-7983ed095c76" />
+
+
 
 ---
 
@@ -201,6 +210,15 @@ We provide comprehensive, interactive API documentation using **Swagger UI**. Th
 ---
 
 ## 🗄 Database Schema
+
+  <p align="center">
+    <img src="https://github.com/user-attachments/assets/8514fc87-19bc-4b87-8fd0-50090dac01a8" alt="Fa3liat Database Schema" width="100%">
+  </p>
+
+
+### Core Models
+- **User** & **Organizer** (Hobbyist, Business, Company)
+...
 
 ### Core Models
 - **User** & **Organizer** (Hobbyist, Business, Company)
